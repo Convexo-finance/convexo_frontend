@@ -1,0 +1,22 @@
+export const CONTRACTS = {
+  BASE_SEPOLIA: {
+    CHAIN_ID: 84532,
+    CONVEXO_LPS: '0x4ACB3B523889f437D9FfEe9F2A50BBBa9580198d' as `0x${string}`,
+    CONVEXO_VAULTS: '0xc056c0Ddf959b8b63fb6Bc73b5E79e85a6bFB9b5' as `0x${string}`,
+    POOL_REGISTRY: '0xC0561AB6dB7762Cf81a6b1E54394551e9124Df50' as `0x${string}`,
+    PRICE_FEED_MANAGER: '0x98E1F6d3Fd8b1EA91a24A43FD84f2F6B9f4EaEb2' as `0x${string}`,
+    CONTRACT_SIGNER: '0x87af0C8203C84192dBf07f4B6D934fD00eB3F723' as `0x${string}`,
+    REPUTATION_MANAGER: '0x99612857Bb85b1de04d06385E44Fa53DC2aF79E1' as `0x${string}`,
+    VAULT_FACTORY: '0xDe8daB3182426234ACf68E4197A1eDF5172450dD' as `0x${string}`,
+    INVOICE_FACTORING: '0xbc4023284D789D7EB8512c1EDe245C77591a5D96' as `0x${string}`,
+    TOKENIZED_BOND_CREDITS: '0xC058588A8D82B2E2129119B209c80af8bF3d4961' as `0x${string}`,
+    USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as `0x${string}`,
+    ECOP: '0xb934dcb57fb0673b7bc0fca590c5508f1cde955d' as `0x${string}`,
+    ADMIN_ADDRESS: '0x156d3C1648ef2f50A8de590a426360Cf6a89C6f8' as `0x${string}`,
+  },
+  IPFS: {
+    CONVEXO_LPS_URI: 'ipfs://bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em',
+    CONVEXO_VAULTS_URI: 'ipfs://bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e',
+  },
+} as const;
+
