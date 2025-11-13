@@ -8,6 +8,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Convexo Protocol',
   description: 'Reducing the Gap funding for SMEs in Latin America',
+  icons: {
+    icon: '/logo_convexo.png',
+    shortcut: '/logo_convexo.png',
+    apple: '/logo_convexo.png',
+  },
 };
 
 export default function RootLayout({
