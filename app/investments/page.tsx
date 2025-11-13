@@ -5,7 +5,7 @@ import { useVaultCount, useVaultAddress } from '@/lib/hooks/useVaults';
 import { VaultCard } from '@/components/VaultCard';
 import DashboardLayout from '@/components/DashboardLayout';
 
-export default function InvestorPage() {
+export default function InvestmentsPage() {
   const { isConnected } = useAccount();
   const { count, isLoading: isLoadingCount } = useVaultCount();
 
@@ -27,7 +27,7 @@ export default function InvestorPage() {
         <div className="max-w-6xl mx-auto">
 
         <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-          Investor Dashboard
+          Investments Dashboard
         </h1>
 
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">

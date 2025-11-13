@@ -7,7 +7,7 @@ import { CreateVaultForm } from '@/components/CreateVaultForm';
 import { InvoiceFactoringForm } from '@/components/InvoiceFactoringForm';
 import DashboardLayout from '@/components/DashboardLayout';
 
-export default function EnterprisePage() {
+export default function LoansPage() {
   const { isConnected, address } = useAccount();
   const { tier, hasCompliantAccess, hasCreditscoreAccess } = useUserReputation();
   const { hasLPsNFT, hasVaultsNFT } = useNFTBalance();
@@ -30,7 +30,7 @@ export default function EnterprisePage() {
         <div className="max-w-6xl mx-auto">
 
         <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-          Enterprise Dashboard
+          Loans Dashboard
         </h1>
 
         <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">

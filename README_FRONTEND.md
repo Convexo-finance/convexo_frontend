@@ -1,180 +1,362 @@
-# Convexo Frontend
+# Frontend Documentation
 
-A clean and structured Next.js frontend for the Convexo Protocol, enabling interactions with deployed smart contracts on Base Sepolia.
+Detailed documentation for the Convexo Protocol frontend application.
 
-## Features
+## 📋 Table of Contents
 
-- **RainbowKit Wallet Connection**: Easy wallet connection with support for multiple wallets
-- **Three User Views**:
-  - **Admin View**: Mint NFTs and manage protocol settings
-  - **Enterprise View**: Create vaults, manage invoices, and access funding
-  - **Investor View**: Browse vaults, invest USDC, and track returns
-- **Real Contract Interactions**: All features interact directly with deployed contracts
-- **TypeScript**: Full type safety throughout the application
-- **Tailwind CSS**: Modern, responsive UI
+- [Architecture](#architecture)
+- [Pages & Routes](#pages--routes)
+- [Components](#components)
+- [Hooks](#hooks)
+- [Contract Integration](#contract-integration)
+- [State Management](#state-management)
+- [Styling](#styling)
+- [API Routes](#api-routes)
 
-## Setup
+---
 
-### Prerequisites
+## 🏗️ Architecture
 
-- Node.js 18+ and npm/yarn
-- WalletConnect Project ID (get one at https://cloud.walletconnect.com)
+### Tech Stack
 
-### Installation
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Web3**: Wagmi v2, Viem v2, RainbowKit v2
+- **State**: React Query (via Wagmi)
 
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Create a `.env.local` file:
-```bash
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
-```
-
-3. Run the development server:
-```bash
-npm run dev
-```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## Project Structure
+### Project Structure
 
 ```
-frontendconvexo/
-├── app/
-│   ├── admin/          # Admin dashboard
-│   ├── enterprise/     # Enterprise/SME dashboard
-│   ├── investor/       # Investor dashboard
-│   ├── layout.tsx      # Root layout with providers
-│   ├── page.tsx        # Home page
-│   └── providers.tsx    # Wagmi & RainbowKit providers
-├── components/
-│   ├── CreateVaultForm.tsx      # Form to create funding vaults
-│   ├── InvoiceFactoringForm.tsx # Form to create invoices
-│   └── VaultCard.tsx            # Vault display and investment
-├── lib/
-│   ├── contracts/
-│   │   ├── addresses.ts  # Contract addresses
-│   │   └── abis.ts       # Contract ABIs
-│   ├── hooks/
-│   │   ├── useNFTBalance.ts      # Check NFT ownership
-│   │   ├── useUserReputation.ts  # Get user reputation tier
-│   │   └── useVaults.ts          # Get vault data
-│   └── wagmi/
-│       └── config.ts     # Wagmi/RainbowKit configuration
-└── abis/                # Contract ABIs (from backend)
+app/                    # Next.js App Router pages
+components/             # Reusable React components
+lib/                    # Shared utilities and configurations
+  contracts/            # Contract addresses and ABIs
+  hooks/                # Custom React hooks
+  wagmi/                # Wagmi configuration
+abis/                   # Contract ABI JSON files
+public/                 # Static assets
 ```
 
-## Usage
+---
 
-### Admin View
+## 📄 Pages & Routes
 
-1. Connect your wallet (must be admin)
-2. Navigate to `/admin`
-3. Mint Convexo_LPs NFT (Tier 1) or Convexo_Vaults NFT (Tier 2) for verified users
-4. Fill in recipient address, token ID, and optional URI
+### `/` - Dashboard
+Home page with navigation cards to different views.
 
-### Enterprise View
+### `/enterprise` - Enterprise Dashboard
+- Displays user reputation tier and NFT ownership
+- Create funding vaults (requires Tier 2)
+- Create invoice factoring agreements (requires Tier 1)
+- Access to contract creation
 
-1. Connect your wallet
-2. Navigate to `/enterprise`
-3. View your reputation tier and NFT ownership status
-4. **If Tier 1+**: Create invoices for factoring
-5. **If Tier 2**: Create funding vaults to request investment
+### `/investor` - Investor Dashboard
+- Browse all available vaults
+- View vault metrics (TVL, APY, maturity)
+- Invest USDC in vaults
+- Track investments
 
-### Investor View
+### `/admin` - Admin Dashboard
+- Mint Convexo_LPs NFTs (Tier 1)
+- Mint Convexo_Vaults NFTs (Tier 2)
+- Restricted to admin address: `0x156d3C1648ef2f50A8de590a426360Cf6a89C6f8`
 
-1. Connect your wallet
-2. Navigate to `/investor`
-3. Browse all available vaults with metrics (TVL, APY, progress)
-4. Click "Invest in Vault" to invest USDC
-5. Approve USDC spending if needed
-6. Track your investments and returns
+### `/funding` - Funding Page
+- Mint ECOP stablecoin from fiat
+- Burn ECOP stablecoin to redeem fiat
+- View ECOP balance
 
-## Contract Addresses
+### `/conversion` - Conversion Page
+- Swap ECOP/USDC via Uniswap V4
+- View exchange rates
+- Approve and execute swaps
 
-All contracts are deployed on **Base Sepolia (Chain ID: 84532)**:
+### `/contracts` - Contracts Management
+- Upload PDF contracts to Pinata IPFS
+- Create on-chain contract agreements
+- View contract information
+- Copy document hashes for use in vault/invoice creation
 
-- Convexo_LPs: `0x4ACB3B523889f437D9FfEe9F2A50BBBa9580198d`
-- Convexo_Vaults: `0xc056c0Ddf959b8b63fb6Bc73b5E79e85a6bFB9b5`
-- ReputationManager: `0x99612857Bb85b1de04d06385E44Fa53DC2aF79E1`
-- VaultFactory: `0xDe8daB3182426234ACf68E4197A1eDF5172450dD`
-- InvoiceFactoring: `0xbc4023284D789D7EB8512c1EDe245C77591a5D96`
-- TokenizedBondCredits: `0xC058588A8D82B2E2129119B209c80af8bF3d4961`
-- USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+---
 
-## Network Configuration
+## 🧩 Components
 
-The app is configured for **Base Sepolia** testnet. To switch networks, update `lib/wagmi/config.ts`.
+### Layout Components
 
-## Development
+#### `DashboardLayout`
+Main layout wrapper that includes:
+- Sidebar navigation
+- Content area
+- Responsive design
 
-### Build
+#### `Sidebar`
+Left-side navigation bar with:
+- Navigation links
+- Active route highlighting
+- Wallet connection button
 
-```bash
-npm run build
+### Form Components
+
+#### `CreateVaultForm`
+Form for creating funding vaults:
+- Vault name and symbol
+- Principal amount (USDC)
+- Interest rate
+- Maturity period
+- Optional contract hash
+
+#### `InvoiceFactoringForm`
+Form for creating invoice factoring agreements:
+- Invoice amount (USDC)
+- Maturity days
+- Optional contract hash
+
+#### `PinataUpload`
+PDF upload component:
+- Drag & drop interface
+- File validation (PDF only, max 10MB)
+- Upload progress
+- Auto-fills IPFS hash on success
+
+### Display Components
+
+#### `VaultCard`
+Displays vault information:
+- Vault name and address
+- Metrics (TVL, APY, progress)
+- Investment interface
+- USDC approval and investment flow
+
+---
+
+## 🪝 Hooks
+
+### Custom Hooks
+
+#### `useUserReputation`
+Fetches and interprets user's reputation tier:
+```typescript
+const { tier, hasCompliantAccess, hasCreditscoreAccess } = useUserReputation();
 ```
 
-### Start Production Server
+Returns:
+- `tier`: 0, 1, or 2
+- `hasCompliantAccess`: boolean (tier >= 1)
+- `hasCreditscoreAccess`: boolean (tier >= 2)
 
-```bash
-npm start
+#### `useNFTBalance`
+Checks user's NFT ownership:
+```typescript
+const { hasLPsNFT, hasVaultsNFT, lpsBalance, vaultsBalance } = useNFTBalance();
 ```
 
-### Lint
-
-```bash
-npm run lint
+#### `useVaultCount`
+Gets total number of vaults:
+```typescript
+const { count, isLoading } = useVaultCount();
 ```
 
-## Key Features
+#### `useVaultAddress`
+Gets vault address by index:
+```typescript
+const { vaultAddress, isLoading } = useVaultAddress(index);
+```
 
-### Wallet Connection
-- Uses RainbowKit for a beautiful wallet connection UI
-- Supports MetaMask, WalletConnect, Coinbase Wallet, and more
-- Automatically switches to Base Sepolia network
+---
 
-### Contract Interactions
-- All contract calls use wagmi hooks
-- Real-time updates using React Query
-- Transaction status tracking
-- Error handling with user-friendly messages
+## 🔗 Contract Integration
 
-### User Reputation System
-- Automatically checks user's reputation tier
-- Tier 0: No access
-- Tier 1: Compliant (can use pools and invoice factoring)
-- Tier 2: Creditscore (full access including vault creation)
+### Contract Addresses
 
-## Troubleshooting
+All addresses are stored in `lib/contracts/addresses.ts`:
 
-### Wallet Connection Issues
-- Ensure you're on Base Sepolia network
-- Check that your WalletConnect Project ID is set correctly
-- Try disconnecting and reconnecting your wallet
+```typescript
+export const CONTRACTS = {
+  BASE_SEPOLIA: {
+    CONVEXO_LPS: '0x4ACB3B523889f437D9FfEe9F2A50BBBa9580198d',
+    CONVEXO_VAULTS: '0xc056c0Ddf959b8b63fb6Bc73b5E79e85a6bFB9b5',
+    VAULT_FACTORY: '0xDe8daB3182426234ACf68E4197A1eDF5172450dD',
+    INVOICE_FACTORING: '0xbc4023284D789D7EB8512c1EDe245C77591a5D96',
+    CONTRACT_SIGNER: '0x87af0C8203C84192dBf07f4B6D934fD00eB3F723',
+    // ... more contracts
+  },
+  IPFS: {
+    CONVEXO_LPS_URI: 'ipfs://...',
+    CONVEXO_VAULTS_URI: 'ipfs://...',
+  },
+};
+```
 
-### Transaction Failures
-- Check you have enough ETH for gas
-- Verify you have sufficient USDC balance (for investments)
-- Ensure you have the required NFTs for certain actions
-- Check contract permissions (admin roles, etc.)
+### Contract ABIs
 
-### Network Issues
-- Verify RPC endpoint is accessible
-- Check Base Sepolia network status
-- Try switching networks and back
+ABIs are imported from `lib/contracts/abis.ts`:
+- ConvexoLPsABI
+- ConvexoVaultsABI
+- VaultFactoryABI
+- InvoiceFactoringABI
+- ContractSignerABI
+- TokenizedBondVaultABI
+- And more...
 
-## Next Steps
+### Reading from Contracts
 
-- Add more detailed vault analytics
-- Implement invoice browsing for investors
-- Add transaction history
-- Implement pool trading interface
-- Add real-time notifications for vault updates
+```typescript
+import { useContractRead } from 'wagmi';
+import { CONTRACTS } from '@/lib/contracts/addresses';
+import { VaultFactoryABI } from '@/lib/contracts/abis';
 
-## Support
+const { data } = useContractRead({
+  address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+  abi: VaultFactoryABI,
+  functionName: 'getVaultCount',
+  query: { enabled: !!address },
+});
+```
 
-For contract-related questions, see the main [README.md](./README.md) and [FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md).
+### Writing to Contracts
 
+```typescript
+import { useWriteContract } from 'wagmi';
+
+const { writeContract, isPending } = useWriteContract();
+
+writeContract({
+  address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+  abi: VaultFactoryABI,
+  functionName: 'createVault',
+  args: [borrower, contractHash, principal, interest, fee, maturity, name, symbol],
+});
+```
+
+---
+
+## 📊 State Management
+
+### Wagmi Hooks
+
+The app uses Wagmi v2 hooks for all blockchain interactions:
+- `useAccount()` - Current connected account
+- `useContractRead()` - Read contract data
+- `useWriteContract()` - Write to contracts
+- `useWaitForTransactionReceipt()` - Wait for transaction confirmation
+
+### React Query
+
+Wagmi uses React Query under the hood for:
+- Automatic caching
+- Background refetching
+- Loading states
+- Error handling
+
+---
+
+## 🎨 Styling
+
+### Tailwind CSS
+
+The app uses Tailwind CSS for styling with:
+- Dark mode support (via `dark:` prefix)
+- Responsive design (mobile-first)
+- Custom color scheme
+- Consistent spacing and typography
+
+### Theme Colors
+
+- Primary: Blue (`bg-blue-600`)
+- Success: Green (`bg-green-600`)
+- Error: Red (`bg-red-600`)
+- Background: Gray scale with dark mode variants
+
+---
+
+## 🔌 API Routes
+
+### `/api/upload-pinata`
+
+Handles PDF uploads to Pinata IPFS using Pinata v3 API.
+
+**Method**: POST  
+**Body**: FormData with `file` field  
+**Response**:
+```json
+{
+  "success": true,
+  "ipfsHash": "bafkre...",
+  "ipfsUri": "ipfs://bafkre...",
+  "pinataUrl": "https://gateway.pinata.cloud/ipfs/bafkre...",
+  "cid": "bafkre..."
+}
+```
+
+**Validation**:
+- File type: PDF only
+- File size: Max 10MB
+
+**Environment Variable**: `PINATA_JWT` (required)
+
+**API Endpoint**: `https://uploads.pinata.cloud/v3/files`
+
+**Privacy Note**: 
+- Files are uploaded to **public IPFS** by default
+- Anyone with the IPFS hash can access the document
+- For private documents, consider:
+  - Using `network=private` parameter (requires Pinata Private IPFS subscription)
+  - Encrypting documents before upload
+  - Using a different storage solution for sensitive data
+
+---
+
+## 🔐 Security
+
+### API Keys
+
+- **WalletConnect Project ID**: Public (NEXT_PUBLIC_ prefix)
+- **Pinata JWT**: Server-side only (no NEXT_PUBLIC_ prefix)
+
+### Access Control
+
+- Admin functions check admin address
+- NFT-based access control via hooks
+- Contract-level permissions enforced
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Wallet won't connect:**
+- Check WalletConnect Project ID is set
+- Ensure on Base Sepolia network
+- Try disconnecting and reconnecting
+
+**Transactions fail:**
+- Check ETH balance for gas
+- Verify NFT ownership for restricted functions
+- Check contract permissions
+
+**Upload fails:**
+- Verify PINATA_JWT is set correctly
+- Check file is PDF and under 10MB
+- Check Pinata API key permissions
+
+**Build errors:**
+- Run `npm install` to ensure dependencies are installed
+- Clear `.next` folder: `rm -rf .next`
+- Check TypeScript errors: `npm run build`
+
+---
+
+## 📖 Additional Resources
+
+- [Wagmi Documentation](https://wagmi.sh)
+- [RainbowKit Documentation](https://rainbowkit.com)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Viem Documentation](https://viem.sh)
+
+---
+
+## 🔄 Version History
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.

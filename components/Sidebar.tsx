@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useState } from 'react';
 import {
   HomeIcon,
   BuildingOfficeIcon,
@@ -10,19 +11,71 @@ import {
   CurrencyDollarIcon,
   ArrowPathIcon,
   Cog6ToothIcon,
+  DocumentTextIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  BanknotesIcon,
+  DocumentDuplicateIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Enterprise', href: '/enterprise', icon: BuildingOfficeIcon },
-  { name: 'Investor', href: '/investor', icon: ChartBarIcon },
-  { name: 'Funding', href: '/funding', icon: CurrencyDollarIcon },
-  { name: 'Conversion', href: '/conversion', icon: ArrowPathIcon },
+  { 
+    name: 'Loans', 
+    href: '/loans', 
+    icon: BuildingOfficeIcon,
+    subItems: [
+      { name: 'Vaults', href: '/loans/vaults', icon: BanknotesIcon },
+      { name: 'Invoices', href: '/loans/invoices', icon: DocumentDuplicateIcon },
+      { name: 'Credits', href: '/loans/credits', icon: CreditCardIcon },
+    ]
+  },
+  { name: 'Investments', href: '/investments', icon: ChartBarIcon },
+  { 
+    name: 'Treasury', 
+    href: '/treasury', 
+    icon: CurrencyDollarIcon,
+    subItems: [
+      { name: 'Funding', href: '/funding', icon: CurrencyDollarIcon },
+      { name: 'Conversion', href: '/conversion', icon: ArrowPathIcon },
+    ]
+  },
+  { name: 'Contracts', href: '/contracts', icon: DocumentTextIcon },
   { name: 'Admin', href: '/admin', icon: Cog6ToothIcon },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [expandedItems, setExpandedItems] = useState<string[]>(() => {
+    // Auto-expand Loans if on any loans sub-page
+    if (pathname?.startsWith('/loans')) {
+      return ['Loans'];
+    }
+    // Auto-expand Treasury if on funding or conversion
+    if (pathname === '/funding' || pathname === '/conversion') {
+      return ['Treasury'];
+    }
+    return [];
+  });
+
+  const toggleExpand = (itemName: string) => {
+    setExpandedItems((prev) =>
+      prev.includes(itemName)
+        ? prev.filter((name) => name !== itemName)
+        : [...prev, itemName]
+    );
+  };
+
+  const isItemActive = (href: string, subItems?: typeof navigation[0]['subItems']) => {
+    if (pathname === href) return true;
+    if (subItems) {
+      return subItems.some((subItem) => pathname === subItem.href);
+    }
+    return false;
+  };
+
+  const isSubItemActive = (href: string) => pathname === href;
 
   return (
     <div className="w-64 flex flex-col h-full bg-gray-900 text-white">
@@ -35,20 +88,68 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navigation.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = isItemActive(item.href, item.subItems);
+          const isExpanded = expandedItems.includes(item.name);
+          const hasSubItems = item.subItems && item.subItems.length > 0;
+
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="font-medium">{item.name}</span>
-            </Link>
+            <div key={item.name}>
+              {hasSubItems ? (
+                <>
+                  <button
+                    onClick={() => toggleExpand(item.name)}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium">{item.name}</span>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronDownIcon className="w-4 h-4" />
+                    ) : (
+                      <ChevronRightIcon className="w-4 h-4" />
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {item.subItems.map((subItem) => {
+                        const isSubActive = isSubItemActive(subItem.href);
+                        return (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href}
+                            className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm ${
+                              isSubActive
+                                ? 'bg-blue-700 text-white'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                            }`}
+                          >
+                            <subItem.icon className="w-4 h-4" />
+                            <span>{subItem.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              )}
+            </div>
           );
         })}
       </nav>
