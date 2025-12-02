@@ -115,9 +115,16 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const vaultInfo = vaultInfoData as any;
 
   // Extract vault info fields safely
+  // VaultInfo struct: borrower, contractHash, principalAmount, interestRate, protocolFeeRate, totalRepaid, createdAt, maturityDate, state, disbursedAt
+  const borrowerFromInfo = vaultInfo?.[0] as `0x${string}` | undefined;
+  const contractHashFromInfo = vaultInfo?.[1] as `0x${string}` | undefined;
   const principal = vaultInfo?.[2] as bigint | undefined;
+  const interestRate = vaultInfo?.[3] as bigint | undefined; // in basis points (e.g., 1200 = 12%)
+  const protocolFeeRate = vaultInfo?.[4] as bigint | undefined; // in basis points (e.g., 200 = 2%)
+  const totalRepaid = vaultInfo?.[5] as bigint | undefined;
   const createdAt = vaultInfo?.[6] as bigint | undefined;
   const maturityDate = vaultInfo?.[7] as bigint | undefined;
+  const stateFromInfo = vaultInfo?.[8] as number | undefined;
   const disbursedAt = vaultInfo?.[9] as bigint | undefined;
   
   // Helper function to safely format dates
@@ -151,6 +158,32 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
 
   const dueDate = calculateDueDate();
   const maturityDays = maturityDate ? Math.floor(Number(maturityDate) / (24 * 60 * 60)) : undefined;
+
+  // Calculate payment breakdown
+  const calculatePaymentBreakdown = () => {
+    if (!principal || !interestRate || !protocolFeeRate) return null;
+    
+    try {
+      const principalAmount = principal;
+      const interestAmount = (principal * interestRate) / 10000n; // basis points to percentage
+      const protocolFeeAmount = (principal * protocolFeeRate) / 10000n; // protocol fee on PRINCIPAL only
+      const totalDue = principalAmount + interestAmount + protocolFeeAmount;
+      
+      return {
+        principal: principalAmount,
+        interest: interestAmount,
+        interestRate: Number(interestRate) / 100, // convert basis points to percentage
+        protocolFee: protocolFeeAmount,
+        protocolFeeRate: Number(protocolFeeRate) / 100, // convert basis points to percentage
+        totalDue: totalDue,
+      };
+    } catch (error) {
+      console.error('Error calculating payment breakdown:', error);
+      return null;
+    }
+  };
+
+  const paymentBreakdown = calculatePaymentBreakdown();
 
   // Check USDC allowance for investment
   const { data: allowance } = useContractRead({
@@ -654,6 +687,48 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
           ></div>
         </div>
       </div>
+
+      {/* Payment Breakdown - Shows loan structure */}
+      {paymentBreakdown && (
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center">
+            <span className="mr-2">📊</span> Loan Payment Breakdown
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">Principal Amount:</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {formatUnits(paymentBreakdown.principal, 6)} USDC
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">
+                Interest ({paymentBreakdown.interestRate}%):
+              </span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {formatUnits(paymentBreakdown.interest, 6)} USDC
+              </span>
+            </div>
+            <div className="flex justify-between bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded">
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                Protocol Fee ({paymentBreakdown.protocolFeeRate}% on principal):
+              </span>
+              <span className="font-semibold text-yellow-700 dark:text-yellow-300">
+                {formatUnits(paymentBreakdown.protocolFee, 6)} USDC
+              </span>
+            </div>
+            <div className="border-t-2 border-blue-300 dark:border-blue-600 pt-2 flex justify-between">
+              <span className="text-gray-900 dark:text-white font-bold">Total to Repay:</span>
+              <span className="font-bold text-blue-700 dark:text-blue-300 text-lg">
+                {formatUnits(paymentBreakdown.totalDue, 6)} USDC
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded">
+            <span className="font-semibold">Note:</span> The protocol fee ({paymentBreakdown.protocolFeeRate}%) is calculated on the principal amount only and must be paid by the borrower.
+          </div>
+        </div>
+      )}
 
       {/* Repayment Status - For Borrower */}
       {isBorrower && repaymentStatus && (vaultState === 2 || vaultState === 3 || vaultState === 4) && (
