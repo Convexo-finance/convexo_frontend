@@ -73,9 +73,12 @@ export default function ContractsPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Create New Contract Section */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Create New Contract
+            </h2>
             <CreateContractForm />
-            <ContractsList />
           </div>
 
           {/* My Contracts Section */}
@@ -318,6 +321,10 @@ function CreateContractForm() {
   );
 }
 
+// ContractsList component moved to admin module
+// This shows general contract information and statistics
+// Uncomment and use in admin page if needed
+/*
 function ContractsList() {
   const { address } = useAccount();
   const chainId = useChainId();
@@ -384,6 +391,7 @@ function ContractsList() {
     </div>
   );
 }
+*/
 
 function MyContractsSection() {
   const { address } = useAccount();
