@@ -10,7 +10,7 @@ import { ConvexoLPsABI, ConvexoVaultsABI } from '@/lib/contracts/abis';
 import { VaultFactoryABI, ContractSignerABI } from '@/lib/contracts/abis';
 import { useState, useEffect } from 'react';
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
+const GATEWAY_URL = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'lime-famous-condor-7.mypinata.cloud';
 const VAULTS_IPFS = 'bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e';
 const LPS_IPFS = 'bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em';
 

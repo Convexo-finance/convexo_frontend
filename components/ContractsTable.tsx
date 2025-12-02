@@ -160,7 +160,7 @@ function ContractTableRow({
   // Construct IPFS URL
   const ipfsUrl = gatewayUrl 
     ? `https://${gatewayUrl}/ipfs/${ipfsHash}`
-    : `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+    : `https://lime-famous-condor-7.mypinata.cloud/ipfs/${ipfsHash}`;
 
   const agreementTypeName = AGREEMENT_TYPES[contract.agreementType as keyof typeof AGREEMENT_TYPES] || `Type ${contract.agreementType}`;
   

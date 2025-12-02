@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Get Pinata credentials from environment variables
     const pinataJWT = process.env.PINATA_JWT;
-    const pinataGateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud'; // Default to public gateway
+    const pinataGateway = process.env.PINATA_GATEWAY || 'lime-famous-condor-7.mypinata.cloud'; // Default to Convexo gateway
     
     if (!pinataJWT) {
       return NextResponse.json(
@@ -218,10 +218,10 @@ export async function POST(request: NextRequest) {
     
     console.log('Successfully extracted CID:', ipfsHash);
     
-    // Construct gateway URL (use dedicated gateway if provided, otherwise use public gateway)
+    // Construct gateway URL (use dedicated gateway if provided, otherwise use Convexo gateway)
     const gatewayUrl = pinataGateway.includes('.') 
       ? `https://${pinataGateway}/ipfs/${ipfsHash}`
-      : `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+      : `https://lime-famous-condor-7.mypinata.cloud/ipfs/${ipfsHash}`;
     
     // Return IPFS hash with additional metadata
     return NextResponse.json({

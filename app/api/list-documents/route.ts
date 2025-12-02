@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     const pinataJWT = process.env.PINATA_JWT;
-    const pinataGateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
+    const pinataGateway = process.env.PINATA_GATEWAY || 'lime-famous-condor-7.mypinata.cloud';
     
     if (!pinataJWT) {
       return NextResponse.json(
@@ -74,10 +74,10 @@ export async function GET(request: NextRequest) {
 
     const filesData = await filesResponse.json();
 
-    // Construct gateway URL (use dedicated gateway if provided, otherwise use public gateway)
+    // Construct gateway URL (use dedicated gateway if provided, otherwise use Convexo gateway)
     const gatewayBase = pinataGateway.includes('.') 
       ? `https://${pinataGateway}`
-      : 'https://gateway.pinata.cloud';
+      : 'https://lime-famous-condor-7.mypinata.cloud';
     
     // Format documents for frontend
     const documents = (filesData.files || []).map((file: any) => ({

@@ -617,10 +617,10 @@ function MyContractCard({ contractIndex, userAddress }: { contractIndex: number;
     if (!hash) return '';
     if (hash.startsWith('ipfs://')) {
       const cid = hash.replace('ipfs://', '');
-      return gatewayUrl ? `${gatewayUrl}/ipfs/${cid}` : `https://gateway.pinata.cloud/ipfs/${cid}`;
+      return gatewayUrl ? `${gatewayUrl}/ipfs/${cid}` : `https://lime-famous-condor-7.mypinata.cloud/ipfs/${cid}`;
     }
     if (hash.startsWith('Qm') || hash.startsWith('baf')) {
-      return gatewayUrl ? `${gatewayUrl}/ipfs/${hash}` : `https://gateway.pinata.cloud/ipfs/${hash}`;
+      return gatewayUrl ? `${gatewayUrl}/ipfs/${hash}` : `https://lime-famous-condor-7.mypinata.cloud/ipfs/${hash}`;
     }
     return hash;
   };
