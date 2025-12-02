@@ -430,7 +430,15 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     repaymentAllowance < parseUnits(repaymentAmount, 6);
 
   const handleWithdrawProtocolFees = () => {
-    if (confirm('Withdraw protocol fees from this vault?')) {
+    if (!isFeeCollector) {
+      alert('Only the protocol fee collector can withdraw fees');
+      return;
+    }
+    if (!repaymentStatus || repaymentStatus[3] === 0n) {
+      alert('No protocol fees available to withdraw');
+      return;
+    }
+    if (confirm(`Withdraw ${formatUnits(repaymentStatus[3], 6)} USDC protocol fees from this vault?`)) {
       withdrawProtocolFees({
         address: vaultAddress,
         abi: TokenizedBondVaultABI,
@@ -775,9 +783,21 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
           
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Total Due:</span>
+              <span className="text-gray-600 dark:text-gray-400">Principal + Interest:</span>
               <span className="font-semibold text-gray-900 dark:text-white">
                 {formatUnits(repaymentStatus[0], 6)} USDC
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">Protocol Fee (2%):</span>
+              <span className="font-semibold text-yellow-700 dark:text-yellow-400">
+                +{formatUnits(repaymentStatus[3], 6)} USDC
+              </span>
+            </div>
+            <div className="border-t border-gray-300 dark:border-gray-600 pt-2 flex justify-between">
+              <span className="text-gray-900 dark:text-white font-bold">Total to Repay:</span>
+              <span className="font-bold text-gray-900 dark:text-white">
+                {formatUnits(repaymentStatus[0] + repaymentStatus[3], 6)} USDC
               </span>
             </div>
             <div className="flex justify-between">
@@ -794,24 +814,18 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                 {formatUnits(repaymentStatus[2], 6)} USDC
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Protocol Fee (included):</span>
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {formatUnits(repaymentStatus[3], 6)} USDC
-              </span>
-            </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div
                 className={`h-2 rounded-full transition-all ${
                   repaymentStatus[2] === 0n ? 'bg-green-600' : 'bg-purple-600'
                 }`}
                 style={{ 
-                  width: `${repaymentStatus[0] > 0n ? (Number(repaymentStatus[1]) / Number(repaymentStatus[0]) * 100).toFixed(1) : 0}%` 
+                  width: `${(repaymentStatus[0] + repaymentStatus[3]) > 0n ? (Number(repaymentStatus[1]) / Number(repaymentStatus[0] + repaymentStatus[3]) * 100).toFixed(1) : 0}%` 
                 }}
               ></div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
-              {repaymentStatus[0] > 0n ? ((Number(repaymentStatus[1]) / Number(repaymentStatus[0]) * 100).toFixed(1)) : 0}% Repaid
+              {(repaymentStatus[0] + repaymentStatus[3]) > 0n ? ((Number(repaymentStatus[1]) / Number(repaymentStatus[0] + repaymentStatus[3]) * 100).toFixed(1)) : 0}% Repaid
             </p>
           </div>
         </div>
@@ -1057,6 +1071,19 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                 <>
                   {showRepaymentForm ? (
                     <div className="space-y-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                      {/* Alert if only protocol fee is remaining */}
+                      {repaymentStatus[2] === repaymentStatus[3] && (
+                        <div className="mb-3 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg border border-yellow-300 dark:border-yellow-700">
+                          <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 flex items-center">
+                            <span className="mr-2">⚠️</span>
+                            Protocol Fee Pending
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            You've paid the principal + interest. Only the {formatUnits(repaymentStatus[3], 6)} USDC protocol fee remains.
+                          </p>
+                        </div>
+                      )}
+                      
                       <div>
                         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                           Repayment Amount (USDC)
@@ -1068,9 +1095,17 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                           placeholder="Enter amount"
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         />
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          Remaining: {repaymentStatus ? formatUnits(repaymentStatus[2], 6) : '0'} USDC
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            Remaining: {repaymentStatus ? formatUnits(repaymentStatus[2], 6) : '0'} USDC
+                          </p>
+                          <button
+                            onClick={() => setRepaymentAmount(formatUnits(repaymentStatus[2], 6))}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            Pay All
+                          </button>
+                        </div>
                       </div>
 
                       {needsRepaymentApproval ? (
@@ -1151,8 +1186,20 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
           )}
 
           {/* Withdraw Protocol Fees Button - For Fee Collector (Admin) */}
-          {isFeeCollector && repaymentStatus && repaymentStatus[1] > 0n && (vaultState === 3 || vaultState === 4) && (
-            <>
+          {isFeeCollector && repaymentStatus && repaymentStatus[3] > 0n && (vaultState === 3 || vaultState === 4) && (
+            <div className="space-y-2">
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200 mb-1">
+                  Protocol Fees Available
+                </p>
+                <p className="text-lg font-bold text-indigo-700 dark:text-indigo-300">
+                  {formatUnits(repaymentStatus[3], 6)} USDC
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  2% protocol fee on principal amount
+                </p>
+              </div>
+              
               <button
                 onClick={handleWithdrawProtocolFees}
                 disabled={isWithdrawingFees || isConfirmingWithdrawFees}
@@ -1184,7 +1231,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                   </a>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* Redeem Shares Button - For Investors after repayment */}
