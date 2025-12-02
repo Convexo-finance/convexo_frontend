@@ -475,9 +475,12 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     'Funded': 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
     'Active': 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
     'Repaying': 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200',
-    'Completed': 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+    'Completed': 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold',
     'Defaulted': 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200',
   };
+  
+  // Check if vault is fully repaid
+  const isFullyRepaid = repaymentStatus && repaymentStatus[2] === 0n;
 
   // Get block explorer URL based on chain
   const getExplorerUrl = (addressOrTx: string, type: 'address' | 'tx' = 'address') => {
@@ -497,7 +500,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
           {name ? String(name) : 'Vault'}
         </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {vaultId !== undefined && (
               <span className="text-sm font-semibold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full">
                 ID: {vaultId}
@@ -506,6 +509,11 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
             <span className={`text-xs font-semibold px-3 py-1 rounded-full ${vaultStateColors[vaultStateName] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
               {vaultStateName}
             </span>
+            {isFullyRepaid && vaultState === 3 && (
+              <span className="text-xs font-bold bg-green-600 text-white px-3 py-1 rounded-full animate-pulse flex items-center gap-1">
+                <span>✓</span> FULLY PAID
+              </span>
+            )}
           </div>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
@@ -732,10 +740,39 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
 
       {/* Repayment Status - For Borrower */}
       {isBorrower && repaymentStatus && (vaultState === 2 || vaultState === 3 || vaultState === 4) && (
-        <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-          <p className="text-sm font-semibold text-purple-900 dark:text-purple-200 mb-3 flex items-center">
-            <span className="mr-2">💰</span> Repayment Status
-          </p>
+        <div className={`mb-4 p-4 rounded-lg border ${
+          repaymentStatus[2] === 0n 
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+            : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <p className={`text-sm font-semibold flex items-center ${
+              repaymentStatus[2] === 0n 
+                ? 'text-green-900 dark:text-green-200'
+                : 'text-purple-900 dark:text-purple-200'
+            }`}>
+              <span className="mr-2">{repaymentStatus[2] === 0n ? '✅' : '💰'}</span> 
+              Repayment Status
+            </p>
+            {repaymentStatus[2] === 0n && (
+              <span className="text-xs font-bold bg-green-600 text-white px-3 py-1 rounded-full animate-pulse">
+                FULLY PAID
+              </span>
+            )}
+          </div>
+          
+          {repaymentStatus[2] === 0n && (
+            <div className="mb-3 p-3 bg-green-100 dark:bg-green-900/40 rounded-lg border border-green-300 dark:border-green-700">
+              <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex items-center">
+                <span className="mr-2">🎉</span>
+                Loan Fully Repaid!
+              </p>
+              <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                All payments including protocol fee have been completed. Investors and protocol collector can now withdraw their funds.
+              </p>
+            </div>
+          )}
+          
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">Total Due:</span>
@@ -751,19 +788,23 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">Remaining:</span>
-              <span className="font-semibold text-red-600">
+              <span className={`font-semibold ${
+                repaymentStatus[2] === 0n ? 'text-green-600' : 'text-red-600'
+              }`}>
                 {formatUnits(repaymentStatus[2], 6)} USDC
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Protocol Fee:</span>
+              <span className="text-gray-600 dark:text-gray-400">Protocol Fee (included):</span>
               <span className="font-semibold text-gray-900 dark:text-white">
                 {formatUnits(repaymentStatus[3], 6)} USDC
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div
-                className="bg-green-600 h-2 rounded-full"
+                className={`h-2 rounded-full transition-all ${
+                  repaymentStatus[2] === 0n ? 'bg-green-600' : 'bg-purple-600'
+                }`}
                 style={{ 
                   width: `${repaymentStatus[0] > 0n ? (Number(repaymentStatus[1]) / Number(repaymentStatus[0]) * 100).toFixed(1) : 0}%` 
                 }}
