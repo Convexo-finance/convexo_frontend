@@ -217,6 +217,13 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
 
   const paymentBreakdown = calculatePaymentBreakdown();
 
+  // Calculate total remaining to repay (including protocol fee)
+  // repaymentStatus: [totalDue, totalPaid, remaining, protocolFee]
+  // Total remaining = (totalDue + protocolFee) - totalPaid
+  const totalRemainingToRepay = repaymentStatus 
+    ? (repaymentStatus[0] + repaymentStatus[3]) - repaymentStatus[1]
+    : 0n;
+
   // Check USDC allowance for investment
   const { data: allowance } = useContractRead({
     address: address && vaultAddress && contracts ? contracts.USDC : undefined,
@@ -519,8 +526,9 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     'Defaulted': 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200',
   };
   
-  // Check if vault is fully repaid
-  const isFullyRepaid = repaymentStatus && repaymentStatus[2] === 0n;
+  // Check if vault is fully repaid (v2.2: includes protocol fee)
+  // Fully repaid = totalPaid >= (totalDue + protocolFee)
+  const isFullyRepaid = repaymentStatus && totalRemainingToRepay === 0n;
 
   // Get block explorer URL based on chain
   const getExplorerUrl = (addressOrTx: string, type: 'address' | 'tx' = 'address') => {
@@ -805,27 +813,27 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
       {/* Repayment Status - For Borrower */}
       {isBorrower && repaymentStatus && (vaultState === 2 || vaultState === 3 || vaultState === 4) && (
         <div className={`mb-4 p-4 rounded-lg border ${
-          repaymentStatus[2] === 0n 
+          totalRemainingToRepay === 0n 
             ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
             : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
         }`}>
           <div className="flex items-center justify-between mb-3">
             <p className={`text-sm font-semibold flex items-center ${
-              repaymentStatus[2] === 0n 
+              totalRemainingToRepay === 0n 
                 ? 'text-green-900 dark:text-green-200'
                 : 'text-purple-900 dark:text-purple-200'
             }`}>
-              <span className="mr-2">{repaymentStatus[2] === 0n ? '✅' : '💰'}</span> 
+              <span className="mr-2">{totalRemainingToRepay === 0n ? '✅' : '💰'}</span> 
               Repayment Status
             </p>
-            {repaymentStatus[2] === 0n && (
+            {totalRemainingToRepay === 0n && (
               <span className="text-xs font-bold bg-green-600 text-white px-3 py-1 rounded-full animate-pulse">
                 FULLY PAID
               </span>
             )}
           </div>
           
-          {repaymentStatus[2] === 0n && (
+          {totalRemainingToRepay === 0n && (
             <div className="mb-3 p-3 bg-green-100 dark:bg-green-900/40 rounded-lg border border-green-300 dark:border-green-700">
               <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex items-center">
                 <span className="mr-2">🎉</span>
@@ -863,17 +871,17 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Remaining:</span>
+              <span className="text-gray-600 dark:text-gray-400">Remaining (Total):</span>
               <span className={`font-semibold ${
-                repaymentStatus[2] === 0n ? 'text-green-600' : 'text-red-600'
+                totalRemainingToRepay === 0n ? 'text-green-600' : 'text-red-600'
               }`}>
-                {formatUnits(repaymentStatus[2], 6)} USDC
+                {formatUnits(totalRemainingToRepay, 6)} USDC
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div
                 className={`h-2 rounded-full transition-all ${
-                  repaymentStatus[2] === 0n ? 'bg-green-600' : 'bg-purple-600'
+                  totalRemainingToRepay === 0n ? 'bg-green-600' : 'bg-purple-600'
                 }`}
                 style={{ 
                   width: `${(repaymentStatus[0] + repaymentStatus[3]) > 0n ? (Number(repaymentStatus[1]) / Number(repaymentStatus[0] + repaymentStatus[3]) * 100).toFixed(1) : 0}%` 
@@ -1122,8 +1130,8 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                 </div>
               )}
 
-              {/* Make Repayment Button - Only show if vault is in Repaying state */}
-              {(vaultState === 3 || vaultState === 2) && repaymentStatus && repaymentStatus[2] > 0n && (
+              {/* Make Repayment Button - Only show if vault is in Repaying state and has remaining balance */}
+              {(vaultState === 3 || vaultState === 2) && repaymentStatus && totalRemainingToRepay > 0n && (
                 <>
                   {showRepaymentForm ? (
                     <div className="space-y-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -1153,11 +1161,12 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                         />
                         <div className="flex items-center justify-between mt-1">
                           <p className="text-xs text-gray-600 dark:text-gray-400">
-                            Remaining: {repaymentStatus ? formatUnits(repaymentStatus[2], 6) : '0'} USDC
+                            Total Remaining: {formatUnits(totalRemainingToRepay, 6)} USDC
+                            <span className="text-gray-500 ml-1">(incl. protocol fee)</span>
                           </p>
                           <button
-                            onClick={() => setRepaymentAmount(formatUnits(repaymentStatus[2], 6))}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                            onClick={() => setRepaymentAmount(formatUnits(totalRemainingToRepay, 6))}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold"
                           >
                             Pay All
                           </button>
