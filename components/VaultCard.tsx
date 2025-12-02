@@ -114,19 +114,11 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   });
   const vaultInfo = vaultInfoData as any;
 
-  // Extract vault info fields
-  // VaultInfo struct: (borrower, contractHash, principal, interest, protocolFee, totalRepaid, createdAt, maturityDate, state, disbursedAt)
-  const principal = vaultInfo ? (vaultInfo[2] as bigint) : undefined;
-  const createdAt = vaultInfo ? (vaultInfo[6] as bigint) : undefined;
-  const maturityDate = vaultInfo ? (vaultInfo[7] as bigint) : undefined;
-  const disbursedAt = vaultInfo ? (vaultInfo[9] as bigint) : undefined;
-  
-  // Calculate actual maturity date if funds were disbursed
-  // The maturityDate in vaultInfo is the duration in seconds, not the actual date
-  const actualMaturityDate = 
-    disbursedAt !== undefined && disbursedAt > 0n && maturityDate !== undefined
-      ? disbursedAt + maturityDate
-      : undefined;
+  // Extract vault info fields safely
+  const principal = vaultInfo?.[2] as bigint | undefined;
+  const createdAt = vaultInfo?.[6] as bigint | undefined;
+  const maturityDate = vaultInfo?.[7] as bigint | undefined;
+  const disbursedAt = vaultInfo?.[9] as bigint | undefined;
   
   // Helper function to safely format dates
   const formatDate = (timestamp: bigint | undefined) => {
@@ -140,41 +132,25 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
         day: 'numeric',
       });
     } catch (error) {
-      console.error('Error formatting date:', error);
       return null;
     }
   };
 
-  // Calculate days remaining
-  const getDaysRemaining = () => {
-    if (!actualMaturityDate) return null;
+  // Calculate due date: createdAt + maturityDate (in seconds)
+  const calculateDueDate = () => {
+    if (!createdAt || !maturityDate) return undefined;
     try {
-      const now = Math.floor(Date.now() / 1000);
-      const maturityTimestamp = Number(actualMaturityDate);
-      const secondsRemaining = maturityTimestamp - now;
-      const daysRemaining = Math.floor(secondsRemaining / (24 * 60 * 60));
-      return daysRemaining;
+      const createdTimestamp = Number(createdAt);
+      const maturitySeconds = Number(maturityDate);
+      const dueTimestamp = createdTimestamp + maturitySeconds;
+      return BigInt(dueTimestamp);
     } catch (error) {
-      console.error('Error calculating days remaining:', error);
-      return null;
+      return undefined;
     }
   };
 
-  // Calculate loan duration (maturityDate is the duration in seconds)
-  const getLoanDuration = () => {
-    if (!maturityDate) return null;
-    try {
-      return Math.floor(Number(maturityDate) / (24 * 60 * 60));
-    } catch (error) {
-      console.error('Error calculating loan duration:', error);
-      return null;
-    }
-  };
-
-  const daysRemaining = getDaysRemaining();
-  const loanDuration = getLoanDuration();
-  const isExpired = daysRemaining !== null && daysRemaining < 0;
-  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7 && daysRemaining >= 0;
+  const dueDate = calculateDueDate();
+  const maturityDays = maturityDate ? Math.floor(Number(maturityDate) / (24 * 60 * 60)) : undefined;
 
   // Check USDC allowance for investment
   const { data: allowance } = useContractRead({
@@ -537,68 +513,20 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
             </div>
           )}
 
-          {/* Maturity Date and Days Remaining */}
-          {formatDate(actualMaturityDate) && daysRemaining !== null && (
-            <div className={`p-3 rounded-lg border ${
-              isExpired 
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
-                : isExpiringSoon
-                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                    🎯 Maturity Date
-                  </p>
-                  <p className="text-sm font-mono text-gray-900 dark:text-white">
-                    {formatDate(actualMaturityDate)}
-                  </p>
-                  {loanDuration && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Loan term: {loanDuration} days
-                    </p>
+          {/* Due Date */}
+          {formatDate(dueDate) && (
+            <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">🎯 Due Date:</span>
+                <span className="font-mono text-gray-900 dark:text-white">
+                  {formatDate(dueDate)}
+                  {maturityDays && (
+                    <span className="text-gray-500 dark:text-gray-400 ml-2">
+                      ({maturityDays} days)
+                    </span>
                   )}
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                    {isExpired ? 'Expired' : 'Days Remaining'}
-                  </p>
-                  <p className={`text-2xl font-bold ${
-                    isExpired 
-                      ? 'text-red-600 dark:text-red-400' 
-                      : isExpiringSoon
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-green-600 dark:text-green-400'
-                  }`}>
-                    {isExpired ? (
-                      <span className="flex items-center justify-end">
-                        ⚠️ {Math.abs(daysRemaining)}
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-end">
-                        {isExpiringSoon && '⏰ '}
-                        {daysRemaining}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {isExpired ? 'days overdue' : 'days left'}
-                  </p>
-                </div>
+                </span>
               </div>
-              {isExpiringSoon && !isExpired && (
-                <div className="mt-2 text-xs text-yellow-700 dark:text-yellow-300 flex items-center">
-                  <span className="mr-1">⚠️</span>
-                  Vault expiring soon!
-                </div>
-              )}
-              {isExpired && (
-                <div className="mt-2 text-xs text-red-700 dark:text-red-300 flex items-center">
-                  <span className="mr-1">⚠️</span>
-                  Vault has expired. Borrower may be in default.
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -713,20 +641,6 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
             {(Number(apy) / 100).toFixed(2)}%
           </span>
         </div>
-        {maturityDate && daysRemaining !== null && (
-          <div className="flex justify-between">
-            <span className="text-gray-600 dark:text-gray-400">Time Remaining:</span>
-            <span className={`font-semibold ${
-              isExpired 
-                ? 'text-red-600' 
-                : isExpiringSoon 
-                ? 'text-yellow-600' 
-                : 'text-gray-900 dark:text-white'
-            }`}>
-              {isExpired ? `Expired ${Math.abs(daysRemaining)} days ago` : `${daysRemaining} days`}
-            </span>
-          </div>
-        )}
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">Progress:</span>
           <span className="font-semibold text-gray-900 dark:text-white">
