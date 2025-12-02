@@ -7,9 +7,11 @@ import { parseUnits, formatUnits } from 'viem';
 import { CONTRACTS } from '@/lib/contracts/addresses';
 import { ecopAbi } from '@/lib/contracts/ecopAbi';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 
 export default function FundingPage() {
   const { address, isConnected } = useAccount();
+  const { hasLPsNFT } = useNFTBalance();
 
   if (!isConnected) {
     return (
@@ -25,12 +27,35 @@ export default function FundingPage() {
     );
   }
 
+  if (!hasLPsNFT) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Compliance Required
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              You need to hold a Convexo LPs NFT (Compliance) to access Treasury services.
+            </p>
+            <a
+              href="/get-verified/amlcft"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
+            >
+              Get Verified
+            </a>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-            Funding - ECOP Stablecoin
+            FIAT to STABLE
           </h1>
           <div className="mb-8">
             <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -260,7 +285,7 @@ function RedeemECOP() {
 
   // Check ECOP balance
   const { data: balance } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.ECOP : undefined,
+    address: address ? CONTRACTS[84532].ECOP : undefined,
     abi: ecopAbi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -488,7 +513,7 @@ function ECOPBalance() {
   const { address } = useAccount();
 
   const { data: balance, isLoading } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.ECOP : undefined,
+    address: address ? CONTRACTS[84532].ECOP : undefined,
     abi: ecopAbi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -498,13 +523,13 @@ function ECOPBalance() {
   });
 
   const { data: symbol } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.ECOP,
+    address: CONTRACTS[84532].ECOP,
     abi: ecopAbi,
     functionName: 'symbol',
   });
 
   const { data: decimals } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.ECOP,
+    address: CONTRACTS[84532].ECOP,
     abi: ecopAbi,
     functionName: 'decimals',
   });

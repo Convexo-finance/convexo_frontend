@@ -1,8 +1,8 @@
 'use client';
 
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { useState } from 'react';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { CONTRACTS, getContractsForChain, IPFS } from '@/lib/contracts/addresses';
 import { ConvexoLPsABI, ConvexoVaultsABI } from '@/lib/contracts/abis';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits } from 'viem';
@@ -10,7 +10,9 @@ import DashboardLayout from '@/components/DashboardLayout';
 
 export default function AdminPage() {
   const { isConnected, address } = useAccount();
-  const isAdmin = address?.toLowerCase() === CONTRACTS.BASE_SEPOLIA.ADMIN_ADDRESS.toLowerCase();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+  const isAdmin = address?.toLowerCase() === contracts?.ADMIN_ADDRESS.toLowerCase();
 
   if (!isConnected) {
     return (
@@ -39,8 +41,32 @@ export default function AdminPage() {
               <p className="text-sm text-red-600 dark:text-red-400">
                 Your address: {address}
                 <br />
-                Required address: {CONTRACTS.BASE_SEPOLIA.ADMIN_ADDRESS}
+                Required address: {contracts?.ADMIN_ADDRESS || 'N/A'}
               </p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!contracts) {
+    return (
+      <DashboardLayout>
+        <div className="p-8">
+          <div className="text-center py-20">
+            <div className="bg-red-50 dark:bg-red-900/20 p-6 rounded-lg border border-red-200 dark:border-red-800 max-w-md mx-auto">
+              <h2 className="text-2xl font-semibold mb-4 text-red-800 dark:text-red-200">
+                Unsupported Network
+              </h2>
+              <p className="text-red-700 dark:text-red-300">
+                Please switch to one of the supported networks:
+              </p>
+              <ul className="mt-4 space-y-2 text-left">
+                <li className="text-red-700 dark:text-red-300">• Base Sepolia (Chain ID: 84532)</li>
+                <li className="text-red-700 dark:text-red-300">• Ethereum Sepolia (Chain ID: 11155111)</li>
+                <li className="text-red-700 dark:text-red-300">• Unichain Sepolia (Chain ID: 1301)</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -53,27 +79,34 @@ export default function AdminPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
 
-        <h1 className="text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-          Admin Dashboard
-        </h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+            Admin Dashboard
+          </h1>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Network: <span className="font-semibold">{contracts.CHAIN_NAME}</span>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MintNFT
             title="Mint Convexo_LPs NFT"
             description="Mint Tier 1 NFT for compliance verification"
-            contractAddress={CONTRACTS.BASE_SEPOLIA.CONVEXO_LPS}
+            contractAddress={contracts.CONVEXO_LPS}
             abi={ConvexoLPsABI}
             functionName="safeMint"
-            defaultUri={CONTRACTS.IPFS.CONVEXO_LPS_URI}
+            defaultUri={IPFS.CONVEXO_LPS_URI}
+            chainId={chainId}
           />
 
           <MintNFT
             title="Mint Convexo_Vaults NFT"
             description="Mint Tier 2 NFT for credit scoring"
-            contractAddress={CONTRACTS.BASE_SEPOLIA.CONVEXO_VAULTS}
+            contractAddress={contracts.CONVEXO_VAULTS}
             abi={ConvexoVaultsABI}
             functionName="safeMint"
-            defaultUri={CONTRACTS.IPFS.CONVEXO_VAULTS_URI}
+            defaultUri={IPFS.CONVEXO_VAULTS_URI}
+            chainId={chainId}
           />
         </div>
 
@@ -92,8 +125,8 @@ export default function AdminPage() {
               The Token URI fields are pre-filled with the correct IPFS links.
             </p>
             <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-              <p>Convexo_LPs: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{CONTRACTS.IPFS.CONVEXO_LPS_URI}</code></p>
-              <p className="mt-1">Convexo_Vaults: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{CONTRACTS.IPFS.CONVEXO_VAULTS_URI}</code></p>
+              <p>Convexo_LPs: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{IPFS.CONVEXO_LPS_URI}</code></p>
+              <p className="mt-1">Convexo_Vaults: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{IPFS.CONVEXO_VAULTS_URI}</code></p>
             </div>
           </div>
         </div>
@@ -110,6 +143,7 @@ function MintNFT({
   abi,
   functionName,
   defaultUri,
+  chainId,
 }: {
   title: string;
   description: string;
@@ -117,6 +151,7 @@ function MintNFT({
   abi: any;
   functionName: string;
   defaultUri: string;
+  chainId: number;
 }) {
   const [recipient, setRecipient] = useState('');
   const [tokenId, setTokenId] = useState('');
@@ -224,12 +259,20 @@ function MintNFT({
           <div className="text-green-600 text-sm">
             Transaction successful!{' '}
             <a
-              href={`https://sepolia.basescan.org/tx/${hash}`}
+              href={
+                chainId === 84532
+                  ? `https://sepolia.basescan.org/tx/${hash}`
+                  : chainId === 11155111
+                  ? `https://sepolia.etherscan.io/tx/${hash}`
+                  : chainId === 1301
+                  ? `https://uniscan.uniwhale.io/tx/${hash}`
+                  : '#'
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="underline"
             >
-              View on BaseScan
+              View on Block Explorer
             </a>
           </div>
         )}

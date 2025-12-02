@@ -7,6 +7,7 @@ import { parseUnits, formatUnits } from 'viem';
 import { CONTRACTS } from '@/lib/contracts/addresses';
 import { erc20Abi } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 
 // Uniswap V4 Pool Interface (simplified)
 // In production, you'd use the actual Uniswap V4 SDK
@@ -20,6 +21,7 @@ interface PoolData {
 
 export default function ConversionPage() {
   const { address, isConnected } = useAccount();
+  const { hasLPsNFT } = useNFTBalance();
   const [swapDirection, setSwapDirection] = useState<'ecop-to-usdc' | 'usdc-to-ecop'>('ecop-to-usdc');
   const [inputAmount, setInputAmount] = useState('');
   const [outputAmount, setOutputAmount] = useState('');
@@ -60,12 +62,35 @@ export default function ConversionPage() {
     );
   }
 
+  if (!hasLPsNFT) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Compliance Required
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              You need to hold a Convexo LPs NFT (Compliance) to access Treasury services.
+            </p>
+            <a
+              href="/get-verified/amlcft"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
+            >
+              Get Verified
+            </a>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
-            Conversion - ECOP/USDC
+            Convert Fast
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-8">
             Swap between ECOP and USDC using the Uniswap V4 liquidity pool.
@@ -182,7 +207,7 @@ function SwapForm({
 
   // Get balances
   const { data: ecopBalance } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.ECOP : undefined,
+    address: address ? CONTRACTS[84532].ECOP : undefined,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -192,7 +217,7 @@ function SwapForm({
   });
 
   const { data: usdcBalance } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.USDC : undefined,
+    address: address ? CONTRACTS[84532].USDC : undefined,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -205,13 +230,13 @@ function SwapForm({
   const { data: ecopAllowance } = useContractRead({
     address:
       address && swapDirection === 'ecop-to-usdc'
-        ? CONTRACTS.BASE_SEPOLIA.ECOP
+        ? CONTRACTS[84532].ECOP
         : undefined,
     abi: erc20Abi,
     functionName: 'allowance',
     args:
       address && swapDirection === 'ecop-to-usdc'
-        ? [address, CONTRACTS.BASE_SEPOLIA.USDC] // Approve to router/pool
+        ? [address, CONTRACTS[84532].USDC] // Approve to router/pool
         : undefined,
     query: {
       enabled: !!address && swapDirection === 'ecop-to-usdc',
@@ -221,13 +246,13 @@ function SwapForm({
   const { data: usdcAllowance } = useContractRead({
     address:
       address && swapDirection === 'usdc-to-ecop'
-        ? CONTRACTS.BASE_SEPOLIA.USDC
+        ? CONTRACTS[84532].USDC
         : undefined,
     abi: erc20Abi,
     functionName: 'allowance',
     args:
       address && swapDirection === 'usdc-to-ecop'
-        ? [address, CONTRACTS.BASE_SEPOLIA.ECOP] // Approve to router/pool
+        ? [address, CONTRACTS[84532].ECOP] // Approve to router/pool
         : undefined,
     query: {
       enabled: !!address && swapDirection === 'usdc-to-ecop',

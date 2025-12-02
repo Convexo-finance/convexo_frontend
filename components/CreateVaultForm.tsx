@@ -1,20 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseUnits, keccak256, stringToBytes } from 'viem';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { parseUnits } from 'viem';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI } from '@/lib/contracts/abis';
 
 export function CreateVaultForm() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
   const [principalAmount, setPrincipalAmount] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [maturityDays, setMaturityDays] = useState('');
   const [vaultName, setVaultName] = useState('');
   const [vaultSymbol, setVaultSymbol] = useState('');
-  const [contractHash, setContractHash] = useState('');
 
   const {
     writeContract,
@@ -35,9 +36,10 @@ export function CreateVaultForm() {
       !maturityDays ||
       !vaultName ||
       !vaultSymbol ||
-      !address
+      !address ||
+      !contracts
     ) {
-      alert('Please fill in all required fields');
+      alert('Please fill in all required fields and ensure you are connected to a supported network');
       return;
     }
 
@@ -47,17 +49,14 @@ export function CreateVaultForm() {
     const maturityDate =
       BigInt(Math.floor(Date.now() / 1000)) +
       BigInt(parseInt(maturityDays) * 24 * 60 * 60);
-    const hashValue = contractHash
-      ? (contractHash as `0x${string}`)
-      : keccak256(stringToBytes(vaultName + Date.now()));
 
+    // The createVault function expects 6 parameters:
+    // principalAmount, interestRate, protocolFeeRate, maturityDate, name, symbol
     writeContract({
-      address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+      address: contracts.VAULT_FACTORY,
       abi: VaultFactoryABI,
       functionName: 'createVault',
       args: [
-        address,
-        hashValue,
         principal,
         interest,
         protocolFee,
@@ -136,19 +135,6 @@ export function CreateVaultForm() {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-          Contract Hash (optional)
-        </label>
-        <input
-          type="text"
-          value={contractHash}
-          onChange={(e) => setContractHash(e.target.value)}
-          placeholder="0x..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-        />
-      </div>
-
       <button
         onClick={handleCreateVault}
         disabled={isPending || isConfirming}
@@ -167,16 +153,24 @@ export function CreateVaultForm() {
         </div>
       )}
 
-      {isSuccess && (
+      {isSuccess && hash && (
         <div className="text-green-600 text-sm">
           Vault created successfully!{' '}
           <a
-            href={`https://sepolia.basescan.org/tx/${hash}`}
+            href={
+              chainId === 84532
+                ? `https://sepolia.basescan.org/tx/${hash}`
+                : chainId === 11155111
+                ? `https://sepolia.etherscan.io/tx/${hash}`
+                : chainId === 1301
+                ? `https://uniscan.uniwhale.io/tx/${hash}`
+                : '#'
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="underline"
           >
-            View on BaseScan
+            View Transaction
           </a>
         </div>
       )}

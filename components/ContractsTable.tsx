@@ -1,9 +1,8 @@
 'use client';
 
-import { useContractRead } from 'wagmi';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { useContractRead, useChainId } from 'wagmi';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ContractSignerABI } from '@/lib/contracts/abis';
-import { formatUnits } from 'viem';
 
 interface ContractsTableProps {
   gatewayUrl?: string;
@@ -11,18 +10,32 @@ interface ContractsTableProps {
 
 const AGREEMENT_TYPES = {
   0: 'Tokenized Bond Vault',
-  1: 'Invoice Factoring',
-  2: 'Tokenized Bond Credits',
 } as const;
 
 export function ContractsTable({ gatewayUrl }: ContractsTableProps) {
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
   const { data: count, isLoading: isLoadingCount } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.CONTRACT_SIGNER,
+    address: contracts?.CONTRACT_SIGNER,
     abi: ContractSignerABI,
     functionName: 'getContractCount',
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   const contractCount = count ? Number(count) : 0;
+
+  if (!contracts) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600 dark:text-red-400">
+          Unsupported network. Please switch to Base Sepolia, Ethereum Sepolia, or Unichain Sepolia.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoadingCount) {
     return (
@@ -71,7 +84,12 @@ export function ContractsTable({ gatewayUrl }: ContractsTableProps) {
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           {Array.from({ length: contractCount }).map((_, index) => (
-            <ContractTableRow key={index} index={index} gatewayUrl={gatewayUrl} />
+            <ContractTableRow 
+              key={index} 
+              index={index} 
+              gatewayUrl={gatewayUrl}
+              contractSignerAddress={contracts.CONTRACT_SIGNER}
+            />
           ))}
         </tbody>
       </table>
@@ -79,10 +97,18 @@ export function ContractsTable({ gatewayUrl }: ContractsTableProps) {
   );
 }
 
-function ContractTableRow({ index, gatewayUrl }: { index: number; gatewayUrl?: string }) {
+function ContractTableRow({ 
+  index, 
+  gatewayUrl,
+  contractSignerAddress 
+}: { 
+  index: number; 
+  gatewayUrl?: string;
+  contractSignerAddress: `0x${string}`;
+}) {
   // Get document hash at index
   const { data: documentHash, isLoading: isLoadingHash } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.CONTRACT_SIGNER,
+    address: contractSignerAddress,
     abi: ContractSignerABI,
     functionName: 'getDocumentHashAtIndex',
     args: [BigInt(index)],
@@ -90,7 +116,7 @@ function ContractTableRow({ index, gatewayUrl }: { index: number; gatewayUrl?: s
 
   // Get contract details
   const { data: contractData, isLoading: isLoadingContract } = useContractRead({
-    address: documentHash ? CONTRACTS.BASE_SEPOLIA.CONTRACT_SIGNER : undefined,
+    address: documentHash ? contractSignerAddress : undefined,
     abi: ContractSignerABI,
     functionName: 'getContract',
     args: documentHash ? [documentHash as `0x${string}`] : undefined,

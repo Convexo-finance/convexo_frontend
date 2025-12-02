@@ -1,13 +1,13 @@
 'use client';
 
-import { useAccount, useBalance, useContractRead } from 'wagmi';
+import { useAccount, useBalance, useContractRead, useChainId } from 'wagmi';
 import { formatUnits } from 'viem';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { CONTRACTS, getContractsForChain } from '@/lib/contracts/addresses';
 import { erc20Abi } from 'viem';
 import { ecopAbi } from '@/lib/contracts/ecopAbi';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { ConvexoLPsABI, ConvexoVaultsABI } from '@/lib/contracts/abis';
-import { VaultFactoryABI, InvoiceFactoringABI, TokenizedBondCreditsABI, ContractSignerABI } from '@/lib/contracts/abis';
+import { VaultFactoryABI, ContractSignerABI } from '@/lib/contracts/abis';
 import { useState, useEffect } from 'react';
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'gateway.pinata.cloud';
@@ -23,6 +23,8 @@ interface NFTMetadata {
 
 export function DashboardStats() {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
   const { hasLPsNFT, hasVaultsNFT, lpsBalance, vaultsBalance } = useNFTBalance();
 
   // ETH Balance
@@ -35,42 +37,48 @@ export function DashboardStats() {
 
   // USDC Balance
   const { data: usdcBalance, isLoading: isLoadingUSDC } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.USDC : undefined,
+    address: address && contracts ? contracts.USDC : undefined,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && isConnected,
+      enabled: !!address && isConnected && !!contracts,
     },
   });
 
   const { data: usdcDecimals } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.USDC,
+    address: contracts?.USDC,
     abi: erc20Abi,
     functionName: 'decimals',
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   // ECOP Balance
   const { data: ecopBalance, isLoading: isLoadingECOP } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.ECOP : undefined,
+    address: address && contracts ? contracts.ECOP : undefined,
     abi: ecopAbi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && isConnected,
+      enabled: !!address && isConnected && !!contracts,
     },
   });
 
   const { data: ecopDecimals } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.ECOP,
+    address: contracts?.ECOP,
     abi: ecopAbi,
     functionName: 'decimals',
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   // Get NFT Token IDs (if contract supports tokenOfOwnerByIndex)
   // Note: If these functions don't exist, the hook will just return undefined
   const { data: lpsTokenId } = useContractRead({
-    address: address && hasLPsNFT ? CONTRACTS.BASE_SEPOLIA.CONVEXO_LPS : undefined,
+    address: address && hasLPsNFT && contracts ? contracts.CONVEXO_LPS : undefined,
     abi: ConvexoLPsABI,
     functionName: 'tokenOfOwnerByIndex',
     args: address ? [address, 0n] : undefined,
@@ -80,7 +88,7 @@ export function DashboardStats() {
   });
 
   const { data: vaultsTokenId } = useContractRead({
-    address: address && hasVaultsNFT ? CONTRACTS.BASE_SEPOLIA.CONVEXO_VAULTS : undefined,
+    address: address && hasVaultsNFT && contracts ? contracts.CONVEXO_VAULTS : undefined,
     abi: ConvexoVaultsABI,
     functionName: 'tokenOfOwnerByIndex',
     args: address ? [address, 0n] : undefined,
@@ -165,34 +173,21 @@ export function DashboardStats() {
 
   // Get total counts
   const { data: vaultCount } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+    address: contracts?.VAULT_FACTORY,
     abi: VaultFactoryABI,
     functionName: 'getVaultCount',
-  });
-
-  // Note: These functions may not exist in the contracts - adjust based on actual ABI
-  const { data: invoiceCount } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.INVOICE_FACTORING,
-    abi: InvoiceFactoringABI,
-    functionName: 'getInvoiceCount', // Adjust if function name differs
     query: {
-      enabled: false, // Disabled by default - enable when function is confirmed
-    },
-  });
-
-  const { data: creditCount } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.TOKENIZED_BOND_CREDITS,
-    abi: TokenizedBondCreditsABI,
-    functionName: 'getCreditCount', // Adjust if function name differs
-    query: {
-      enabled: false, // Disabled by default - enable when function is confirmed
+      enabled: !!contracts,
     },
   });
 
   const { data: contractCount } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.CONTRACT_SIGNER,
+    address: contracts?.CONTRACT_SIGNER,
     abi: ContractSignerABI,
     functionName: 'getContractCount',
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   if (!isConnected || !address) {
@@ -244,7 +239,7 @@ export function DashboardStats() {
             ipfsUrl={`https://${GATEWAY_URL}/ipfs/${VAULTS_IPFS}`}
             imageUrl={vaultsImageUrl || vaultsMetadata?.image || `https://${GATEWAY_URL}/ipfs/${VAULTS_IPFS}`}
             isOwned={hasVaultsNFT}
-            benefits="Tier 2 NFT required for creating funding vaults and tokenized bond credits. Enables access to credit scoring features and advanced lending products."
+            benefits="Tier 2 NFT required for creating funding vaults. Enables access to credit scoring features and advanced lending products."
           />
           <NFTCard
             name="Convexo_LPs NFT"
@@ -253,7 +248,7 @@ export function DashboardStats() {
             ipfsUrl={`https://${GATEWAY_URL}/ipfs/${LPS_IPFS}`}
             imageUrl={lpsImageUrl || lpsMetadata?.image || `https://${GATEWAY_URL}/ipfs/${LPS_IPFS}`}
             isOwned={hasLPsNFT}
-            benefits="Tier 1 NFT required for invoice factoring and compliant liquidity pool access. Enables participation in Uniswap V4 pools with ECOP/USDC."
+            benefits="Tier 1 NFT required for compliant liquidity pool access. Enables participation in Uniswap V4 pools with ECOP/USDC."
           />
         </div>
       </div>
@@ -263,26 +258,16 @@ export function DashboardStats() {
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
           Protocol Statistics
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <StatCard
             label="Total Vaults"
             value={vaultCount ? Number(vaultCount) : 0}
             href="/loans/vaults"
           />
           <StatCard
-            label="Total Invoices"
-            value={invoiceCount ? Number(invoiceCount) : 0}
-            href="/loans/invoices"
-          />
-          <StatCard
-            label="Total Credits"
-            value={creditCount ? Number(creditCount) : 0}
-            href="/loans/credits"
-          />
-          <StatCard
             label="Total Contracts"
             value={contractCount ? Number(contractCount) : 0}
-            href="/contracts"
+            href="/loans/contracts"
           />
         </div>
       </div>

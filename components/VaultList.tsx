@@ -1,7 +1,7 @@
 'use client';
 
-import { useContractRead } from 'wagmi';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { useContractRead, useChainId } from 'wagmi';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI, TokenizedBondVaultABI } from '@/lib/contracts/abis';
 import { formatUnits } from 'viem';
 import { VaultCard } from './VaultCard';
@@ -11,10 +11,16 @@ interface VaultListProps {
 }
 
 export function VaultList({ filterByAddress }: VaultListProps) {
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
   const { data: vaultCount, isLoading: isLoadingCount } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+    address: contracts?.VAULT_FACTORY,
     abi: VaultFactoryABI,
     functionName: 'getVaultCount',
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   const count = vaultCount ? Number(vaultCount) : 0;
@@ -51,18 +57,24 @@ export function VaultList({ filterByAddress }: VaultListProps) {
 }
 
 function VaultListItem({ vaultIndex, filterByAddress }: { vaultIndex: number; filterByAddress?: `0x${string}` }) {
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
   const { data: vaultAddress, isLoading } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+    address: contracts?.VAULT_FACTORY,
     abi: VaultFactoryABI,
     functionName: 'getVaultAddressAtIndex',
     args: [BigInt(vaultIndex)],
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   // Get borrower address from vault to filter
   const { data: borrower } = useContractRead({
     address: vaultAddress as `0x${string}` | undefined,
     abi: TokenizedBondVaultABI,
-    functionName: 'borrower',
+    functionName: 'getVaultBorrower',
     query: {
       enabled: !!vaultAddress && !!filterByAddress,
     },
@@ -85,6 +97,6 @@ function VaultListItem({ vaultIndex, filterByAddress }: { vaultIndex: number; fi
     return null;
   }
 
-  return <VaultCard vaultAddress={vaultAddress as `0x${string}`} />;
+  return <VaultCard vaultAddress={vaultAddress as `0x${string}`} vaultId={vaultIndex} />;
 }
 

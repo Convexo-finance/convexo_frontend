@@ -1,24 +1,21 @@
-import ConvexoLPsABI from '@/abis/Convexo_LPs.json';
-import ConvexoVaultsABI from '@/abis/Convexo_Vaults.json';
-import ReputationManagerABI from '@/abis/ReputationManager.json';
-import VaultFactoryABI from '@/abis/VaultFactory.json';
-import TokenizedBondVaultABI from '@/abis/TokenizedBondVault.json';
-import InvoiceFactoringABI from '@/abis/InvoiceFactoring.json';
-import TokenizedBondCreditsABI from '@/abis/TokenizedBondCredits.json';
-import PoolRegistryABI from '@/abis/PoolRegistry.json';
-import PriceFeedManagerABI from '@/abis/PriceFeedManager.json';
-import ContractSignerABI from '@/abis/ContractSigner.json';
+// Core Convexo Protocol ABIs
+import ConvexoLPsJSON from '@/abis/Convexo_LPs.json';
+import ConvexoVaultsJSON from '@/abis/Convexo_Vaults.json';
+import ReputationManagerJSON from '@/abis/ReputationManager.json';
+import VaultFactoryJSON from '@/abis/VaultFactory.json';
+import TokenizedBondVaultJSON from '@/abis/TokenizedBondVault.json';
+import PoolRegistryJSON from '@/abis/PoolRegistry.json';
+import PriceFeedManagerJSON from '@/abis/PriceFeedManager.json';
+import ContractSignerJSON from '@/abis/ContractSigner.json';
+import CompliantLPHookJSON from '@/abis/CompliantLPHook.json';
 
-export {
-  ConvexoLPsABI,
-  ConvexoVaultsABI,
-  ReputationManagerABI,
-  VaultFactoryABI,
-  TokenizedBondVaultABI,
-  InvoiceFactoringABI,
-  TokenizedBondCreditsABI,
-  PoolRegistryABI,
-  PriceFeedManagerABI,
-  ContractSignerABI,
-};
-
+// Export ABIs with proper typing
+export const ConvexoLPsABI = ConvexoLPsJSON.abi;
+export const ConvexoVaultsABI = ConvexoVaultsJSON.abi;
+export const ReputationManagerABI = ReputationManagerJSON.abi;
+export const VaultFactoryABI = VaultFactoryJSON.abi;
+export const TokenizedBondVaultABI = TokenizedBondVaultJSON.abi;
+export const PoolRegistryABI = PoolRegistryJSON.abi;
+export const PriceFeedManagerABI = PriceFeedManagerJSON.abi;
+export const ContractSignerABI = ContractSignerJSON.abi;
+export const CompliantLPHookABI = CompliantLPHookJSON.abi;

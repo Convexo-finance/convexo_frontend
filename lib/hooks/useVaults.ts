@@ -1,13 +1,18 @@
-import { useContractRead } from 'wagmi';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { useContractRead, useChainId } from 'wagmi';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI } from '@/lib/contracts/abis';
-import { useMemo } from 'react';
 
 export function useVaultCount() {
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
   const { data: count, isLoading } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY,
+    address: contracts?.VAULT_FACTORY,
     abi: VaultFactoryABI,
     functionName: 'getVaultCount',
+    query: {
+      enabled: !!contracts,
+    },
   });
 
   return {
@@ -17,13 +22,16 @@ export function useVaultCount() {
 }
 
 export function useVaultAddress(index: number) {
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
   const { data: vaultAddress, isLoading } = useContractRead({
-    address: index >= 0 ? CONTRACTS.BASE_SEPOLIA.VAULT_FACTORY : undefined,
+    address: index >= 0 && contracts ? contracts.VAULT_FACTORY : undefined,
     abi: VaultFactoryABI,
     functionName: 'getVault',
     args: [BigInt(index)],
     query: {
-      enabled: index >= 0,
+      enabled: index >= 0 && !!contracts,
     },
   });
 
@@ -32,4 +40,3 @@ export function useVaultAddress(index: number) {
     isLoading,
   };
 }
-

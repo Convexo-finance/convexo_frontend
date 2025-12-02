@@ -92,7 +92,7 @@ function CreateContractForm() {
     const expiryDuration = BigInt(parseInt(expiryDays) * 24 * 60 * 60);
 
     writeContract({
-      address: CONTRACTS.BASE_SEPOLIA.CONTRACT_SIGNER,
+      address: CONTRACTS[84532].CONTRACT_SIGNER,
       abi: ContractSignerABI,
       functionName: 'createContract',
       args: [
@@ -331,7 +331,7 @@ function ContractsList() {
 
   // Get total contract count
   const { data: count } = useContractRead({
-    address: CONTRACTS.BASE_SEPOLIA.CONTRACT_SIGNER,
+    address: CONTRACTS[84532].CONTRACT_SIGNER,
     abi: ContractSignerABI,
     functionName: 'getContractCount',
     query: {

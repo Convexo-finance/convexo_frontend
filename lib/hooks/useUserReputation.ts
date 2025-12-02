@@ -1,17 +1,19 @@
-import { useAccount, useContractRead } from 'wagmi';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { useAccount, useContractRead, useChainId } from 'wagmi';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ReputationManagerABI } from '@/lib/contracts/abis';
 
 export function useUserReputation() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
 
   const { data: tier, isLoading, refetch } = useContractRead({
-    address: address ? CONTRACTS.BASE_SEPOLIA.REPUTATION_MANAGER : undefined,
+    address: address && contracts ? contracts.REPUTATION_MANAGER : undefined,
     abi: ReputationManagerABI,
     functionName: 'getReputationTier',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address,
+      enabled: !!address && !!contracts,
     },
   });
 
@@ -25,4 +27,3 @@ export function useUserReputation() {
     refetch,
   };
 }
-

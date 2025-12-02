@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useState } from 'react';
 import {
-  HomeIcon,
+  UserCircleIcon,
   BuildingOfficeIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -15,20 +15,31 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   BanknotesIcon,
-  DocumentDuplicateIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  BuildingLibraryIcon,
   CreditCardIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
+  { name: 'Profile', href: '/profile', icon: UserCircleIcon },
+  { 
+    name: 'Get Verified', 
+    href: '/get-verified', 
+    icon: ShieldCheckIcon,
+    subItems: [
+      { name: 'AML/CFT', href: '/get-verified/amlcft', icon: ShieldCheckIcon },
+      { name: 'AI Credit Check', href: '/get-verified/ai-credit-check', icon: SparklesIcon },
+    ]
+  },
   { 
     name: 'Loans', 
     href: '/loans', 
     icon: BuildingOfficeIcon,
     subItems: [
       { name: 'Vaults', href: '/loans/vaults', icon: BanknotesIcon },
-      { name: 'Invoices', href: '/loans/invoices', icon: DocumentDuplicateIcon },
-      { name: 'Credits', href: '/loans/credits', icon: CreditCardIcon },
+      { name: 'Contracts', href: '/loans/contracts', icon: DocumentTextIcon },
     ]
   },
   { name: 'Investments', href: '/investments', icon: ChartBarIcon },
@@ -37,23 +48,29 @@ const navigation = [
     href: '/treasury', 
     icon: CurrencyDollarIcon,
     subItems: [
-      { name: 'Funding', href: '/funding', icon: CurrencyDollarIcon },
-      { name: 'Conversion', href: '/conversion', icon: ArrowPathIcon },
+      { name: 'FIAT to STABLE', href: '/treasury/fiat-to-stable', icon: CurrencyDollarIcon },
+      { name: 'Convert Fast', href: '/treasury/convert-fast', icon: ArrowPathIcon },
+      { name: 'OTC', href: '/treasury/otc', icon: ArrowsRightLeftIcon },
+      { name: 'Financial Accounts', href: '/treasury/financial-accounts', icon: BuildingLibraryIcon },
     ]
   },
-  { name: 'Contracts', href: '/contracts', icon: DocumentTextIcon },
+  { name: 'Payments', href: '/payments', icon: CreditCardIcon },
   { name: 'Admin', href: '/admin', icon: Cog6ToothIcon },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
+    // Auto-expand Get Verified if on any verification sub-page
+    if (pathname?.startsWith('/get-verified')) {
+      return ['Get Verified'];
+    }
     // Auto-expand Loans if on any loans sub-page
     if (pathname?.startsWith('/loans')) {
       return ['Loans'];
     }
-    // Auto-expand Treasury if on funding or conversion
-    if (pathname === '/funding' || pathname === '/conversion') {
+    // Auto-expand Treasury if on any treasury sub-page
+    if (pathname?.startsWith('/treasury')) {
       return ['Treasury'];
     }
     return [];
