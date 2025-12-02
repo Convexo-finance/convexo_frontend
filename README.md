@@ -3,7 +3,8 @@
 A Next.js frontend application for the Convexo Protocol - Reducing the funding gap for SMEs in Latin America using stablecoins, NFT-permissioned liquidity pools, and vaults.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Deployed](https://img.shields.io/badge/Deployed-Base%20Sepolia-blue)](https://sepolia.basescan.org)
+[![Version](https://img.shields.io/badge/Version-2.2-green)](./CHANGELOG_V2.2.md)
+[![Deployed](https://img.shields.io/badge/Deployed-3%20Testnets-blue)](https://sepolia.basescan.org)
 
 ---
 
@@ -39,6 +40,26 @@ A Next.js frontend application for the Convexo Protocol - Reducing the funding g
    ```
 
 4. **Open [http://localhost:3000](http://localhost:3000)** and connect your wallet to Base Sepolia
+
+---
+
+## 🎉 What's New in v2.2
+
+### 🔐 Protocol Fee Protection
+- **Fixed:** Investors can no longer withdraw protocol fees
+- **Security:** Protocol fees are now reserved and protected
+- **Transparency:** New `getAvailableForInvestors()` function shows exact withdrawable amount
+
+### ⏱️ Timestamp Tracking
+- **Accurate Due Dates:** Calculated from withdrawal time, not creation
+- **Complete Timeline:** Track vault creation, funding, contract attachment, and withdrawal
+- **New Functions:** `getVaultCreatedAt()`, `getVaultFundedAt()`, `getActualDueDate()`, and more
+
+### 🎯 Improved Completion Logic
+- Vault only marked as `Completed` when all parties have withdrawn their funds
+- Better state tracking for transparency
+
+**[See Full Changelog →](./CHANGELOG_V2.2.md)**
 
 ---
 
