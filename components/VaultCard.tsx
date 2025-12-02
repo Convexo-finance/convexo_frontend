@@ -126,6 +126,50 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const maturityDate = vaultInfo?.[7] as bigint | undefined;
   const stateFromInfo = vaultInfo?.[8] as number | undefined;
   const disbursedAt = vaultInfo?.[9] as bigint | undefined;
+
+  // v2.2: Get accurate timestamps from contract
+  const { data: vaultCreatedAtData } = useContractRead({
+    address: vaultAddress,
+    abi: TokenizedBondVaultABI,
+    functionName: 'getVaultCreatedAt',
+  });
+  const vaultCreatedAt = vaultCreatedAtData as bigint | undefined;
+
+  const { data: vaultFundedAtData } = useContractRead({
+    address: vaultAddress,
+    abi: TokenizedBondVaultABI,
+    functionName: 'getVaultFundedAt',
+  });
+  const vaultFundedAt = vaultFundedAtData as bigint | undefined;
+
+  const { data: vaultContractAttachedAtData } = useContractRead({
+    address: vaultAddress,
+    abi: TokenizedBondVaultABI,
+    functionName: 'getVaultContractAttachedAt',
+  });
+  const vaultContractAttachedAt = vaultContractAttachedAtData as bigint | undefined;
+
+  const { data: vaultFundsWithdrawnAtData } = useContractRead({
+    address: vaultAddress,
+    abi: TokenizedBondVaultABI,
+    functionName: 'getVaultFundsWithdrawnAt',
+  });
+  const vaultFundsWithdrawnAt = vaultFundsWithdrawnAtData as bigint | undefined;
+
+  const { data: actualDueDateData } = useContractRead({
+    address: vaultAddress,
+    abi: TokenizedBondVaultABI,
+    functionName: 'getActualDueDate',
+  });
+  const actualDueDate = actualDueDateData as bigint | undefined;
+
+  // v2.2: Get available funds for investors (excludes protocol fees)
+  const { data: availableForInvestorsData } = useContractRead({
+    address: vaultAddress,
+    abi: TokenizedBondVaultABI,
+    functionName: 'getAvailableForInvestors',
+  });
+  const availableForInvestors = availableForInvestorsData as bigint | undefined;
   
   // Helper function to safely format dates
   const formatDate = (timestamp: bigint | undefined) => {
@@ -143,20 +187,8 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     }
   };
 
-  // Calculate due date: createdAt + maturityDate (in seconds)
-  const calculateDueDate = () => {
-    if (!createdAt || !maturityDate) return undefined;
-    try {
-      const createdTimestamp = Number(createdAt);
-      const maturitySeconds = Number(maturityDate);
-      const dueTimestamp = createdTimestamp + maturitySeconds;
-      return BigInt(dueTimestamp);
-    } catch (error) {
-      return undefined;
-    }
-  };
-
-  const dueDate = calculateDueDate();
+  // v2.2: Use actual due date from contract (calculated on-chain)
+  const dueDate = actualDueDate;
   const maturityDays = maturityDate ? Math.floor(Number(maturityDate) / (24 * 60 * 60)) : undefined;
 
   // Calculate payment breakdown
@@ -536,33 +568,57 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
           </a>
         </p>
 
-        {/* Vault Timeline and Dates */}
+        {/* Vault Timeline and Dates (v2.2 with accurate timestamps) */}
         <div className="mb-3 space-y-2">
-          {/* Created Date */}
-          {formatDate(createdAt) && (
+          {/* Created Date - using v2.2 getVaultCreatedAt() */}
+          {formatDate(vaultCreatedAt) && (
             <div className="p-2 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-600 dark:text-gray-400">📅 Created:</span>
                 <span className="font-mono text-gray-900 dark:text-white">
-                  {formatDate(createdAt)}
+                  {formatDate(vaultCreatedAt)}
                 </span>
               </div>
             </div>
           )}
 
-          {/* Disbursed Date (when funds were withdrawn) */}
-          {formatDate(disbursedAt) && (
+          {/* Funded Date - using v2.2 getVaultFundedAt() */}
+          {formatDate(vaultFundedAt) && vaultFundedAt !== 0n && (
+            <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">💰 Funded:</span>
+                <span className="font-mono text-gray-900 dark:text-white">
+                  {formatDate(vaultFundedAt)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Contract Attached Date - using v2.2 getVaultContractAttachedAt() */}
+          {formatDate(vaultContractAttachedAt) && vaultContractAttachedAt !== 0n && (
             <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600 dark:text-gray-400">💸 Funds Disbursed:</span>
+                <span className="text-gray-600 dark:text-gray-400">📄 Contract Attached:</span>
                 <span className="font-mono text-gray-900 dark:text-white">
-                  {formatDate(disbursedAt)}
+                  {formatDate(vaultContractAttachedAt)}
                 </span>
               </div>
             </div>
           )}
 
-          {/* Due Date */}
+          {/* Funds Withdrawn Date - using v2.2 getVaultFundsWithdrawnAt() */}
+          {formatDate(vaultFundsWithdrawnAt) && vaultFundsWithdrawnAt !== 0n && (
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">💸 Funds Withdrawn:</span>
+                <span className="font-mono text-gray-900 dark:text-white">
+                  {formatDate(vaultFundsWithdrawnAt)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Due Date - using v2.2 getActualDueDate() */}
           {formatDate(dueDate) && (
             <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
               <div className="flex items-center justify-between text-xs">
@@ -1269,9 +1325,17 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                 </div>
               )}
 
-              <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                Your shares: {userReturns ? formatUnits(userReturns[0], 6) : '0'} | 
-                Current value: {userReturns ? formatUnits(userReturns[1], 6) : '0'} USDC
+              <div className="text-xs text-gray-600 dark:text-gray-400 text-center space-y-1">
+                <div>Your shares: {userReturns ? formatUnits(userReturns[0], 6) : '0'}</div>
+                <div>Current value: {userReturns ? formatUnits(userReturns[1], 6) : '0'} USDC</div>
+                {availableForInvestors !== undefined && (
+                  <div className="text-green-600 dark:text-green-400 font-semibold">
+                    💰 Available for investors: {formatUnits(availableForInvestors, 6)} USDC
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 dark:text-gray-500 italic mt-1">
+                  ✅ v2.2: Protocol fees are protected and excluded from investor withdrawals
+                </div>
               </div>
             </>
           )}
