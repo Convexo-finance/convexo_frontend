@@ -3,10 +3,12 @@
 import { useAccount, useChainId } from 'wagmi';
 import { useState } from 'react';
 import { CONTRACTS, getContractsForChain, IPFS } from '@/lib/contracts/addresses';
-import { ConvexoLPsABI, ConvexoVaultsABI } from '@/lib/contracts/abis';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { ConvexoLPsABI, ConvexoVaultsABI, ContractSignerABI } from '@/lib/contracts/abis';
+import { useWriteContract, useWaitForTransactionReceipt, useContractRead } from 'wagmi';
 import { parseUnits } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
+import { ContractsTable } from '@/components/ContractsTable';
+import { DocumentList } from '@/components/DocumentList';
 
 export default function AdminPage() {
   const { isConnected, address } = useAccount();
@@ -129,6 +131,11 @@ export default function AdminPage() {
               <p className="mt-1">Convexo_Vaults: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">{IPFS.CONVEXO_VAULTS_URI}</code></p>
             </div>
           </div>
+        </div>
+
+        {/* Contract Information Section - Admin Only */}
+        <div className="mt-8">
+          <ContractInformationAdmin />
         </div>
         </div>
       </div>
@@ -276,6 +283,76 @@ function MintNFT({
             </a>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ContractInformationAdmin() {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
+  // Get total contract count
+  const { data: count } = useContractRead({
+    address: contracts?.CONTRACT_SIGNER,
+    abi: ContractSignerABI,
+    functionName: 'getContractCount',
+    query: {
+      enabled: !!address && !!contracts,
+    },
+  });
+
+  // Get gateway URL from environment (client-side)
+  const gatewayUrl = typeof window !== 'undefined' 
+    ? process.env.NEXT_PUBLIC_PINATA_GATEWAY 
+    : undefined;
+
+  if (!contracts) return null;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-white">
+        📊 Contract Information & Statistics
+      </h2>
+      
+      <div className="space-y-6">
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            Total contracts on {contracts.CHAIN_NAME}:
+          </p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            {count ? Number(count) : 'Loading...'}
+          </p>
+        </div>
+
+        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            All Contracts List
+          </h3>
+          <ContractsTable gatewayUrl={gatewayUrl} />
+        </div>
+
+        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            Product Type:
+          </h3>
+          <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              Tokenized Bond Vault
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Create funding vaults via VaultFactory. Requires Tier 2 (both NFTs).
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            IPFS Documents
+          </h3>
+          <DocumentList />
+        </div>
       </div>
     </div>
   );

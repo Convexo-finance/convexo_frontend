@@ -321,77 +321,8 @@ function CreateContractForm() {
   );
 }
 
-// ContractsList component moved to admin module
-// This shows general contract information and statistics
-// Uncomment and use in admin page if needed
-/*
-function ContractsList() {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contracts = getContractsForChain(chainId);
-
-  // Get total contract count
-  const { data: count } = useContractRead({
-    address: contracts?.CONTRACT_SIGNER,
-    abi: ContractSignerABI,
-    functionName: 'getContractCount',
-    query: {
-      enabled: !!address && !!contracts,
-    },
-  });
-
-  // Get gateway URL from environment (client-side)
-  const gatewayUrl = typeof window !== 'undefined' 
-    ? process.env.NEXT_PUBLIC_PINATA_GATEWAY 
-    : undefined;
-
-  if (!contracts) return null;
-
-  return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-        Contract Information
-      </h2>
-      
-      <div className="space-y-6">
-        <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Total contracts on {contracts.CHAIN_NAME}:
-          </p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {count ? Number(count) : 'Loading...'}
-          </p>
-        </div>
-
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Contracts List
-          </h3>
-          <ContractsTable gatewayUrl={gatewayUrl} />
-        </div>
-
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-            Product Type:
-          </h3>
-          <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded">
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              Tokenized Bond Vault
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              Create funding vaults via VaultFactory. Requires Tier 2 (both NFTs).
-            </p>
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <DocumentList />
-        </div>
-      </div>
-    </div>
-  );
-}
-*/
+// ContractsList component has been moved to admin module
+// See: app/admin/page.tsx -> ContractInformationAdmin component
 
 function MyContractsSection() {
   const { address } = useAccount();
