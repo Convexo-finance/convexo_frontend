@@ -128,20 +128,47 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
       ? disbursedAt + maturityDate
       : undefined;
   
+  // Helper function to safely format dates
+  const formatDate = (timestamp: bigint | undefined) => {
+    if (!timestamp || timestamp === 0n) return null;
+    try {
+      const date = new Date(Number(timestamp) * 1000);
+      if (isNaN(date.getTime())) return null;
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return null;
+    }
+  };
+
   // Calculate days remaining
   const getDaysRemaining = () => {
     if (!actualMaturityDate) return null;
-    const now = Math.floor(Date.now() / 1000); // Current time in seconds
-    const maturityTimestamp = Number(actualMaturityDate);
-    const secondsRemaining = maturityTimestamp - now;
-    const daysRemaining = Math.floor(secondsRemaining / (24 * 60 * 60));
-    return daysRemaining;
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const maturityTimestamp = Number(actualMaturityDate);
+      const secondsRemaining = maturityTimestamp - now;
+      const daysRemaining = Math.floor(secondsRemaining / (24 * 60 * 60));
+      return daysRemaining;
+    } catch (error) {
+      console.error('Error calculating days remaining:', error);
+      return null;
+    }
   };
 
   // Calculate loan duration (maturityDate is the duration in seconds)
   const getLoanDuration = () => {
     if (!maturityDate) return null;
-    return Math.floor(Number(maturityDate) / (24 * 60 * 60)); // Convert to days
+    try {
+      return Math.floor(Number(maturityDate) / (24 * 60 * 60));
+    } catch (error) {
+      console.error('Error calculating loan duration:', error);
+      return null;
+    }
   };
 
   const daysRemaining = getDaysRemaining();
@@ -480,46 +507,38 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
             rel="noopener noreferrer"
             className="text-blue-600 dark:text-blue-400 hover:underline font-mono"
           >
-            {vaultAddress.slice(0, 6)}...{vaultAddress.slice(-4)}
+          {vaultAddress.slice(0, 6)}...{vaultAddress.slice(-4)}
           </a>
         </p>
 
         {/* Vault Timeline and Dates */}
         <div className="mb-3 space-y-2">
           {/* Created Date */}
-          {createdAt && (
+          {formatDate(createdAt) && (
             <div className="p-2 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-600 dark:text-gray-400">📅 Created:</span>
                 <span className="font-mono text-gray-900 dark:text-white">
-                  {new Date(Number(createdAt) * 1000).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {formatDate(createdAt)}
                 </span>
               </div>
             </div>
           )}
 
           {/* Disbursed Date (when funds were withdrawn) */}
-          {disbursedAt && disbursedAt > 0n && (
+          {formatDate(disbursedAt) && (
             <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-600 dark:text-gray-400">💸 Funds Disbursed:</span>
                 <span className="font-mono text-gray-900 dark:text-white">
-                  {new Date(Number(disbursedAt) * 1000).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {formatDate(disbursedAt)}
                 </span>
               </div>
             </div>
           )}
 
           {/* Maturity Date and Days Remaining */}
-          {actualMaturityDate && disbursedAt && disbursedAt > 0n && (
+          {formatDate(actualMaturityDate) && daysRemaining !== null && (
             <div className={`p-3 rounded-lg border ${
               isExpired 
                 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
@@ -533,11 +552,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                     🎯 Maturity Date
                   </p>
                   <p className="text-sm font-mono text-gray-900 dark:text-white">
-                    {new Date(Number(actualMaturityDate) * 1000).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatDate(actualMaturityDate)}
                   </p>
                   {loanDuration && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -558,7 +573,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
                   }`}>
                     {isExpired ? (
                       <span className="flex items-center justify-end">
-                        ⚠️ {Math.abs(daysRemaining!)}
+                        ⚠️ {Math.abs(daysRemaining)}
                       </span>
                     ) : (
                       <span className="flex items-center justify-end">
