@@ -20,7 +20,9 @@ import {
   BuildingLibraryIcon,
   CreditCardIcon,
   ArrowsRightLeftIcon,
+  ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth } from '@/lib/auth';
 
 const navigation = [
   { name: 'Profile', href: '/profile', icon: UserCircleIcon },
@@ -59,6 +61,7 @@ const navigation = [
 ];
 
 export function Sidebar() {
+  const { logout } = useAuth();
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Auto-expand Get Verified if on any verification sub-page
@@ -172,7 +175,14 @@ export function Sidebar() {
       </nav>
 
       {/* Wallet Connection - Fixed at bottom */}
-      <div className="p-4 border-t border-gray-800 flex-shrink-0">
+      <div className="p-4 border-t border-gray-800 flex-shrink-0 space-y-4">
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white"
+        >
+          <ArrowLeftOnRectangleIcon className="w-5 h-5" />
+          <span className="font-medium">Logout</span>
+        </button>
         <ConnectButton />
       </div>
     </div>
