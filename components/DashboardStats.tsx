@@ -25,7 +25,7 @@ export function DashboardStats() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasLPsNFT, hasVaultsNFT, lpsBalance, vaultsBalance } = useNFTBalance();
+  const { hasLPsNFT, hasVaultsNFT, hasPassportNFT, lpsBalance, vaultsBalance } = useNFTBalance();
 
   // ETH Balance
   const { data: ethBalance, isLoading: isLoadingETH } = useBalance({
@@ -231,7 +231,16 @@ export function DashboardStats() {
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
           NFT Holdings
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <NFTCard
+            name="Convexo Passport"
+            tokenId={undefined}
+            metadata={null}
+            ipfsUrl="/NFTs/convexo_zkpassport.png"
+            imageUrl="/NFTs/convexo_zkpassport.png"
+            isOwned={hasPassportNFT}
+            benefits="Tier 3 Soulbound NFT for verified individual investors. Required to unlock Treasury and Payments modules. Provides KYC/AML compliance."
+          />
           <NFTCard
             name="Convexo_Vaults NFT"
             tokenId={vaultsTokenId ? String(vaultsTokenId) : undefined}

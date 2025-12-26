@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useState } from 'react';
+import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import {
   UserCircleIcon,
   BuildingOfficeIcon,
@@ -20,6 +21,8 @@ import {
   BuildingLibraryIcon,
   CreditCardIcon,
   ArrowsRightLeftIcon,
+  IdentificationIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -31,6 +34,7 @@ const navigation = [
     subItems: [
       { name: 'AML/CFT', href: '/get-verified/amlcft', icon: ShieldCheckIcon },
       { name: 'AI Credit Check', href: '/get-verified/ai-credit-check', icon: SparklesIcon },
+      { name: 'ZK Verification', href: '/get-verified/zk-verification', icon: IdentificationIcon },
     ]
   },
   { 
@@ -60,6 +64,11 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { hasPassportNFT } = useNFTBalance();
+  
+  // Check if user has access to Treasury/Payments (Passport NFT ONLY)
+  const hasFinancialAccess = hasPassportNFT;
+  
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     // Auto-expand Get Verified if on any verification sub-page
     if (pathname?.startsWith('/get-verified')) {
@@ -105,6 +114,9 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {navigation.map((item) => {
+          // Check if item is locked (Treasury or Payments require NFT)
+          const isLocked = (item.name === 'Treasury' || item.name === 'Payments') && !hasFinancialAccess;
+          
           const isActive = isItemActive(item.href, item.subItems);
           const isExpanded = expandedItems.includes(item.name);
           const hasSubItems = item.subItems && item.subItems.length > 0;
@@ -114,18 +126,28 @@ export function Sidebar() {
               {hasSubItems ? (
                 <>
                   <button
-                    onClick={() => toggleExpand(item.name)}
+                    onClick={() => !isLocked && toggleExpand(item.name)}
+                    disabled={isLocked}
                     className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive
+                      isLocked
+                        ? 'text-gray-500 cursor-not-allowed opacity-60'
+                        : isActive
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }`}
+                    title={isLocked ? 'Requires Convexo Passport NFT' : ''}
                   >
                     <div className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5" />
+                      {isLocked ? (
+                        <LockClosedIcon className="w-5 h-5" />
+                      ) : (
+                        <item.icon className="w-5 h-5" />
+                      )}
                       <span className="font-medium">{item.name}</span>
                     </div>
-                    {isExpanded ? (
+                    {isLocked ? (
+                      <LockClosedIcon className="w-4 h-4" />
+                    ) : isExpanded ? (
                       <ChevronDownIcon className="w-4 h-4" />
                     ) : (
                       <ChevronRightIcon className="w-4 h-4" />
@@ -153,6 +175,15 @@ export function Sidebar() {
                     </div>
                   )}
                 </>
+              ) : isLocked ? (
+                <div
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 cursor-not-allowed opacity-60"
+                  title="Requires Convexo Passport NFT"
+                >
+                  <LockClosedIcon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                  <LockClosedIcon className="w-4 h-4 ml-auto" />
+                </div>
               ) : (
                 <Link
                   href={item.href}

@@ -21,7 +21,7 @@ interface USDCOPRate {
 export default function OTCPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { hasLPsNFT } = useNFTBalance();
+  const { hasPassportNFT } = useNFTBalance();
   const [orderType, setOrderType] = useState<OrderType>('buy');
   const [amount, setAmount] = useState('');
   const [usdcopRate, setUsdcopRate] = useState<USDCOPRate | null>(null);
@@ -173,22 +173,22 @@ export default function OTCPage() {
     );
   }
 
-  if (!hasLPsNFT) {
+  if (!hasPassportNFT) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Compliance Required
+              Identity Verification Required
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You need to hold a Convexo LPs NFT (Compliance) to access Treasury services.
+              You need to hold a Convexo Passport NFT to access Treasury services.
             </p>
             <a
-              href="/get-verified/amlcft"
+              href="/get-verified/zk-verification"
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
             >
-              Get Verified
+              Get Verified with ZKPassport
             </a>
           </div>
         </div>

@@ -40,7 +40,7 @@ export default function GetVerifiedPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* AML/CFT Verification Card */}
           <Link href="/get-verified/amlcft">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-500">
@@ -124,6 +124,48 @@ export default function GetVerifiedPage() {
               </div>
             </div>
           </Link>
+
+          {/* ZK Verification Card */}
+          <Link href="/get-verified/zk-verification">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-green-500">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <SparklesIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    ZK Verification
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Required for Passport NFT
+                  </p>
+                </div>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Verify your identity using ZKPassport zero-knowledge proofs to receive
+                your Convexo Passport NFT for individual investor access.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <span className="mr-2">✓</span>
+                  <span>Privacy-preserving verification</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <span className="mr-2">✓</span>
+                  <span>Age verification (18+)</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  <span className="mr-2">✓</span>
+                  <span>Soulbound NFT</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                  Start ZK Verification →
+                </span>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Information Section */}
@@ -133,12 +175,16 @@ export default function GetVerifiedPage() {
           </h3>
           <div className="space-y-2 text-gray-600 dark:text-gray-400">
             <p>
-              <strong>LPs NFT:</strong> Grants access to liquidity provision features and
+              <strong>LPs NFT (Tier 1):</strong> Grants access to liquidity provision features and
               allows you to participate in the protocol as a liquidity provider.
             </p>
             <p>
-              <strong>Vaults NFT:</strong> Enables you to create funding vaults and access
+              <strong>Vaults NFT (Tier 2):</strong> Enables you to create funding vaults and access
               credit facilities based on your creditworthiness.
+            </p>
+            <p>
+              <strong>Passport NFT (Tier 3):</strong> Allows individual investors to invest in vaults
+              using privacy-preserving ZKPassport verification.
             </p>
           </div>
         </div>
