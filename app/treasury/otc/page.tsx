@@ -30,7 +30,9 @@ export default function OTCPage() {
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [accountType, setAccountType] = useState<'savings' | 'checking'>('savings');
+  const [userEmail, setUserEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   useEffect(() => {
     if (address) {
@@ -48,19 +50,20 @@ export default function OTCPage() {
   const fetchUSDCOPRate = async () => {
     setIsLoadingRate(true);
     try {
-      // TODO: Implement actual Google API call
-      // For now, using a mock rate
-      // const response = await fetch('/api/exchange-rate/usdcop');
-      // const data = await response.json();
+      const response = await fetch('/api/exchange-rate/usdcop');
+      const data = await response.json();
       
-      // Mock rate
-      const mockRate = 4350.50;
       setUsdcopRate({
-        rate: mockRate,
-        timestamp: Date.now(),
+        rate: data.rate,
+        timestamp: data.timestamp,
       });
     } catch (error) {
       console.error('Error fetching USD/COP rate:', error);
+      // Fallback rate if API fails
+      setUsdcopRate({
+        rate: 4350.50,
+        timestamp: Date.now(),
+      });
     } finally {
       setIsLoadingRate(false);
     }
@@ -125,32 +128,67 @@ export default function OTCPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const orderMessage = generateOrderMessage();
-      
-      // TODO: Implement actual email/telegram sending
-      // const response = await fetch('/api/otc/create-order', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     message: orderMessage,
-      //     email: 'otc@convexo.xyz',
-      //     telegram: '@zktps',
-      //   }),
-      // });
+    if (!usdcopRate) {
+      alert('Exchange rate not available. Please wait and try again.');
+      return;
+    }
 
-      // For now, just show the message
-      console.log('Order Message:', orderMessage);
-      alert(`Order created successfully!\n\nA confirmation will be sent to otc@convexo.xyz and @zktps on Telegram.\n\nOrder Details:\n${orderMessage}`);
-      
-      // Reset form
-      setAmount('');
-      setBankName('');
-      setBankAccount('');
+    setIsSubmitting(true);
+    setSubmitSuccess(false);
+    
+    try {
+      const finalRate = calculateFinalRate(usdcopRate.rate, orderType);
+      const total = calculateTotal();
+      const chainName = chainId === 84532 ? 'Base Sepolia' : 
+                        chainId === 11155111 ? 'Ethereum Sepolia' : 
+                        chainId === 8453 ? 'Base Mainnet' :
+                        chainId === 1 ? 'Ethereum Mainnet' :
+                        chainId === 1301 ? 'Unichain Sepolia' :
+                        chainId === 130 ? 'Unichain Mainnet' : 'Unknown Chain';
+
+      const response = await fetch('/api/otc/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderType,
+          amount: parseFloat(amount),
+          rate: finalRate,
+          total,
+          chain: chainName,
+          walletAddress,
+          bankName: orderType === 'sell' ? bankName : null,
+          bankAccount: orderType === 'sell' ? bankAccount : null,
+          accountType: orderType === 'sell' ? accountType : null,
+          userEmail: userEmail || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitSuccess(true);
+        alert(
+          `✅ Order submitted successfully!\n\n` +
+          `Your order has been sent to:\n` +
+          `📧 Email: william@convexo.xyz\n` +
+          `💬 Telegram: @zktps\n\n` +
+          `Our team will review and confirm your order within 1-2 hours during business hours.`
+        );
+        
+        // Reset form
+        setAmount('');
+        setBankName('');
+        setBankAccount('');
+        setUserEmail('');
+        
+        // Hide success message after 5 seconds
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        throw new Error(data.error || 'Failed to submit order');
+      }
     } catch (error) {
       console.error('Error submitting order:', error);
-      alert('Failed to submit order. Please try again.');
+      alert('Failed to submit order. Please try again or contact support directly at william@convexo.xyz');
     } finally {
       setIsSubmitting(false);
     }
@@ -326,6 +364,7 @@ export default function OTCPage() {
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
                   placeholder="Bancolombia"
+                  required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
@@ -338,10 +377,11 @@ export default function OTCPage() {
                   value={bankAccount}
                   onChange={(e) => setBankAccount(e.target.value)}
                   placeholder="1234567890"
+                  required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Account Type
                 </label>
@@ -357,6 +397,35 @@ export default function OTCPage() {
             </>
           )}
 
+          {/* Email (Optional) */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Your Email (Optional)
+            </label>
+            <input
+              type="email"
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Provide your email to receive updates about your order
+            </p>
+          </div>
+
+          {/* Success Message */}
+          {submitSuccess && (
+            <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-green-800 dark:text-green-200 font-semibold">
+                ✅ Order submitted successfully!
+              </p>
+              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                Sent to william@convexo.xyz and @zktps on Telegram
+              </p>
+            </div>
+          )}
+
           {/* Submit Button */}
           <button
             onClick={handleSubmitOrder}
@@ -364,11 +433,14 @@ export default function OTCPage() {
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {isSubmitting ? (
-              'Submitting...'
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Submitting Order...
+              </>
             ) : (
               <>
                 <PaperAirplaneIcon className="h-5 w-5 mr-2" />
-                Submit Order
+                Submit Order to Convexo Team
               </>
             )}
           </button>
@@ -390,7 +462,7 @@ export default function OTCPage() {
                   2. Enter the amount and provide required information
                 </p>
                 <p>
-                  3. Submit your order - it will be sent to <strong>otc@convexo.xyz</strong> and <strong>@zktps</strong> on Telegram
+                  3. Submit your order - it will be sent to <strong>william@convexo.xyz</strong> and <strong>@zktps</strong> on Telegram
                 </p>
                 <p>
                   4. Our team will review and confirm your order within 1-2 hours during business hours
@@ -403,7 +475,7 @@ export default function OTCPage() {
                 </p>
               </div>
               <p className="mt-4 text-xs text-gray-500 dark:text-gray-500">
-                * All rates include a 1.5% spread over the Google API USD/COP rate
+                * All rates include a 1.5% spread over the live USD/COP exchange rate from ExchangeRate-API
               </p>
             </div>
           </div>
