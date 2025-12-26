@@ -279,16 +279,11 @@ export default function OTCPage() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center space-x-2 bg-white/20 rounded-full px-3 py-1">
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="opacity-90">
-                          Updated: {new Date(usdcopRate.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div className="bg-white/20 rounded-full px-3 py-1">
-                        <span className="opacity-90">± 1.5% spread</span>
-                      </div>
+                    <div className="flex items-center space-x-2 text-sm bg-white/20 rounded-full px-3 py-1 inline-flex">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="opacity-90">
+                        Updated: {new Date(usdcopRate.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
                   </>
                 ) : (
@@ -305,23 +300,6 @@ export default function OTCPage() {
                 </div>
               </div>
             </div>
-            
-            {/* Quick Reference */}
-            {usdcopRate && !isLoadingRate && (
-              <div className="mt-6 pt-6 border-t border-white/20">
-                <p className="text-xs font-semibold uppercase tracking-wider mb-3 opacity-75">Quick Reference</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[100, 500, 1000, 5000].map((usd) => (
-                    <div key={usd} className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                      <p className="text-sm opacity-75">${usd.toLocaleString()} USD</p>
-                      <p className="text-lg font-bold">
-                        ${(usd * usdcopRate.rate).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
