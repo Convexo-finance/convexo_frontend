@@ -11,6 +11,16 @@
         "name": "minter",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "_lpIndividuals",
+        "type": "address",
+        "internalType": "contract IERC721"
+      },
+      {
+        "name": "_lpBusiness",
+        "type": "address",
+        "internalType": "contract IERC721"
       }
     ],
     "stateMutability": "nonpayable"
@@ -93,6 +103,25 @@
   },
   {
     "type": "function",
+    "name": "canReceiveEcreditscoringNFT",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getApproved",
     "inputs": [
       {
@@ -112,7 +141,53 @@
   },
   {
     "type": "function",
-    "name": "getCompanyId",
+    "name": "getCreditInfo",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "info",
+        "type": "tuple",
+        "internalType": "struct Ecreditscoring.CreditInfo",
+        "components": [
+          {
+            "name": "tier",
+            "type": "uint8",
+            "internalType": "enum Ecreditscoring.CreditTier"
+          },
+          {
+            "name": "score",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxLoanAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "scoredAt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "referenceId",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getCreditTier",
     "inputs": [
       {
         "name": "tokenId",
@@ -123,8 +198,27 @@
     "outputs": [
       {
         "name": "",
-        "type": "string",
-        "internalType": "string"
+        "type": "uint8",
+        "internalType": "enum Ecreditscoring.CreditTier"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getMaxLoanAmount",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -187,6 +281,25 @@
   },
   {
     "type": "function",
+    "name": "hasLPStatus",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "hasRole",
     "inputs": [
       {
@@ -229,6 +342,32 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lpBusiness",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC721"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lpIndividuals",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC721"
       }
     ],
     "stateMutability": "view"
@@ -311,7 +450,22 @@
         "internalType": "address"
       },
       {
-        "name": "companyId",
+        "name": "score",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "tier",
+        "type": "uint8",
+        "internalType": "enum Ecreditscoring.CreditTier"
+      },
+      {
+        "name": "maxLoanAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "referenceId",
         "type": "string",
         "internalType": "string"
       },
@@ -490,6 +644,39 @@
     ],
     "outputs": [],
     "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "updateCreditInfo",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "score",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "tier",
+        "type": "uint8",
+        "internalType": "enum Ecreditscoring.CreditTier"
+      },
+      {
+        "name": "maxLoanAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "referenceId",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "event",
@@ -796,6 +983,11 @@
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "MustHoldLPNFT",
+    "inputs": []
   },
   {
     "type": "error",

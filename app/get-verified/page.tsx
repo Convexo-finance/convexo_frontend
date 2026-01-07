@@ -137,13 +137,13 @@ export default function GetVerifiedPage() {
                     ZK Verification
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Required for Passport NFT
+                    Required for CONVEXO PASSPORT
                   </p>
                 </div>
               </div>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
                 Verify your identity using ZKPassport zero-knowledge proofs to receive
-                your Convexo Passport NFT for individual investor access.
+                your CONVEXO PASSPORT for individual investor access.
               </p>
               <div className="space-y-2">
                 <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
@@ -183,7 +183,7 @@ export default function GetVerifiedPage() {
               credit facilities based on your creditworthiness.
             </p>
             <p>
-              <strong>Passport NFT (Tier 3):</strong> Allows individual investors to invest in vaults
+              <strong>CONVEXO PASSPORT (Tier 3):</strong> Allows individual investors to invest in vaults
               using privacy-preserving ZKPassport verification.
             </p>
           </div>

@@ -51,9 +51,12 @@ export const unichainMainnet = defineChain({
   testnet: false,
 });
 
+// Fallback project ID for development - replace with your actual WalletConnect Cloud project ID
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'c4f79cc821d18d9e3e2c5b8b5e3e5c7a';
+
 export const config = getDefaultConfig({
   appName: 'Convexo Protocol',
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
+  projectId: WALLETCONNECT_PROJECT_ID,
   chains: [baseSepolia, sepolia, unichainSepolia, base, mainnet, unichainMainnet],
   transports: {
     [baseSepolia.id]: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL),

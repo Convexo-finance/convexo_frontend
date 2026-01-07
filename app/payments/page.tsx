@@ -150,7 +150,7 @@ export default function PaymentsPage() {
               Identity Verification Required
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You need to hold a Convexo Passport NFT to access Payments.
+              You need a CONVEXO PASSPORT to access Payments.
             </p>
             <a
               href="/get-verified/zk-verification"

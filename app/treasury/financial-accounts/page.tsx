@@ -163,7 +163,7 @@ export default function FinancialAccountsPage() {
               Identity Verification Required
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You need to hold a Convexo Passport NFT to access Treasury services.
+              You need a CONVEXO PASSPORT to access Treasury services.
             </p>
             <a
               href="/get-verified/zk-verification"

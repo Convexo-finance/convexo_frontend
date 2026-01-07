@@ -8,9 +8,9 @@
         "internalType": "contract IPoolManager"
       },
       {
-        "name": "_convexoLPs",
+        "name": "_reputationManager",
         "type": "address",
-        "internalType": "contract IConvexoLPs"
+        "internalType": "contract ReputationManager"
       }
     ],
     "stateMutability": "nonpayable"
@@ -20,12 +20,12 @@
     "name": "afterAddLiquidity",
     "inputs": [
       {
-        "name": "",
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -57,7 +57,7 @@
         ]
       },
       {
-        "name": "",
+        "name": "params",
         "type": "tuple",
         "internalType": "struct ModifyLiquidityParams",
         "components": [
@@ -84,17 +84,17 @@
         ]
       },
       {
-        "name": "",
+        "name": "delta",
         "type": "int256",
         "internalType": "BalanceDelta"
       },
       {
-        "name": "",
+        "name": "feesAccrued",
         "type": "int256",
         "internalType": "BalanceDelta"
       },
       {
-        "name": "",
+        "name": "hookData",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -118,12 +118,12 @@
     "name": "afterDonate",
     "inputs": [
       {
-        "name": "",
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -155,17 +155,17 @@
         ]
       },
       {
-        "name": "",
+        "name": "amount0",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "",
+        "name": "amount1",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "",
+        "name": "hookData",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -184,12 +184,12 @@
     "name": "afterInitialize",
     "inputs": [
       {
-        "name": "",
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -221,12 +221,12 @@
         ]
       },
       {
-        "name": "",
+        "name": "sqrtPriceX96",
         "type": "uint160",
         "internalType": "uint160"
       },
       {
-        "name": "",
+        "name": "tick",
         "type": "int24",
         "internalType": "int24"
       }
@@ -245,12 +245,12 @@
     "name": "afterRemoveLiquidity",
     "inputs": [
       {
-        "name": "",
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -282,7 +282,7 @@
         ]
       },
       {
-        "name": "",
+        "name": "params",
         "type": "tuple",
         "internalType": "struct ModifyLiquidityParams",
         "components": [
@@ -309,17 +309,17 @@
         ]
       },
       {
-        "name": "",
+        "name": "delta",
         "type": "int256",
         "internalType": "BalanceDelta"
       },
       {
-        "name": "",
+        "name": "feesAccrued",
         "type": "int256",
         "internalType": "BalanceDelta"
       },
       {
-        "name": "",
+        "name": "hookData",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -343,12 +343,12 @@
     "name": "afterSwap",
     "inputs": [
       {
-        "name": "",
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -380,7 +380,7 @@
         ]
       },
       {
-        "name": "",
+        "name": "params",
         "type": "tuple",
         "internalType": "struct SwapParams",
         "components": [
@@ -402,12 +402,12 @@
         ]
       },
       {
-        "name": "",
+        "name": "delta",
         "type": "int256",
         "internalType": "BalanceDelta"
       },
       {
-        "name": "",
+        "name": "hookData",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -436,6 +436,89 @@
         "internalType": "address"
       },
       {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+          {
+            "name": "currency0",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "currency1",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "fee",
+            "type": "uint24",
+            "internalType": "uint24"
+          },
+          {
+            "name": "tickSpacing",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          {
+            "name": "hooks",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      },
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ModifyLiquidityParams",
+        "components": [
+          {
+            "name": "tickLower",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          {
+            "name": "tickUpper",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          {
+            "name": "liquidityDelta",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "salt",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "beforeDonate",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
@@ -468,31 +551,14 @@
         ]
       },
       {
-        "name": "params",
-        "type": "tuple",
-        "internalType": "struct ModifyLiquidityParams",
-        "components": [
-          {
-            "name": "tickLower",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "tickUpper",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "liquidityDelta",
-            "type": "int256",
-            "internalType": "int256"
-          },
-          {
-            "name": "salt",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          }
-        ]
+        "name": "amount0",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount1",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "hookData",
@@ -511,81 +577,15 @@
   },
   {
     "type": "function",
-    "name": "beforeDonate",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct PoolKey",
-        "components": [
-          {
-            "name": "currency0",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "currency1",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "fee",
-            "type": "uint24",
-            "internalType": "uint24"
-          },
-          {
-            "name": "tickSpacing",
-            "type": "int24",
-            "internalType": "int24"
-          },
-          {
-            "name": "hooks",
-            "type": "address",
-            "internalType": "address"
-          }
-        ]
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes4",
-        "internalType": "bytes4"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "beforeInitialize",
     "inputs": [
       {
-        "name": "",
+        "name": "sender",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "key",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -617,7 +617,7 @@
         ]
       },
       {
-        "name": "",
+        "name": "sqrtPriceX96",
         "type": "uint160",
         "internalType": "uint160"
       }
@@ -641,7 +641,7 @@
         "internalType": "address"
       },
       {
-        "name": "key",
+        "name": "",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -673,7 +673,7 @@
         ]
       },
       {
-        "name": "params",
+        "name": "",
         "type": "tuple",
         "internalType": "struct ModifyLiquidityParams",
         "components": [
@@ -700,7 +700,7 @@
         ]
       },
       {
-        "name": "hookData",
+        "name": "",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -724,7 +724,7 @@
         "internalType": "address"
       },
       {
-        "name": "key",
+        "name": "",
         "type": "tuple",
         "internalType": "struct PoolKey",
         "components": [
@@ -756,7 +756,7 @@
         ]
       },
       {
-        "name": "params",
+        "name": "",
         "type": "tuple",
         "internalType": "struct SwapParams",
         "components": [
@@ -778,7 +778,7 @@
         ]
       },
       {
-        "name": "hookData",
+        "name": "",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -804,26 +804,13 @@
   },
   {
     "type": "function",
-    "name": "convexoLPs",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IConvexoLPs"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getHookPermissions",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct BaseHook.Permissions",
+        "internalType": "struct Permissions",
         "components": [
           {
             "name": "beforeInitialize",
@@ -882,6 +869,44 @@
   },
   {
     "type": "function",
+    "name": "getUserTier",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tier",
+        "type": "uint8",
+        "internalType": "enum ReputationManager.ReputationTier"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hasLPPoolAccess",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "hasAccess",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "poolManager",
     "inputs": [],
     "outputs": [
@@ -894,23 +919,17 @@
     "stateMutability": "view"
   },
   {
-    "type": "event",
-    "name": "AccessDenied",
-    "inputs": [
+    "type": "function",
+    "name": "reputationManager",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "user",
+        "name": "",
         "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
+        "internalType": "contract ReputationManager"
       }
     ],
-    "anonymous": false
+    "stateMutability": "view"
   },
   {
     "type": "event",
@@ -923,10 +942,16 @@
         "internalType": "address"
       },
       {
-        "name": "nftBalance",
-        "type": "uint256",
+        "name": "operation",
+        "type": "string",
         "indexed": false,
-        "internalType": "uint256"
+        "internalType": "string"
+      },
+      {
+        "name": "tier",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum ReputationManager.ReputationTier"
       }
     ],
     "anonymous": false
@@ -938,12 +963,22 @@
   },
   {
     "type": "error",
-    "name": "MustHoldConvexoLPsNFT",
+    "name": "InvalidHookAddress",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "NFTNotActive",
+    "name": "InvalidReputationManager",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MustHaveKYCVerification",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyPoolManager",
     "inputs": []
   }
 ]

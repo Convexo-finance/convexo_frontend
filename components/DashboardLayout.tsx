@@ -9,14 +9,15 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden bg-[#0a0d14]">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        {children}
+        <div className="min-h-full">
+          {children}
+        </div>
       </main>
     </div>
   );
 };
 
 export default DashboardLayout;
-
