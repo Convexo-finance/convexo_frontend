@@ -135,25 +135,43 @@ export default function ZKVerificationPage() {
       // Handle verification result
       onResult((callbackParams) => {
         console.log('ZKPassport callback:', callbackParams);
-        
+        console.log('ZKPassport result structure:', JSON.stringify(callbackParams, null, 2));
+
         const { verified, result, uniqueIdentifier: uid } = callbackParams as any;
-        
+
         setIsGeneratingProof(false);
         setVerificationUrl(null);
-        
+
         if (verified) {
           // Extract verification results
           const facematchPassed = result?.facematch?.passed ?? false;
           const sanctionsPassed = result?.sanctions?.passed ?? false;
-          const isOver18 = result?.age?.gte?.passed ?? false;
-          
+
+          // Try multiple possible paths for age verification result
+          const isOver18 =
+            result?.age?.gte?.passed ??           // Path 1: result.age.gte.passed
+            result?.gte?.age?.passed ??           // Path 2: result.gte.age.passed
+            result?.age?.passed ??                // Path 3: result.age.passed
+            result?.gte?.passed ??                // Path 4: result.gte.passed (if age field is implicit)
+            result?.['gte_age_18']?.passed ??     // Path 5: concatenated key
+            false;
+
+          console.log('Age verification checks:', {
+            'result.age.gte.passed': result?.age?.gte?.passed,
+            'result.gte.age.passed': result?.gte?.age?.passed,
+            'result.age.passed': result?.age?.passed,
+            'result.gte.passed': result?.gte?.passed,
+            'result[gte_age_18].passed': result?.['gte_age_18']?.passed,
+            'Final isOver18': isOver18
+          });
+
           // Validate required proofs
           if (!facematchPassed) {
             setError('Proof of Personhood failed. Face verification did not pass.');
             setStep('idle');
             return;
           }
-          
+
           if (!sanctionsPassed) {
             setError('KYC verification failed. Sanctions check did not pass.');
             setStep('idle');
@@ -161,7 +179,8 @@ export default function ZKVerificationPage() {
           }
 
           if (!isOver18) {
-            setError('Age verification failed. Must be 18 or older.');
+            console.error('Age verification failed. Result object:', result);
+            setError(`Age verification failed. Must be 18 or older. Debug: Check console for result structure.`);
             setStep('idle');
             return;
           }
@@ -237,6 +256,12 @@ export default function ZKVerificationPage() {
 
     if (!passportTraits.faceMatchPassed || !passportTraits.sanctionsPassed) {
       setError('Required proofs not verified. Please complete verification again.');
+      return;
+    }
+
+    // CHECK AGE VERIFICATION - Must be 18 or older
+    if (!passportTraits.isOver18) {
+      setError('Age verification failed. You must be 18 years or older to mint CONVEXO PASSPORT.');
       return;
     }
 
@@ -593,9 +618,44 @@ export default function ZKVerificationPage() {
               )}
             </div>
 
+            {/* Verification Checklist Before Minting */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 space-y-2">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Final Verification Status:</p>
+              <div className="flex items-center gap-2">
+                {passportTraits.faceMatchPassed ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                ) : (
+                  <span className="text-red-600 dark:text-red-400">✗</span>
+                )}
+                <span className={passportTraits.faceMatchPassed ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}>
+                  Proof of Personhood
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {passportTraits.sanctionsPassed ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                ) : (
+                  <span className="text-red-600 dark:text-red-400">✗</span>
+                )}
+                <span className={passportTraits.sanctionsPassed ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}>
+                  KYC & Sanctions
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {passportTraits.isOver18 ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                ) : (
+                  <span className="text-red-600 dark:text-red-400">✗</span>
+                )}
+                <span className={passportTraits.isOver18 ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}>
+                  Age Verification (18+)
+                </span>
+              </div>
+            </div>
+
             <button
               onClick={handleMint}
-              disabled={isLoading || !identifierInput || identifierUsed}
+              disabled={isLoading || !identifierInput || identifierUsed || !passportTraits.isOver18}
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
             >
               {isMinting || isWaiting ? (
