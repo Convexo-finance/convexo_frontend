@@ -128,7 +128,7 @@ export default function OTCPage() {
 
   const sendViaTelegram = () => {
     const message = generateOrderMessage();
-    const username = 'zktps'; // Telegram username
+    const username = 'convexoprotocol'; // Telegram username (updated from @zktps)
     const url = `https://t.me/${username}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -195,7 +195,8 @@ export default function OTCPage() {
           `✅ Order submitted successfully!\n\n` +
           `Your order has been sent to:\n` +
           `📧 Email: william@convexo.xyz\n` +
-          `💬 Telegram: @zktps\n\n` +
+          `💬 Telegram: @convexoprotocol\n` +
+          `📱 WhatsApp: +57 317 5128062\n\n` +
           `Our team will review and confirm your order within 1-2 hours during business hours.`
         );
         
