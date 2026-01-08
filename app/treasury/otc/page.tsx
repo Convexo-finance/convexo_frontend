@@ -128,7 +128,7 @@ export default function OTCPage() {
 
   const sendViaTelegram = () => {
     const message = generateOrderMessage();
-    const username = 'convexoprotocol'; // Telegram username (updated from @zktps)
+    const username = 'convexoprotocol'; // Telegram username of Convexo OTC
     const url = `https://t.me/${username}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -551,7 +551,7 @@ export default function OTCPage() {
                 ✅ Order submitted successfully!
               </p>
               <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                Sent to william@convexo.xyz and @zktps on Telegram
+                Sent to william@convexo.xyz and @convexoprotocol on Telegram
               </p>
             </div>
           )}
@@ -597,7 +597,7 @@ export default function OTCPage() {
             >
               <DevicePhoneMobileIcon className="h-8 w-8 text-green-600 dark:text-green-400 mb-2" />
               <span className="text-sm font-semibold text-green-700 dark:text-green-300">WhatsApp</span>
-              <span className="text-xs text-green-600 dark:text-green-400 mt-1">+57 317 512 8062</span>
+              <span className="text-xs text-green-600 dark:text-green-400 mt-1">+57 318 676 6035</span>
             </button>
 
             <button
@@ -608,7 +608,7 @@ export default function OTCPage() {
             >
               <ChatBubbleLeftRightIcon className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
               <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Telegram</span>
-              <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">@zktps</span>
+              <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">@convexoprotocol</span>
             </button>
 
             <button
@@ -640,7 +640,7 @@ export default function OTCPage() {
                   2. Enter the amount and provide required information
                 </p>
                 <p>
-                  3. Submit your order - it will be sent to <strong>william@convexo.xyz</strong> and <strong>@zktps</strong> on Telegram
+                  3. Submit your order - it will be sent to <strong>william@convexo.xyz</strong> and <strong>@convexoprotocol</strong> on Telegram
                 </p>
                 <p>
                   4. Our team will review and confirm your order within 1-2 hours during business hours
