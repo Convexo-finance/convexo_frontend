@@ -37,6 +37,7 @@ interface ConvexoPassportTraits {
   sanctionsPassed: boolean;
   isOver18: boolean;
   zkPassportTimestamp: number;
+  zkPassportResult: any; // Raw ZK Passport verification result for audit trail
 }
 
 export default function ZKVerificationPage() {
@@ -149,14 +150,16 @@ export default function ZKVerificationPage() {
 
           // Try multiple possible paths for age verification result
           const isOver18 =
-            result?.age?.gte?.passed ??           // Path 1: result.age.gte.passed
-            result?.gte?.age?.passed ??           // Path 2: result.gte.age.passed
-            result?.age?.passed ??                // Path 3: result.age.passed
-            result?.gte?.passed ??                // Path 4: result.gte.passed (if age field is implicit)
-            result?.['gte_age_18']?.passed ??     // Path 5: concatenated key
+            result?.age?.gte?.result ??           // Path 1: result.age.gte.result (CORRECT PATH)
+            result?.age?.gte?.passed ??           // Path 2: result.age.gte.passed (fallback)
+            result?.gte?.age?.passed ??           // Path 3: result.gte.age.passed
+            result?.age?.passed ??                // Path 4: result.age.passed
+            result?.gte?.passed ??                // Path 5: result.gte.passed (if age field is implicit)
+            result?.['gte_age_18']?.passed ??     // Path 6: concatenated key
             false;
 
           console.log('Age verification checks:', {
+            'result.age.gte.result': result?.age?.gte?.result,
             'result.age.gte.passed': result?.age?.gte?.passed,
             'result.gte.age.passed': result?.gte?.age?.passed,
             'result.age.passed': result?.age?.passed,
@@ -210,7 +213,8 @@ export default function ZKVerificationPage() {
             faceMatchPassed: facematchPassed,
             sanctionsPassed: sanctionsPassed,
             isOver18: isOver18,
-            zkPassportTimestamp: timestamp
+            zkPassportTimestamp: timestamp,
+            zkPassportResult: result // Store exact ZK Passport verification result
           });
           setIdentifierInput(uid);
           setStep('verified');
