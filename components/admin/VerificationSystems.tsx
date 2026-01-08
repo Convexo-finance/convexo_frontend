@@ -178,8 +178,8 @@ export function VerificationSystems() {
   const pendingForType = pendingVerifications.filter((v) => v.type === verificationType);
 
   // Remove a pending verification from the list
-  const handleRemovePending = (address: string) => {
-    setPendingVerifications((prev) => prev.filter((v) => v.address !== address));
+  const handleRemovePending = (verification: PendingVerification) => {
+    setPendingVerifications((prev) => prev.filter((v) => v.address !== verification.address));
   };
 
   // Select pending verification for quick action
@@ -466,7 +466,7 @@ function PendingVerificationRow({
   const [status, setStatus] = useState<string>('pending');
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
-  const contractAddress = verificationType === 'veriff' ? contracts.veriffVerifier : contracts.sumsubVerifier;
+  const contractAddress = verificationType === 'veriff' ? contracts?.VERIFF_VERIFIER : contracts?.SUMSUB_VERIFIER;
 
   // Fetch verification status for this address
   const { data: statusData } = useReadContract({
