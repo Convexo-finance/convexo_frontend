@@ -17,7 +17,7 @@ export default function EContractsPage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasVaultsNFT } = useNFTBalance();
+  const { hasPassportNFT, hasActivePassport, canAccessTreasury } = useNFTBalance();
 
   const { data: contractCount } = useReadContract({
     address: contracts?.CONTRACT_SIGNER,
@@ -26,7 +26,8 @@ export default function EContractsPage() {
     query: { enabled: !!contracts },
   });
 
-  const canAccess = hasVaultsNFT;
+  // Tier 1+ access (Convexo Passport holders and above)
+  const canAccess = hasPassportNFT || hasActivePassport || canAccessTreasury;
 
   if (!isConnected) {
     return (
@@ -49,12 +50,12 @@ export default function EContractsPage() {
           <div className="max-w-2xl mx-auto">
             <div className="card p-8 text-center">
               <LockClosedIcon className="w-16 h-16 mx-auto mb-4 text-gray-500" />
-              <h2 className="text-2xl font-bold text-white mb-2">Tier 3 Required</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Tier 1 Required</h2>
               <p className="text-gray-400 mb-6">
-                You need a Convexo Vaults NFT (Tier 3) to access loan contracts.
+                You need at least a Convexo Passport (Tier 1) to access contract signing.
               </p>
-              <Link href="/digital-id/credit-score">
-                <button className="btn-primary">Get Credit Verified</button>
+              <Link href="/digital-id/humanity">
+                <button className="btn-primary">Get Verified</button>
               </Link>
             </div>
           </div>

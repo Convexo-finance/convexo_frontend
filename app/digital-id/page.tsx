@@ -24,7 +24,7 @@ export default function DigitalIDPage() {
   const nftCards = [
     {
       name: 'Humanity',
-      description: 'Verify your identity via ZK Passport or Veriff',
+      description: 'Verify your identity via ZK Passport',
       href: '/digital-id/humanity',
       icon: ShieldCheckIcon,
       image: '/NFTs/convexo_zkpassport.png',
@@ -35,7 +35,7 @@ export default function DigitalIDPage() {
     },
     {
       name: 'Limited Partner',
-      description: 'Business verification for LP pool access',
+      description: 'Individual or Business KYC/KYB verification',
       href: '/digital-id/limited-partner',
       icon: UserGroupIcon,
       image: '/NFTs/Convexo_lps.png',
@@ -46,7 +46,7 @@ export default function DigitalIDPage() {
     },
     {
       name: 'Credit Score',
-      description: 'Financial & Business evaluation for vault creation',
+      description: 'AI-powered credit evaluation for vault creators',
       href: '/digital-id/credit-score',
       icon: SparklesIcon,
       image: '/NFTs/convexo_vaults.png',

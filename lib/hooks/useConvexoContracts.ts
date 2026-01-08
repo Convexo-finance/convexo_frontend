@@ -13,6 +13,7 @@ import {
   VaultFactoryABI,
   PoolRegistryABI,
   PriceFeedManagerABI,
+  ReputationTier,
   type ReputationDetails,
   type VerifiedIdentity,
 } from '@/lib/contracts/abis';
@@ -364,12 +365,14 @@ export function useReputationManager() {
   });
 
   // Parse reputation details
-  const parsedDetails = details as [number, bigint, bigint, bigint] | undefined;
+  // Returns: [tier, passportBalance, lpIndividualsBalance, lpBusinessBalance, ecreditscoringBalance]
+  const parsedDetails = details as [number, bigint, bigint, bigint, bigint] | undefined;
   const reputationDetails: ReputationDetails | undefined = parsedDetails ? {
-    tier: parsedDetails[0],
-    lpsBalance: parsedDetails[1],
-    vaultsBalance: parsedDetails[2],
-    passportBalance: parsedDetails[3],
+    tier: parsedDetails[0] as ReputationTier,
+    passportBalance: parsedDetails[1],
+    lpIndividualsBalance: parsedDetails[2],
+    lpBusinessBalance: parsedDetails[3],
+    ecreditscoringBalance: parsedDetails[4],
   } : undefined;
 
   return {

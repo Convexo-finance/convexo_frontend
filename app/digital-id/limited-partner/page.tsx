@@ -14,6 +14,8 @@ import {
   BuildingOfficeIcon,
   DocumentTextIcon,
   ShieldCheckIcon,
+  IdentificationIcon,
+  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 
 export default function LimitedPartnerPage() {
@@ -105,59 +107,90 @@ export default function LimitedPartnerPage() {
             </div>
           </div>
 
-          {/* Verification Process */}
+          {/* Verification Methods */}
           {!isVerified && (
-            <div className="card">
-              <h2 className="text-xl font-semibold text-white mb-6">Verification Process</h2>
-              
-              <div className="space-y-6">
-                {/* Step 1 */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                    1
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white mb-1">Submit Business Documents</h3>
-                    <p className="text-gray-400 text-sm mb-3">
-                      Provide company registration, tax documents, and proof of business operations.
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-white">Choose Verification Type</h2>
+              <p className="text-gray-400">
+                Select the verification that matches your situation. Both grant the same Tier 2 LP access.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Veriff - Individuals */}
+                <Link href="/digital-id/limited-partner/verify">
+                  <div className="card p-6 h-full cursor-pointer transition-all duration-300 hover:border-purple-500/50">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center mb-4">
+                      <IdentificationIcon className="w-7 h-7 text-white" />
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-white mb-2">Individual Verification</h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      For individual investors. Complete KYC verification via Veriff.
                     </p>
-                    <Link href="/get-verified/amlcft">
-                      <button className="btn-secondary text-sm">
-                        Start Veriff KYB
-                      </button>
-                    </Link>
-                  </div>
-                </div>
 
-                <div className="h-8 border-l-2 border-dashed border-gray-700 ml-5" />
+                    <ul className="space-y-2 mb-6">
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        ID document upload
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        Liveness check
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        Address verification
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        Receive LP_Individuals NFT
+                      </li>
+                    </ul>
 
-                {/* Step 2 */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 font-bold flex-shrink-0">
-                    2
+                    <div className="flex items-center gap-2 text-purple-400 font-medium">
+                      <span>Start Individual KYC</span>
+                      <ArrowRightIcon className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-400 mb-1">Admin Review</h3>
-                    <p className="text-gray-500 text-sm">
-                      Our team reviews your submitted documents for compliance.
+                </Link>
+
+                {/* Sumsub - Business */}
+                <Link href="/digital-id/limited-partner/verify">
+                  <div className="card p-6 h-full cursor-pointer transition-all duration-300 hover:border-purple-500/50">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center mb-4">
+                      <BuildingOffice2Icon className="w-7 h-7 text-white" />
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-white mb-2">Business Verification</h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      For business entities. Complete KYB verification via Sumsub.
                     </p>
-                  </div>
-                </div>
 
-                <div className="h-8 border-l-2 border-dashed border-gray-700 ml-5" />
+                    <ul className="space-y-2 mb-6">
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                        Business registration
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                        Tax documentation
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                        Beneficial ownership
+                      </li>
+                      <li className="flex items-center gap-2 text-sm text-gray-300">
+                        <CheckBadgeIcon className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                        Receive LP_Business NFT
+                      </li>
+                    </ul>
 
-                {/* Step 3 */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 font-bold flex-shrink-0">
-                    3
+                    <div className="flex items-center gap-2 text-purple-400 font-medium">
+                      <span>Start Business KYB</span>
+                      <ArrowRightIcon className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-400 mb-1">Receive LP NFT</h3>
-                    <p className="text-gray-500 text-sm">
-                      Upon approval, your Convexo_LPs NFT is automatically minted.
-                    </p>
-                  </div>
-                </div>
+                </Link>
               </div>
             </div>
           )}
@@ -165,18 +198,45 @@ export default function LimitedPartnerPage() {
           {/* Benefits */}
           <div className="card">
             <h3 className="text-lg font-semibold text-white mb-4">Tier 2 Benefits</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { icon: ArrowRightIcon, title: 'LP Pool Access', desc: 'Trade in USDC/ECOP and other compliant pools' },
-                { icon: BuildingOfficeIcon, title: 'Business Features', desc: 'Access B2B payment solutions' },
-                { icon: ShieldCheckIcon, title: 'All Tier 1 Benefits', desc: 'Treasury, investments, and payments' },
-              ].map((benefit) => (
-                <div key={benefit.title} className="p-4 bg-gray-800/50 rounded-xl">
-                  <benefit.icon className="w-6 h-6 text-blue-400 mb-2" />
-                  <p className="font-medium text-white mb-1">{benefit.title}</p>
-                  <p className="text-sm text-gray-400">{benefit.desc}</p>
+            <div className="space-y-6">
+              {/* Tier 2 Exclusive Benefits */}
+              <div>
+                <h4 className="text-md font-medium text-blue-400 mb-3">Tier 2 Exclusive</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { icon: ArrowRightIcon, title: 'LP Pool Access', desc: 'Trade in USDC/ECOP and other compliant pools' },
+                    { icon: BuildingOfficeIcon, title: 'Business Features', desc: 'Access B2B payment solutions' },
+                    { icon: DocumentTextIcon, title: 'AI Credit Score', desc: 'Request credit score evaluation for vault creation' },
+                    { icon: ShieldCheckIcon, title: 'Enhanced Compliance', desc: 'Full KYC/KYB verified status' },
+                  ].map((benefit) => (
+                    <div key={benefit.title} className="p-4 bg-gray-800/50 rounded-xl">
+                      <benefit.icon className="w-6 h-6 text-blue-400 mb-2" />
+                      <p className="font-medium text-white mb-1">{benefit.title}</p>
+                      <p className="text-sm text-gray-400">{benefit.desc}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Tier 1 Benefits Included */}
+              <div>
+                <h4 className="text-md font-medium text-emerald-400 mb-3">Tier 1 Benefits Included</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[
+                    { title: 'OTC Orders', desc: 'Over-the-counter trades' },
+                    { title: 'Token Swaps', desc: 'USDC, ECOP swaps' },
+                    { title: 'COP Monetization', desc: 'COP ↔ ECOP conversion' },
+                    { title: 'LP Interactions', desc: 'Local stables exchange' },
+                    { title: 'Tokenized Loans', desc: 'Vault investments' },
+                    { title: 'Treasury Access', desc: 'Multi-sig treasuries' },
+                  ].map((benefit) => (
+                    <div key={benefit.title} className="p-3 bg-gray-800/30 rounded-lg">
+                      <p className="font-medium text-white text-sm mb-1">{benefit.title}</p>
+                      <p className="text-xs text-gray-400">{benefit.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 

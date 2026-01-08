@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
-import { 
-  ArrowsRightLeftIcon, 
+import {
+  ArrowsRightLeftIcon,
   BanknotesIcon,
   EnvelopeIcon,
-  PaperAirplaneIcon 
+  PaperAirplaneIcon,
+  ChatBubbleLeftRightIcon,
+  DevicePhoneMobileIcon
 } from '@heroicons/react/24/outline';
 
 type OrderType = 'buy' | 'sell';
@@ -117,6 +119,28 @@ export default function OTCPage() {
     return message;
   };
 
+  const sendViaWhatsApp = () => {
+    const message = generateOrderMessage();
+    const phoneNumber = '573175128062'; // Convexo WhatsApp number
+    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const sendViaTelegram = () => {
+    const message = generateOrderMessage();
+    const username = 'zktps'; // Telegram username
+    const url = `https://t.me/${username}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const sendViaEmail = () => {
+    const message = generateOrderMessage();
+    const email = 'william@convexo.xyz';
+    const subject = `OTC Order - ${orderType.toUpperCase()} ${amount} USDC`;
+    const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+    window.location.href = url;
+  };
+
   const handleSubmitOrder = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       alert('Please enter a valid amount');
@@ -223,7 +247,7 @@ export default function OTCPage() {
               You need a CONVEXO PASSPORT to access Treasury services.
             </p>
             <a
-              href="/get-verified/zk-verification"
+              href="/digital-id/humanity/verify"
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
             >
               Get Verified with ZKPassport
@@ -549,6 +573,54 @@ export default function OTCPage() {
               </>
             )}
           </button>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                Or send order directly via
+              </span>
+            </div>
+          </div>
+
+          {/* Share via Messaging Apps */}
+          <div className="grid grid-cols-3 gap-4">
+            <button
+              onClick={sendViaWhatsApp}
+              disabled={!amount || parseFloat(amount) <= 0}
+              className="flex flex-col items-center justify-center p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-500 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Send order via WhatsApp"
+            >
+              <DevicePhoneMobileIcon className="h-8 w-8 text-green-600 dark:text-green-400 mb-2" />
+              <span className="text-sm font-semibold text-green-700 dark:text-green-300">WhatsApp</span>
+              <span className="text-xs text-green-600 dark:text-green-400 mt-1">+57 317 512 8062</span>
+            </button>
+
+            <button
+              onClick={sendViaTelegram}
+              disabled={!amount || parseFloat(amount) <= 0}
+              className="flex flex-col items-center justify-center p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Send order via Telegram"
+            >
+              <ChatBubbleLeftRightIcon className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
+              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Telegram</span>
+              <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">@zktps</span>
+            </button>
+
+            <button
+              onClick={sendViaEmail}
+              disabled={!amount || parseFloat(amount) <= 0}
+              className="flex flex-col items-center justify-center p-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Send order via Email"
+            >
+              <EnvelopeIcon className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-2" />
+              <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">Email</span>
+              <span className="text-xs text-purple-600 dark:text-purple-400 mt-1">william@convexo.xyz</span>
+            </button>
+          </div>
         </div>
 
         {/* Information */}

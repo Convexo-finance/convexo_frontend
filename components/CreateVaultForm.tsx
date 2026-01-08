@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI } from '@/lib/contracts/abis';
 
-export function CreateVaultForm() {
+interface CreateVaultFormProps {
+  onSuccess?: () => void;
+}
+
+export function CreateVaultForm({ onSuccess }: CreateVaultFormProps = {}) {
   const { address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
@@ -28,6 +32,12 @@ export function CreateVaultForm() {
     useWaitForTransactionReceipt({
       hash,
     });
+
+  useEffect(() => {
+    if (isSuccess && onSuccess) {
+      onSuccess();
+    }
+  }, [isSuccess, onSuccess]);
 
   const handleCreateVault = () => {
     if (

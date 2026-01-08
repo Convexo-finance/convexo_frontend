@@ -28,7 +28,7 @@ export default function HumanityPage() {
       name: 'ZK Passport',
       description: 'Privacy-preserving verification using zero-knowledge proofs from your passport',
       icon: FingerPrintIcon,
-      href: '/get-verified/zk-verification',
+      href: '/digital-id/humanity/verify',
       gradient: 'from-emerald-600 to-teal-600',
       features: [
         'Privacy-first: No personal data stored',
@@ -36,22 +36,6 @@ export default function HumanityPage() {
         'Passport NFC chip scan',
         'Age verification (18+)',
       ],
-      recommended: true,
-    },
-    {
-      id: 'veriff',
-      name: 'Veriff KYC',
-      description: 'Traditional identity verification with document upload and liveness check',
-      icon: GlobeAltIcon,
-      href: '/get-verified/amlcft',
-      gradient: 'from-blue-600 to-cyan-600',
-      features: [
-        'ID document upload',
-        'Liveness check',
-        'Address verification',
-        'AML/CFT compliant',
-      ],
-      recommended: false,
     },
   ];
 
@@ -157,26 +141,18 @@ export default function HumanityPage() {
             )}
           </div>
 
-          {/* Verification Methods */}
+          {/* Verification Method */}
           {!isVerified && (
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-white">Choose Verification Method</h2>
+              <h2 className="text-xl font-semibold text-white">Verification Method</h2>
               <p className="text-gray-400">
-                Both methods grant the same Tier 1 permissions. Choose based on your preference for privacy or convenience.
+                Use your passport's NFC chip to verify your identity with zero-knowledge proofs. Your personal data stays private.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="max-w-2xl">
                 {verificationMethods.map((method) => (
                   <Link key={method.id} href={method.href}>
-                    <div className={`card p-6 h-full cursor-pointer transition-all duration-300 hover:border-purple-500/50 relative ${
-                      method.recommended ? 'ring-2 ring-purple-500/30' : ''
-                    }`}>
-                      {method.recommended && (
-                        <div className="absolute -top-3 left-4 px-3 py-1 bg-purple-600 text-white text-xs font-semibold rounded-full">
-                          Recommended
-                        </div>
-                      )}
-                      
+                    <div className="card p-6 cursor-pointer transition-all duration-300 hover:border-purple-500/50">
                       <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${method.gradient} flex items-center justify-center mb-4`}>
                         <method.icon className="w-7 h-7 text-white" />
                       </div>
@@ -207,11 +183,14 @@ export default function HumanityPage() {
           {/* Benefits */}
           <div className="card">
             <h3 className="text-lg font-semibold text-white mb-4">Tier 1 Benefits</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
+                { title: 'OTC Orders', desc: 'Create and execute over-the-counter trades' },
+                { title: 'Token Swaps', desc: 'Swap between USDC, ECOP, and other tokens' },
+                { title: 'COP Monetization', desc: 'Convert COP to ECOP and vice versa' },
+                { title: 'LP Interactions', desc: 'Exchange local stables with USDC or EURC' },
+                { title: 'Tokenized Loans', desc: 'Invest in available tokenized bond vaults' },
                 { title: 'Treasury Access', desc: 'Create and manage multi-sig treasuries' },
-                { title: 'Vault Investments', desc: 'Invest in tokenized bond vaults' },
-                { title: 'Payment Features', desc: 'Send and receive USDC payments' },
               ].map((benefit) => (
                 <div key={benefit.title} className="p-4 bg-gray-800/50 rounded-xl">
                   <p className="font-medium text-white mb-1">{benefit.title}</p>

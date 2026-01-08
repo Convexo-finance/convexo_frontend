@@ -1,7 +1,8 @@
 'use client';
 
-import { useAccount, useBalance, useChainId, useReadContract } from 'wagmi';
-import { formatUnits } from 'viem';
+import { useState, useEffect } from 'react';
+import { useAccount, useBalance, useChainId, useReadContract, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { formatUnits, parseUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
 import { getContractsForChain } from '@/lib/contracts/addresses';
@@ -11,13 +12,34 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   ArrowsRightLeftIcon,
+  XMarkIcon,
+  ClipboardDocumentIcon,
+  CheckIcon,
+  QrCodeIcon,
+  CameraIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import QRCode from 'qrcode';
 
 export default function WalletPage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
+
+  // Modal states
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Send form states
+  const [sendTo, setSendTo] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [selectedToken, setSelectedToken] = useState<'ETH' | 'USDC' | 'ECOP'>('USDC');
+
+  // Price states
+  const [ethPrice, setEthPrice] = useState<number | null>(null);
+  const [copRate, setCopRate] = useState<number | null>(null);
 
   const { data: ethBalance, isLoading: isLoadingEth } = useBalance({ address });
   
@@ -80,6 +102,71 @@ export default function WalletPage() {
     });
   };
 
+  // Fetch prices on mount
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        // Fetch ETH price from CoinGecko
+        const ethRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+        const ethData = await ethRes.json();
+        setEthPrice(ethData.ethereum.usd);
+
+        // Fetch USD/COP rate from exchange rate API
+        const copRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const copData = await copRes.json();
+        setCopRate(copData.rates.COP);
+      } catch (error) {
+        console.error('Error fetching prices:', error);
+      }
+    };
+
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  // Generate QR code when showing receive modal
+  useEffect(() => {
+    if (address && showReceiveModal) {
+      QRCode.toDataURL(address, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      }).then(setQrCodeUrl);
+    }
+  }, [address, showReceiveModal]);
+
+  const copyAddress = async () => {
+    if (address) {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const calculateEthUsdValue = () => {
+    if (!ethBalance?.value || !ethPrice) return '0.00';
+    const ethAmount = parseFloat(formatUnits(ethBalance.value, 18));
+    return (ethAmount * ethPrice).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const calculateEcopUsdValue = () => {
+    if (!ecopBalance || !copRate) return '0.00';
+    const ecopAmount = parseFloat(formatUnits(ecopBalance as bigint, 18));
+    // ECOP is pegged 1:1 with COP, so convert COP to USD
+    const usdValue = ecopAmount / copRate;
+    return usdValue.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   if (!isConnected) {
     return (
       <DashboardLayout>
@@ -105,11 +192,17 @@ export default function WalletPage() {
               <p className="text-gray-400">View and manage your token balances</p>
             </div>
             <div className="flex gap-3">
-              <button className="btn-secondary flex items-center gap-2">
+              <button
+                onClick={() => setShowReceiveModal(true)}
+                className="btn-secondary flex items-center gap-2"
+              >
                 <ArrowDownIcon className="w-4 h-4" />
                 Receive
               </button>
-              <button className="btn-primary flex items-center gap-2">
+              <button
+                onClick={() => setShowSendModal(true)}
+                className="btn-primary flex items-center gap-2"
+              >
                 <ArrowUpIcon className="w-4 h-4" />
                 Send
               </button>
@@ -163,6 +256,16 @@ export default function WalletPage() {
                           ≈ ${parseFloat(formatUnits(token.balance, token.decimals)).toLocaleString()} USD
                         </p>
                       )}
+                      {token.symbol === 'ETH' && ethPrice && token.balance && (
+                        <p className="text-sm text-emerald-400">
+                          ≈ ${calculateEthUsdValue()} USD
+                        </p>
+                      )}
+                      {token.symbol === 'ECOP' && copRate && token.balance && (
+                        <p className="text-sm text-emerald-400">
+                          ≈ ${calculateEcopUsdValue()} USD
+                        </p>
+                      )}
                     </>
                   )}
                 </div>
@@ -197,6 +300,150 @@ export default function WalletPage() {
           </div>
         </div>
       </div>
+
+      {/* Receive Modal */}
+      {showReceiveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Receive Funds</h2>
+              <button
+                onClick={() => setShowReceiveModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            {qrCodeUrl && (
+              <div className="flex justify-center mb-6">
+                <div className="p-4 bg-white rounded-xl">
+                  <img src={qrCodeUrl} alt="Wallet QR Code" className="w-64 h-64" />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Your Wallet Address</label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-3 bg-gray-800 rounded-lg border border-gray-700">
+                    <p className="text-white text-sm font-mono break-all">{address}</p>
+                  </div>
+                  <button
+                    onClick={copyAddress}
+                    className="btn-secondary p-3"
+                  >
+                    {copied ? (
+                      <CheckIcon className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <ClipboardDocumentIcon className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                {copied && (
+                  <p className="text-sm text-emerald-400 mt-2">Address copied to clipboard!</p>
+                )}
+              </div>
+
+              <div className="p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+                <p className="text-sm text-gray-300">
+                  Send only supported tokens (ETH, USDC, ECOP) to this address. Sending other tokens may result in permanent loss.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Send Funds</h2>
+              <button
+                onClick={() => setShowSendModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Select Token</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['ETH', 'USDC', 'ECOP'].map((token) => (
+                    <button
+                      key={token}
+                      onClick={() => setSelectedToken(token as 'ETH' | 'USDC' | 'ECOP')}
+                      className={`p-3 rounded-lg border-2 transition-colors ${
+                        selectedToken === token
+                          ? 'border-purple-500 bg-purple-900/30'
+                          : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                      }`}
+                    >
+                      <p className="font-medium text-white">{token}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Recipient Address</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={sendTo}
+                    onChange={(e) => setSendTo(e.target.value)}
+                    placeholder="0x..."
+                    className="flex-1 p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      // QR Scanner functionality would go here
+                      alert('QR Scanner feature coming soon! For now, paste the address manually.');
+                    }}
+                    className="btn-secondary p-3"
+                    title="Scan QR Code"
+                  >
+                    <CameraIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Amount</label>
+                <input
+                  type="number"
+                  value={sendAmount}
+                  onChange={(e) => setSendAmount(e.target.value)}
+                  placeholder="0.00"
+                  step="0.000001"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+                <p className="text-sm text-amber-400">
+                  This is a basic send interface. For the full implementation, you'll need to integrate with the token contracts and handle transaction signing.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  alert('Send functionality will be implemented with proper contract integration.');
+                }}
+                disabled={!sendTo || !sendAmount}
+                className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Send {selectedToken}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

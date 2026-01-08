@@ -99,10 +99,10 @@ const navigationSections: NavSection[] = [
         name: 'Funding',
         href: '/funding',
         icon: BanknotesIcon,
-        requiredTier: 3, // Vault Creator only
+        requiredTier: 1, // Accessible to Passport holders (Tier 1+)
         subItems: [
           { name: 'E-Loans', href: '/funding/e-loans', icon: BanknotesIcon, description: 'Create loan vaults', requiredTier: 3 },
-          { name: 'E-Contracts', href: '/funding/e-contracts', icon: DocumentTextIcon, description: 'Loan agreements', requiredTier: 3 },
+          { name: 'E-Contracts', href: '/funding/e-contracts', icon: DocumentTextIcon, description: 'Sign & view contracts', requiredTier: 1 },
         ],
       },
       {
@@ -391,39 +391,51 @@ export function Sidebar() {
                   <div key={item.name}>
                     {hasSubItems ? (
                       <>
-                        <button
-                          onClick={() => !isLocked && toggleExpand(item.name)}
-                          disabled={isLocked}
-                          className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        <div
+                          className={`flex items-center gap-3 rounded-xl transition-all duration-200 ${
                             isLocked
                               ? 'text-gray-600 cursor-not-allowed opacity-50'
                               : isActive
                               ? 'bg-purple-500/10 text-white border-l-2 border-purple-500'
                               : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                           }`}
-                          title={isLocked ? `Requires Tier ${item.requiredTier} access` : ''}
                         >
-                          <div className="flex items-center gap-3">
-                            {isLocked ? (
+                          {isLocked ? (
+                            <div className="flex-1 flex items-center gap-3 px-4 py-3">
                               <LockClosedIcon className="w-5 h-5" />
-                            ) : (
-                              <item.icon className="w-5 h-5" />
-                            )}
-                            <span className="font-medium">{item.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {item.badge && (
-                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
-                                {item.badge}
-                              </span>
-                            )}
-                            {isExpanded ? (
-                              <ChevronDownIcon className="w-4 h-4" />
-                            ) : (
-                              <ChevronRightIcon className="w-4 h-4" />
-                            )}
-                          </div>
-                        </button>
+                              <span className="font-medium">{item.name}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <Link
+                                href={item.href}
+                                className="flex-1 flex items-center gap-3 px-4 py-3"
+                                title={item.name}
+                              >
+                                <item.icon className="w-5 h-5" />
+                                <span className="font-medium">{item.name}</span>
+                              </Link>
+                              <button
+                                onClick={() => toggleExpand(item.name)}
+                                className="px-3 py-3 hover:bg-gray-700/30 rounded-r-xl transition-colors"
+                                title={isExpanded ? 'Collapse' : 'Expand'}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {item.badge && (
+                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
+                                      {item.badge}
+                                    </span>
+                                  )}
+                                  {isExpanded ? (
+                                    <ChevronDownIcon className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRightIcon className="w-4 h-4" />
+                                  )}
+                                </div>
+                              </button>
+                            </>
+                          )}
+                        </div>
                         
                         {/* Sub-items with animation */}
                         <div

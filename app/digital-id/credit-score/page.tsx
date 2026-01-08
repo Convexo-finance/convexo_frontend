@@ -14,11 +14,12 @@ import {
   BuildingOfficeIcon,
   CurrencyDollarIcon,
   ChartBarIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 
 export default function CreditScorePage() {
   const { isConnected } = useAccount();
-  const { hasVaultsNFT } = useNFTBalance();
+  const { hasVaultsNFT, hasAnyLPNFT, canRequestCreditScore } = useNFTBalance();
 
   const isVerified = hasVaultsNFT;
 
@@ -59,6 +60,27 @@ export default function CreditScorePage() {
             <SparklesIcon className="w-16 h-16 mx-auto mb-4 text-gray-500" />
             <h2 className="text-2xl font-bold text-white mb-2">Connect Your Wallet</h2>
             <p className="text-gray-400">Connect your wallet to view credit scoring</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!canRequestCreditScore) {
+    return (
+      <DashboardLayout>
+        <div className="p-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="card p-8 text-center">
+              <LockClosedIcon className="w-16 h-16 mx-auto mb-4 text-gray-500" />
+              <h2 className="text-2xl font-bold text-white mb-2">Tier 2 Required</h2>
+              <p className="text-gray-400 mb-6">
+                You need at least a Limited Partner NFT (Tier 2) to request credit score evaluation.
+              </p>
+              <Link href="/digital-id/limited-partner">
+                <button className="btn-primary">Get LP Verification</button>
+              </Link>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -180,7 +202,7 @@ export default function CreditScorePage() {
                     Upload your financial documents for AI-powered credit scoring.
                   </p>
                 </div>
-                <Link href="/get-verified/ai-credit-check">
+                <Link href="/digital-id/credit-score/verify">
                   <button className="btn-primary flex items-center gap-2">
                     <SparklesIcon className="w-5 h-5" />
                     Start Evaluation
