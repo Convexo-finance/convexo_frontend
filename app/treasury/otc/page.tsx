@@ -121,7 +121,7 @@ export default function OTCPage() {
 
   const sendViaWhatsApp = () => {
     const message = generateOrderMessage();
-    const phoneNumber = '573175128062'; // Convexo WhatsApp number
+    const phoneNumber = '+573186766035'; // Convexo WhatsApp number
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -196,7 +196,7 @@ export default function OTCPage() {
           `Your order has been sent to:\n` +
           `📧 Email: william@convexo.xyz\n` +
           `💬 Telegram: @convexoprotocol\n` +
-          `📱 WhatsApp: +57 317 5128062\n\n` +
+          `📱 WhatsApp: +57 318 6766035\n\n` +
           `Our team will review and confirm your order within 1-2 hours during business hours.`
         );
         
