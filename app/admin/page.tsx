@@ -17,12 +17,14 @@ import {
 // Import admin components
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { UserManagement } from '@/components/admin/UserManagement';
-import { VerificationSystems } from '@/components/admin/VerificationSystems';
+import { VeriffVerificationSystem } from '@/components/admin/VeriffVerificationSystem';
+import { SumsubVerificationSystem } from '@/components/admin/SumsubVerificationSystem';
 import { VaultsManagement } from '@/components/admin/VaultsManagement';
 import { TreasuriesView } from '@/components/admin/TreasuriesView';
 import { ContractsView } from '@/components/admin/ContractsView';
 
 type TabType = 'dashboard' | 'users' | 'verification' | 'vaults' | 'treasuries' | 'contracts';
+type VerificationTabType = 'veriff' | 'sumsub';
 
 const tabs = [
   { id: 'dashboard' as TabType, name: 'Dashboard', icon: ChartBarIcon },
@@ -40,6 +42,7 @@ export default function AdminPage() {
   const isAdmin = address?.toLowerCase() === contracts?.ADMIN_ADDRESS.toLowerCase();
 
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [verificationTab, setVerificationTab] = useState<VerificationTabType>('veriff');
 
   if (!isConnected) {
     return (
@@ -148,7 +151,41 @@ export default function AdminPage() {
           <div className="min-h-[600px]">
             {activeTab === 'dashboard' && <AdminDashboard />}
             {activeTab === 'users' && <UserManagement />}
-            {activeTab === 'verification' && <VerificationSystems />}
+            {activeTab === 'verification' && (
+              <div className="space-y-6">
+                {/* Verification Sub-tabs */}
+                <div className="border-b border-gray-800">
+                  <nav className="flex space-x-1">
+                    <button
+                      onClick={() => setVerificationTab('veriff')}
+                      className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                        verificationTab === 'veriff'
+                          ? 'border-blue-500 text-blue-400'
+                          : 'border-transparent text-gray-400 hover:text-white hover:border-gray-700'
+                      }`}
+                    >
+                      Veriff KYC (Individuals)
+                    </button>
+                    <button
+                      onClick={() => setVerificationTab('sumsub')}
+                      className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                        verificationTab === 'sumsub'
+                          ? 'border-cyan-500 text-cyan-400'
+                          : 'border-transparent text-gray-400 hover:text-white hover:border-gray-700'
+                      }`}
+                    >
+                      Sumsub KYB (Business)
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Verification Content */}
+                <div className="min-h-[500px]">
+                  {verificationTab === 'veriff' && <VeriffVerificationSystem />}
+                  {verificationTab === 'sumsub' && <SumsubVerificationSystem />}
+                </div>
+              </div>
+            )}
             {activeTab === 'vaults' && <VaultsManagement />}
             {activeTab === 'treasuries' && <TreasuriesView />}
             {activeTab === 'contracts' && <ContractsView />}

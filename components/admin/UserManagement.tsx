@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useChainId, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { getContractsForChain, getBlockExplorerUrl, IPFS } from '@/lib/contracts/addresses';
+import { getContractsForChain, getBlockExplorerUrl, IPFS, getIPFSUrl } from '@/lib/contracts/addresses';
 import {
   ConvexoPassportABI,
   LPIndividualsABI,
@@ -28,6 +29,22 @@ export function UserManagement() {
   const [recipient, setRecipient] = useState('');
   const [uri, setUri] = useState('');
   const [lookupAddress, setLookupAddress] = useState('');
+  
+  // LP Individuals fields
+  const [verificationId, setVerificationId] = useState('');
+  
+  // LP Business fields
+  const [companyName, setCompanyName] = useState('');
+  const [registrationNumber, setRegistrationNumber] = useState('');
+  const [jurisdiction, setJurisdiction] = useState('');
+  const [businessType, setBusinessType] = useState<0 | 1 | 2>(0); // 0: LLC, 1: Corporation, 2: Partnership
+  const [sumsubApplicantId, setSumsubApplicantId] = useState('');
+
+  // Ecreditscoring fields
+  const [creditScore, setCreditScore] = useState('');
+  const [creditTier, setCreditTier] = useState<0 | 1 | 2 | 3>(0); // 0: Poor, 1: Fair, 2: Good, 3: Excellent
+  const [maxLoanAmount, setMaxLoanAmount] = useState('');
+  const [referenceId, setReferenceId] = useState('');
 
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -48,6 +65,7 @@ export function UserManagement() {
       description: 'Tier 1 - ZKPassport verified',
       icon: CheckBadgeIcon,
       color: 'emerald',
+      ipfsHash: IPFS.CONVEXO_PASSPORT_HASH,
       contractAddress: contracts?.CONVEXO_PASSPORT,
       abi: ConvexoPassportABI,
       defaultUri: IPFS.CONVEXO_PASSPORT_URI,
@@ -58,6 +76,7 @@ export function UserManagement() {
       description: 'Tier 2 - Veriff KYC',
       icon: UserGroupIcon,
       color: 'blue',
+      ipfsHash: IPFS.LP_INDIVIDUALS_HASH,
       contractAddress: contracts?.LP_INDIVIDUALS,
       abi: LPIndividualsABI,
       defaultUri: IPFS.LP_INDIVIDUALS_URI,
@@ -68,6 +87,7 @@ export function UserManagement() {
       description: 'Tier 2 - Sumsub KYB',
       icon: BuildingOffice2Icon,
       color: 'cyan',
+      ipfsHash: IPFS.LP_BUSINESS_HASH,
       contractAddress: contracts?.LP_BUSINESS,
       abi: LPBusinessABI,
       defaultUri: IPFS.LP_BUSINESS_URI,
@@ -78,6 +98,7 @@ export function UserManagement() {
       description: 'Tier 3 - AI Credit Score',
       icon: SparklesIcon,
       color: 'purple',
+      ipfsHash: IPFS.ECREDITSCORING_HASH,
       contractAddress: contracts?.ECREDITSCORING,
       abi: EcreditscoringABI,
       defaultUri: IPFS.ECREDITSCORING_URI,
@@ -92,11 +113,54 @@ export function UserManagement() {
       return;
     }
 
+    let args: any[] = [];
+
+    if (selectedNFT === 'passport') {
+      // Convexo_Passport: safeMint(address to, string uri)
+      args = [recipient as `0x${string}`, uri || selectedNFTConfig.defaultUri];
+    } else if (selectedNFT === 'lp_individuals') {
+      // LP_Individuals: safeMint(address to, string verificationId, string uri)
+      if (!verificationId) {
+        alert('Please fill in verification ID for LP Individuals');
+        return;
+      }
+      args = [recipient as `0x${string}`, verificationId, uri || selectedNFTConfig.defaultUri];
+    } else if (selectedNFT === 'lp_business') {
+      // LP_Business: safeMint(address to, string companyName, string registrationNumber, string jurisdiction, uint8 businessType, string sumsubApplicantId, string uri)
+      if (!companyName || !registrationNumber || !jurisdiction || !sumsubApplicantId) {
+        alert('Please fill in all LP Business fields');
+        return;
+      }
+      args = [
+        recipient as `0x${string}`,
+        companyName,
+        registrationNumber,
+        jurisdiction,
+        businessType,
+        sumsubApplicantId,
+        uri || selectedNFTConfig.defaultUri,
+      ];
+    } else if (selectedNFT === 'ecreditscoring') {
+      // Ecreditscoring: safeMint(address to, uint256 score, uint8 tier, uint256 maxLoanAmount, string referenceId, string uri)
+      if (!creditScore || !maxLoanAmount || !referenceId) {
+        alert('Please fill in all Ecreditscoring fields (score, tier, max loan amount, reference ID)');
+        return;
+      }
+      args = [
+        recipient as `0x${string}`,
+        BigInt(creditScore),
+        creditTier,
+        BigInt(maxLoanAmount),
+        referenceId,
+        uri || selectedNFTConfig.defaultUri,
+      ];
+    }
+
     writeContract({
       address: selectedNFTConfig.contractAddress as `0x${string}`,
       abi: selectedNFTConfig.abi,
       functionName: 'safeMint',
-      args: [recipient as `0x${string}`, uri || selectedNFTConfig.defaultUri],
+      args,
     });
   };
 
@@ -162,7 +226,7 @@ export function UserManagement() {
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Mint NFT</h3>
 
-        {/* NFT Type Selection */}
+        {/* NFT Type Selection with Images */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {nftTypes.map((nft) => {
             const Icon = nft.icon;
@@ -182,12 +246,24 @@ export function UserManagement() {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br from-${nft.color}-600 to-${nft.color}-700 flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+                  {/* NFT Image from IPFS */}
+                  <div className="w-16 h-16 rounded-lg bg-gray-700 flex-shrink-0 overflow-hidden border border-gray-600">
+                    <Image
+                      src={getIPFSUrl(nft.ipfsHash)}
+                      alt={nft.name}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   </div>
                   <div className="text-left">
                     <p className="font-medium text-white">{nft.name}</p>
                     <p className="text-xs text-gray-400">{nft.description}</p>
+                    <p className="text-xs text-gray-500 mt-1 font-mono">{nft.ipfsHash.substring(0, 16)}...</p>
                   </div>
                 </div>
               </button>
@@ -207,6 +283,133 @@ export function UserManagement() {
               className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             />
           </div>
+
+          {/* LP Individuals Fields */}
+          {selectedNFT === 'lp_individuals' && (
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">Verification ID</label>
+              <input
+                type="text"
+                value={verificationId}
+                onChange={(e) => setVerificationId(e.target.value)}
+                placeholder="Veriff verification ID"
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">The verification ID from Veriff KYC process</p>
+            </div>
+          )}
+
+          {/* LP Business Fields */}
+          {selectedNFT === 'lp_business' && (
+            <>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Company Name</label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Company legal name"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Registration Number</label>
+                <input
+                  type="text"
+                  value={registrationNumber}
+                  onChange={(e) => setRegistrationNumber(e.target.value)}
+                  placeholder="Company registration/tax ID"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Jurisdiction</label>
+                <input
+                  type="text"
+                  value={jurisdiction}
+                  onChange={(e) => setJurisdiction(e.target.value)}
+                  placeholder="Country/State of incorporation"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Business Type</label>
+                <select
+                  value={businessType}
+                  onChange={(e) => setBusinessType(Number(e.target.value) as 0 | 1 | 2)}
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value={0}>LLC</option>
+                  <option value={1}>Corporation</option>
+                  <option value={2}>Partnership</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Sumsub Applicant ID</label>
+                <input
+                  type="text"
+                  value={sumsubApplicantId}
+                  onChange={(e) => setSumsubApplicantId(e.target.value)}
+                  placeholder="Sumsub applicant ID from KYB"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Ecreditscoring Fields */}
+          {selectedNFT === 'ecreditscoring' && (
+            <>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Credit Score (0-999)</label>
+                <input
+                  type="number"
+                  value={creditScore}
+                  onChange={(e) => setCreditScore(e.target.value)}
+                  placeholder="e.g., 750"
+                  min="0"
+                  max="999"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Numerical credit score between 0-999</p>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Credit Tier</label>
+                <select
+                  value={creditTier}
+                  onChange={(e) => setCreditTier(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                >
+                  <option value={0}>Poor (0-400)</option>
+                  <option value={1}>Fair (401-600)</option>
+                  <option value={2}>Good (601-800)</option>
+                  <option value={3}>Excellent (801-999)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Max Loan Amount (Wei)</label>
+                <input
+                  type="number"
+                  value={maxLoanAmount}
+                  onChange={(e) => setMaxLoanAmount(e.target.value)}
+                  placeholder="e.g., 1000000000000000000"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none font-mono text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">Maximum loan amount in Wei (1 ETH = 1e18 Wei)</p>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Reference ID</label>
+                <input
+                  type="text"
+                  value={referenceId}
+                  onChange={(e) => setReferenceId(e.target.value)}
+                  placeholder="Unique reference ID for this credit assessment"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Unique identifier for audit trail</p>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="text-sm text-gray-400 mb-2 block">Token URI (IPFS)</label>

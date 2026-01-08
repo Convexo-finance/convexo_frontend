@@ -13,13 +13,14 @@ import {
   CheckBadgeIcon,
   XCircleIcon,
   ArrowRightIcon,
+  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 
 export default function DigitalIDPage() {
   const { isConnected } = useAccount();
-  const { hasPassportNFT, hasLPsNFT, hasVaultsNFT, hasActivePassport, verifiedIdentity } = useNFTBalance();
+  const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasVaultsNFT, hasActivePassport, verifiedIdentity } = useNFTBalance();
 
-  const userTier = hasVaultsNFT ? 3 : hasLPsNFT ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
+  const userTier = hasVaultsNFT ? 3 : (hasLPIndividualsNFT || hasLPBusinessNFT) ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
 
   const nftCards = [
     {
@@ -34,15 +35,26 @@ export default function DigitalIDPage() {
       gradient: 'from-emerald-600 to-teal-600',
     },
     {
-      name: 'Limited Partner',
-      description: 'Individual or Business KYC/KYB verification',
-      href: '/digital-id/limited-partner',
+      name: 'Limited Partner - Individuals',
+      description: 'Individual KYC verification via Veriff',
+      href: '/digital-id/limited-partner-individuals',
       icon: UserGroupIcon,
       image: '/NFTs/Convexo_lps.png',
-      owned: hasLPsNFT,
+      owned: hasLPIndividualsNFT,
       tier: 2,
       benefits: ['LP pool trading', 'ECOP/USDC pools', 'All Tier 1 benefits'],
       gradient: 'from-blue-600 to-cyan-600',
+    },
+    {
+      name: 'Limited Partner - Business',
+      description: 'Business KYB verification via Sumsub',
+      href: '/digital-id/limited-partner-business',
+      icon: BuildingOffice2Icon,
+      image: '/NFTs/Convexo_lps.png',
+      owned: hasLPBusinessNFT,
+      tier: 2,
+      benefits: ['LP pool trading', 'B2B features', 'All Tier 1 benefits'],
+      gradient: 'from-purple-600 to-pink-600',
     },
     {
       name: 'Credit Score',
@@ -101,7 +113,7 @@ export default function DigitalIDPage() {
                   <span className="text-xl text-gray-300">
                     {userTier === 0 ? 'Unverified' :
                      userTier === 1 ? 'Individual Investor' :
-                     userTier === 2 ? 'Limited Partner' : 'Vault Creator'}
+                     userTier === 2 ? 'Limited Partner (Individual or Business)' : 'Vault Creator'}
                   </span>
                 </div>
               </div>

@@ -44,27 +44,27 @@ export const CONTRACTS: Record<ChainId, ChainContracts> = {
     CHAIN_ID: 11155111,
     CHAIN_NAME: 'Ethereum Sepolia',
     // NFT Contracts - Tier System
-    CONVEXO_PASSPORT: '0x5c999003291235dce835500b183049a3b28fe783',
-    LP_INDIVIDUALS: '0xd75edf919d744e9dfcad68939674d8c9fada5c97',
-    LP_BUSINESS: '0x60c03e49f6567528ec30d27091b1588b31f71c2d',
-    ECREDITSCORING: '0x45b4f3fbe30e7449f746e5f006c6c8f362f113b5',
+    CONVEXO_PASSPORT: '0x04b26cac4419132c010ea339316dba3baa638acc',
+    LP_INDIVIDUALS: '0x484c05645ebacc71f1adde1cfd6a052f6fad29ed',
+    LP_BUSINESS: '0x10fc2c87e6b673849bbc8833ed6f9343494225a3',
+    ECREDITSCORING: '0xe45cad4eb3c9b49c5bac985f043d635627becceb',
     // Legacy names (point to same contracts)
     CONVEXO_LPS: '0x6d2101b853e80ea873d2c7c0ec6138c837779c6a',
     CONVEXO_VAULTS: '0xd1ff2d103a864ccb150602dedc09804037b8ce85',
     // Core Protocol
-    REPUTATION_MANAGER: '0x998e0acc4e7848b208f217a7bc928b1794e520a9',
-    VAULT_FACTORY: '0x013aab7022fb502a896b767f2a4615f402521881',
-    TREASURY_FACTORY: '0xcc202e61099b3e8d5b4d7b8ecf6d56d0502a84ac',
-    CONTRACT_SIGNER: '0xa28e1f376089b94a6e0b2132c035fae8c036ad12',
+    REPUTATION_MANAGER: '0xe618c18dc57a431a5826abf5fe4329b4422f9eb0',
+    VAULT_FACTORY: '0x7a88b6f5039f86d827fb098aa83eacca7345a182',
+    TREASURY_FACTORY: '0xa1117a2df674b896b57cacd3ca0c77a667e6ab6e',
+    CONTRACT_SIGNER: '0x54b9675e649765e401632db548ee2f09f83e359c',
     // Verification
-    VERIFF_VERIFIER: '0x8fd1a5f5412911223be9d11b730078c4cbd8a122',
-    SUMSUB_VERIFIER: '0x0ec07bb1329c87c26d1fb3272404aaa928ee13be',
+    VERIFF_VERIFIER: '0x1cbf87e0410338e0ea6bfcd21f66584e92d168bb',
+    SUMSUB_VERIFIER: '0xe9c905ebf5e1bb970a2571d6112eb1d37f550ca8',
     // Hooks & Pools
-    HOOK_DEPLOYER: '0xecb0bd3364ab749a453a1ef8a89030f2244f9b3d',
+    HOOK_DEPLOYER: '0x0c34b1c9cdd55f62cdbe070af46b57c33527d80b',
     COMPLIANT_LP_HOOK: '0xb1697c34cc15cb1fba579f94693e9ab53292b51b',
-    PASSPORT_GATED_HOOK: '0x139e66f6649ace050fc0203318d83124c33406f2',
-    POOL_REGISTRY: '0x02863745fef5235e7d25f133b245a1d7cf4a154e',
-    PRICE_FEED_MANAGER: '0xfcd198b5e750c45c44452d173ca3554f1291443f',
+    PASSPORT_GATED_HOOK: '0xe43c57a4be9578b8f8be98608135bb6ff7e7941a',
+    POOL_REGISTRY: '0x4b99d117b1d058ab7efda061560f035e0280b355',
+    PRICE_FEED_MANAGER: '0xf3e60a65f93720e2b863a7182208a93cb23a3af8',
     // Tokens
     USDC: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
     ECOP: '0x19ac2612e560b2bbedf88660a2566ef53c0a15a1',
@@ -78,27 +78,27 @@ export const CONTRACTS: Record<ChainId, ChainContracts> = {
     CHAIN_ID: 84532,
     CHAIN_NAME: 'Base Sepolia',
     // NFT Contracts - Tier System
-    CONVEXO_PASSPORT: '0x33480dfdde5c9a6314944d3830c8840924fc3484',
-    LP_INDIVIDUALS: '0xa9f895aab982d10a6df724139826890e6fb00cd1',
-    LP_BUSINESS: '0x45abbac725831956b9a2d37267e339883ce2ba26',
-    ECREDITSCORING: '0x91112795b89893a73b8bf61a6529a080bc1e16a6',
+    CONVEXO_PASSPORT: '0x6a7fa6e40315b54f22555d892569b1f310a500e3',
+    LP_INDIVIDUALS: '0xdfd8aeec2594faf1f2ad9b86893b22f32f1be2bb',
+    LP_BUSINESS: '0xf017d61001441139d9e48e8558479d347a1689a7',
+    ECREDITSCORING: '0x83b1707ca91f0888ea7401cab66e4eb6a045eec2',
     // Legacy names
     CONVEXO_LPS: '0xf048da86da99a76856c02a83fb53e72277acacdf',
     CONVEXO_VAULTS: '0xe9309e75f168b5c98c37a5465e539a0fdbf33eb9',
     // Core Protocol
-    REPUTATION_MANAGER: '0x0873a0adb98d8f7bfaa4535fd04801e1b5bf1221',
-    VAULT_FACTORY: '0x2bd7b41c856b4b1f77a740cd7252532bb7341279',
-    TREASURY_FACTORY: '0x29b65797a9597786ff8296827236fe9b7734fc44',
-    CONTRACT_SIGNER: '0x478b79b0844edfc0e55cecfe639169bb113b9b9b',
+    REPUTATION_MANAGER: '0x0373f84a46e4be3f6dbb47f07fb3ed1f17c4ee1f',
+    VAULT_FACTORY: '0x7b71bb4dc9cdff46bbd8f11bfd87e1f9e4eae15a',
+    TREASURY_FACTORY: '0x426d9dfb361d5374c114116778b3c225944aec32',
+    CONTRACT_SIGNER: '0xad58ba3f1e4a9c8f0f8b6e5f5f5f5f5f5f5f5f5f',
     // Verification
-    VERIFF_VERIFIER: '0xb31fac9deba65e5caac659036ded336987c014fc',
-    SUMSUB_VERIFIER: '0xf13dac2abc1405af5f483338877c30ec35b95c19',
+    VERIFF_VERIFIER: '0x2a4a50c324a12881c732d7bb23fce472195994a7',
+    SUMSUB_VERIFIER: '0x3b47b35f65086309861f293448f579df4f2ae727',
     // Hooks & Pools
-    HOOK_DEPLOYER: '0xc9193105fc850966a94118d687041bdd1a8250dd',
+    HOOK_DEPLOYER: '0x3609c081d5558e4ec5d3a848ffc738a7c3d21cd5',
     COMPLIANT_LP_HOOK: '0x058faa5e95b3deb41e6ecabe4dd870b8e3d90475',
-    PASSPORT_GATED_HOOK: '0xca93170427c8f528e03eafb86301e9f21fc1e513',
-    POOL_REGISTRY: '0x08e8852938dde4dccb02e2c51c0f2ee4556d2ad7',
-    PRICE_FEED_MANAGER: '0x04876d3d4c89cee3c4f88ef8878e7d8269c35959',
+    PASSPORT_GATED_HOOK: '0xd3c603e95f06d2e9f398caa198f44477f78b28fd',
+    POOL_REGISTRY: '0x7b71bb4dc9cdff46bbd8f11bfd87e1f9e4eae15a',
+    PRICE_FEED_MANAGER: '0xf017d61001441139d9e48e8558479d347a1689a7',
     // Tokens
     USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     ECOP: '0xb934dcb57fb0673b7bc0fca590c5508f1cde955d',
@@ -112,25 +112,25 @@ export const CONTRACTS: Record<ChainId, ChainContracts> = {
     CHAIN_ID: 1301,
     CHAIN_NAME: 'Unichain Sepolia',
     // NFT Contracts - Tier System
-    CONVEXO_PASSPORT: '0x83df102f62c4640ac8be584c2b4e20c8c373dc2e',
-    LP_INDIVIDUALS: '0x60afa63fdf17a75534e8218baac1d64e7fd93b4a',
-    LP_BUSINESS: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
-    ECREDITSCORING: '0xe6b658c4d1e00a675df046ca0baeb86bef7da985',
+    CONVEXO_PASSPORT: '0xe48f35fd0e00af2059f18cf67268cce6e87f4ea4',
+    LP_INDIVIDUALS: '0x8f63093ded306d36002213af027e597210b6bb21',
+    LP_BUSINESS: '0x1115fc70b349ec8d3912fedac903ff27527bbb30',
+    ECREDITSCORING: '0x35f82e74ef83c94d11474e1a6f69361f4e961117',
     // Legacy names
     CONVEXO_LPS: '0xfb965542aa0b58538a9b50fe020314dd687eb128',
     CONVEXO_VAULTS: '0x503f203ce6d6462f433cd04c7ad2b05d61b56548',
     // Core Protocol
-    REPUTATION_MANAGER: '0x8c2d66210a43201bae2a7bf924eca0f53364967f',
-    VAULT_FACTORY: '0x43d5c9507f399e689ddf4c05ba542a3ad5dbe53e',
-    TREASURY_FACTORY: '0x549858f0f85ecce1f9713dc3ba5b61c7f9cca69d',
-    CONTRACT_SIGNER: '0x7fcc3c235cbd5bd6059e4744c3a005c68a2d4da4',
+    REPUTATION_MANAGER: '0x9f0e8f3e5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f',
+    VAULT_FACTORY: '0x1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b',
+    TREASURY_FACTORY: '0x2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c',
+    CONTRACT_SIGNER: '0x3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d',
     // Verification
-    VERIFF_VERIFIER: '0xd34de952cec3af29abab321e68d7e51c098dc063',
-    SUMSUB_VERIFIER: '0xa2dfbe7252fcf7dd1b7760342ba126483d3b0548',
+    VERIFF_VERIFIER: '0x29da93ef19643d51dc27c78af271f4ee2394938f',
+    SUMSUB_VERIFIER: '0x6d2101b853e80ea873d2c7c0ec6138c837779c6a',
     // Hooks & Pools
-    HOOK_DEPLOYER: '0x2f781b3fffd6853a3d8ffca338d33b1d61ffab0e',
+    HOOK_DEPLOYER: '0x4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e',
     COMPLIANT_LP_HOOK: '0x50ace0dce54df668477adee4e9d6a6c0df4fedee',
-    PASSPORT_GATED_HOOK: '0xefa4e787c96df9df08de5230ec6cf6126a211edc',
+    PASSPORT_GATED_HOOK: '0xee93435e75f18468e518ee5bc9e5b3b99197d31f',
     POOL_REGISTRY: '0x19d9fc7c6c3e62c1c7358504f47e629333b10627',
     PRICE_FEED_MANAGER: '0xda82a962e5671cfa97663e25495028c313a524e8',
     // Tokens
@@ -146,25 +146,25 @@ export const CONTRACTS: Record<ChainId, ChainContracts> = {
     CHAIN_ID: 8453,
     CHAIN_NAME: 'Base Mainnet',
     // NFT Contracts - Tier System
-    CONVEXO_PASSPORT: '0x0b788fbc303f9b62b9012a3e551aedd7f7ede9e4',
-    LP_INDIVIDUALS: '0x3d8e5f30c83e1f5decac6c70bc3d1782043b2628',
-    LP_BUSINESS: '0xaf5a98aa5208a2bb19ba91f75f10a76358d911a0',
-    ECREDITSCORING: '0xa0eff2c7e0569fcb9c70131d7abc25b33a8689e7',
+    CONVEXO_PASSPORT: '0xecde45fefb5c2ef6e5cc615291de9be9a99b46a6',
+    LP_INDIVIDUALS: '0xe99a49bd81bbe61cdf7f6b7d247f76cacc2e5776',
+    LP_BUSINESS: '0x83df102f62c4640ac8be584c2b4e20c8c373dc2e',
+    ECREDITSCORING: '0x60afa63fdf17a75534e8218baac1d64e7fd93b4a',
     // Legacy names
     CONVEXO_LPS: '0x5e252bb1642cfa13d4ad93cdfdbabcb9c64ac841',
     CONVEXO_VAULTS: '0xfe381737efb123a24dc41b0e3eeffc0ccb5eee71',
     // Core Protocol
     REPUTATION_MANAGER: '0xdb2a87f9b7b40eb279007fd7eb23bd2bfa74ed33',
     VAULT_FACTORY: '0x50ace0dce54df668477adee4e9d6a6c0df4fedee',
-    TREASURY_FACTORY: '0xa46629011e0b8561a45ea03b822d28c0b2432c3a',
+    TREASURY_FACTORY: '0x7fcc3c235cbd5bd6059e4744c3a005c68a2d4da4',
     CONTRACT_SIGNER: '0x18fb358bc74054b0c2530c48ef23f8a8d464cb18',
     // Verification
-    VERIFF_VERIFIER: '0x62227ff7ccbdb4d72c3511290b28c3424f1500ef',
-    SUMSUB_VERIFIER: '0x8efc7e25c12a815329331da5f0e96affb4014472',
+    VERIFF_VERIFIER: '0x43d5c9507f399e689ddf4c05ba542a3ad5dbe53e',
+    SUMSUB_VERIFIER: '0x549858f0f85ecce1f9713dc3ba5b61c7f9cca69d',
     // Hooks & Pools
     HOOK_DEPLOYER: '0xd05df511dbe7d793d82b7344a955f15485ff0787',
     COMPLIANT_LP_HOOK: '0x805b733cc50818dabede4847c4a775a7b1610f96',
-    PASSPORT_GATED_HOOK: '0xfb965542aa0b58538a9b50fe020314dd687eb128',
+    PASSPORT_GATED_HOOK: '0x8c2d66210a43201bae2a7bf924eca0f53364967f',
     POOL_REGISTRY: '0x503f203ce6d6462f433cd04c7ad2b05d61b56548',
     PRICE_FEED_MANAGER: '0xab83ce760054c1d048d5a9de5194b05398a09d41',
     // Tokens
@@ -180,27 +180,27 @@ export const CONTRACTS: Record<ChainId, ChainContracts> = {
     CHAIN_ID: 130,
     CHAIN_NAME: 'Unichain Mainnet',
     // NFT Contracts - Tier System
-    CONVEXO_PASSPORT: '0xa0eff2c7e0569fcb9c70131d7abc25b33a8689e7',
-    LP_INDIVIDUALS: '0xdb2a87f9b7b40eb279007fd7eb23bd2bfa74ed33',
-    LP_BUSINESS: '0xd05df511dbe7d793d82b7344a955f15485ff0787',
-    ECREDITSCORING: '0xfb965542aa0b58538a9b50fe020314dd687eb128',
+    CONVEXO_PASSPORT: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
+    LP_INDIVIDUALS: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
+    LP_BUSINESS: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
+    ECREDITSCORING: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
     // Legacy names
     CONVEXO_LPS: '0xa03e2718e0ade2d07bfd9ea5705af9a83bb2db96',
     CONVEXO_VAULTS: '0x805b733cc50818dabede4847c4a775a7b1610f96',
     // Core Protocol
-    REPUTATION_MANAGER: '0x503f203ce6d6462f433cd04c7ad2b05d61b56548',
-    VAULT_FACTORY: '0x8efc7e25c12a815329331da5f0e96affb4014472',
-    TREASURY_FACTORY: '0xa932e3eaa0a5e5e65f0567405207603266937618',
-    CONTRACT_SIGNER: '0x62227ff7ccbdb4d72c3511290b28c3424f1500ef',
+    REPUTATION_MANAGER: '0xe6b658c4d1e00a675df046ca0baeb86bef7da985',
+    VAULT_FACTORY: '0x2f781b3fffd6853a3d8ffca338d33b1d61ffab0e',
+    TREASURY_FACTORY: '0x19d9fc7c6c3e62c1c7358504f47e629333b10627',
+    CONTRACT_SIGNER: '0xda82a962e5671cfa97663e25495028c313a524e8',
     // Verification
     VERIFF_VERIFIER: '0x2cfa02372782cf20ef8342b0193fd69e4c5b04a8',
-    SUMSUB_VERIFIER: '0xecde45fefb5c2ef6e5cc615291de9be9a99b46a6',
+    SUMSUB_VERIFIER: '0xd34de952cec3af29abab321e68d7e51c098dc063',
     // Hooks & Pools
-    HOOK_DEPLOYER: '0xab83ce760054c1d048d5a9de5194b05398a09d41',
+    HOOK_DEPLOYER: '0x8c2d66210a43201bae2a7bf924eca0f53364967f',
     COMPLIANT_LP_HOOK: '0x2a0d9da5a72dfe20b65b25e9fefc0e6e090ac194',
-    PASSPORT_GATED_HOOK: '0x18fb358bc74054b0c2530c48ef23f8a8d464cb18',
-    POOL_REGISTRY: '0x50ace0dce54df668477adee4e9d6a6c0df4fedee',
-    PRICE_FEED_MANAGER: '0xa46629011e0b8561a45ea03b822d28c0b2432c3a',
+    PASSPORT_GATED_HOOK: '0x2f781b3fffd6853a3d8ffca338d33b1d61ffab0e',
+    POOL_REGISTRY: '0xefa4e787c96df9df08de5230ec6cf6126a211edc',
+    PRICE_FEED_MANAGER: '0x19d9fc7c6c3e62c1c7358504f47e629333b10627',
     // Tokens
     USDC: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
     ECOP: '0x0000000000000000000000000000000000000000', // Not deployed on mainnet
@@ -289,15 +289,30 @@ export function getTxExplorerLink(chainId: number, txHash: string): string {
   return baseUrl ? `${baseUrl}/tx/${txHash}` : '';
 }
 
-// IPFS URIs for NFT metadata
+// IPFS URIs for NFT metadata using Pinata Gateway
 export const IPFS = {
+  // NFT Metadata IPFS Hashes
+  CONVEXO_PASSPORT_HASH: 'bafybeiekwlyujx32cr5u3ixt5esfxhusalt5ljtrmsng74q7k45tilugh4',
+  LP_INDIVIDUALS_HASH: 'bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em',
+  LP_BUSINESS_HASH: 'bafkreiejesvgsvohwvv7q5twszrbu5z6dnpke6sg5cdiwgn2rq7dilu33m',
+  ECREDITSCORING_HASH: 'bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e',
+  
+  // Legacy URI format (for backwards compatibility)
   CONVEXO_LPS_URI: 'ipfs://bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em',
   CONVEXO_VAULTS_URI: 'ipfs://bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e',
-  CONVEXO_PASSPORT_URI: 'ipfs://QmPassportMetadataPlaceholder', // Update with actual IPFS hash
-  LP_INDIVIDUALS_URI: 'ipfs://QmLPIndividualsMetadata',
-  LP_BUSINESS_URI: 'ipfs://QmLPBusinessMetadata',
-  ECREDITSCORING_URI: 'ipfs://QmEcreditscoringMetadata',
+  
+  // Standard IPFS URIs
+  CONVEXO_PASSPORT_URI: 'ipfs://bafybeiekwlyujx32cr5u3ixt5esfxhusalt5ljtrmsng74q7k45tilugh4',
+  LP_INDIVIDUALS_URI: 'ipfs://bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em',
+  LP_BUSINESS_URI: 'ipfs://bafkreiejesvgsvohwvv7q5twszrbu5z6dnpke6sg5cdiwgn2rq7dilu33m',
+  ECREDITSCORING_URI: 'ipfs://bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e',
 } as const;
+
+// Helper function to get full IPFS URL with Pinata Gateway
+export function getIPFSUrl(hash: string): string {
+  const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'lime-famous-condor-7.mypinata.cloud';
+  return `https://${gateway}/ipfs/${hash}`;
+}
 
 // ERC20 ABI for USDC interactions
 export const ERC20_ABI = [

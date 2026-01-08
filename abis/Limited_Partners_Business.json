@@ -762,6 +762,11 @@
   },
   {
     "type": "error",
+    "name": "AlreadyHoldsNFT",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ERC721IncorrectOwner",
     "inputs": [
       {

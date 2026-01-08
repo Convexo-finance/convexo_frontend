@@ -78,16 +78,17 @@ const navigationSections: NavSection[] = [
     ],
   },
   {
-    title: 'Identity',
+    title: 'NFT Status',
     items: [
       {
         name: 'Digital ID',
         href: '/digital-id',
         icon: IdentificationIcon,
         subItems: [
-          { name: 'Humanity', href: '/digital-id/humanity', icon: ShieldCheckIcon, description: 'ZK Passport / Veriff', requiredTier: 0 },
-          { name: 'Limited Partner', href: '/digital-id/limited-partner', icon: UserGroupIcon, description: 'LP NFT Status', requiredTier: 0 },
-          { name: 'Credit Score', href: '/digital-id/credit-score', icon: SparklesIcon, description: 'Financial & Business', requiredTier: 0 },
+          { name: 'Tier 1: Humanity', href: '/digital-id/humanity', icon: ShieldCheckIcon, description: 'ZK Passport', requiredTier: 0 },
+          { name: 'Tier 2: LP Individuals', href: '/digital-id/limited-partner-individuals', icon: UserGroupIcon, description: 'Individual KYC', requiredTier: 0 },
+          { name: 'Tier 2: LP Business', href: '/digital-id/limited-partner-business', icon: BuildingOfficeIcon, description: 'Business KYB', requiredTier: 0 },
+          { name: 'Tier 3: Credit Score', href: '/digital-id/credit-score', icon: SparklesIcon, description: 'Vault Creator', requiredTier: 0 },
         ],
       },
     ],
@@ -149,11 +150,11 @@ const navigationSections: NavSection[] = [
 
 // User tier calculation
 function useUserTier() {
-  const { hasPassportNFT, hasLPsNFT, hasVaultsNFT, hasActivePassport } = useNFTBalance();
+  const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasVaultsNFT, hasActivePassport, hasEcreditscoringNFT } = useNFTBalance();
   
   // Highest tier wins (per CONTRACTS_REFERENCE.md)
-  if (hasVaultsNFT) return 3; // Vault Creator
-  if (hasLPsNFT) return 2; // Limited Partner
+  if (hasVaultsNFT || hasEcreditscoringNFT) return 3; // Vault Creator
+  if (hasLPIndividualsNFT || hasLPBusinessNFT) return 2; // Limited Partner
   if (hasPassportNFT || hasActivePassport) return 1; // Passport
   return 0; // None
 }
@@ -212,35 +213,23 @@ function WalletBalances() {
 
 // NFT Status badges
 function NFTStatusBadges() {
-  const { hasPassportNFT, hasLPsNFT, hasVaultsNFT, hasActivePassport } = useNFTBalance();
+  const userTier = useUserTier();
   
-  const nfts = [
-    { name: 'Passport', owned: hasPassportNFT || hasActivePassport, tier: 1 },
-    { name: 'LP', owned: hasLPsNFT, tier: 2 },
-    { name: 'Vault', owned: hasVaultsNFT, tier: 3 },
-  ];
+  const tierConfig = {
+    0: { label: 'Tier 0: Unverified', color: 'from-gray-700 to-gray-600' },
+    1: { label: 'Tier 1: Verified', color: 'from-emerald-700 to-teal-600' },
+    2: { label: 'Tier 2: Limited Partner', color: 'from-blue-700 to-cyan-600' },
+    3: { label: 'Tier 3: Vault Creator', color: 'from-purple-700 to-pink-600' },
+  };
+
+  const config = tierConfig[userTier as keyof typeof tierConfig] || tierConfig[0];
 
   return (
     <div className="px-4 py-3 border-t border-gray-800">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">NFT Status</p>
-      <div className="flex gap-2">
-        {nfts.map((nft) => (
-          <div
-            key={nft.name}
-            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-              nft.owned
-                ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50'
-                : 'bg-gray-800 text-gray-500 border border-gray-700'
-            }`}
-          >
-            {nft.owned ? (
-              <CheckBadgeIcon className="w-3 h-3" />
-            ) : (
-              <XCircleIcon className="w-3 h-3" />
-            )}
-            <span>{nft.name}</span>
-          </div>
-        ))}
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Your Tier</p>
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r ${config.color}`}>
+        <div className="w-2 h-2 rounded-full bg-white" />
+        <span className="text-sm font-semibold text-white">{config.label}</span>
       </div>
     </div>
   );

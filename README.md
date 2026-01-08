@@ -6,7 +6,7 @@
 [![Tests](https://img.shields.io/badge/Tests-48%2F48%20Passing-brightgreen)](./test)
 [![Deployed](https://img.shields.io/badge/Deployed-Base%20Mainnet-blue)](https://basescan.org)
 [![Deployed](https://img.shields.io/badge/Deployed-Unichain%20Mainnet-success)](https://unichain.blockscout.com)
-[![Version](https://img.shields.io/badge/Version-2.1-purple)](./CONTRACTS_REFERENCE.md)
+[![Version](https://img.shields.io/badge/Version-2.2-purple)](./CONTRACTS_REFERENCE.md)
 
 ---
 
@@ -37,7 +37,7 @@ Convexo creates a compliant, efficient lending protocol using:
 ### 1. Compliant Liquidity Pools
 - **Uniswap V4 Hooks** gate pool access to verified users
 - Pairs: USDC/ECOP (Colombian Peso), USDC/ARS (Argentine Peso), USDC/MXN (Mexican Peso)
-- Only holders of Convexo_LPs NFT (Tier 2+) can trade
+- **Tier 1+ can trade**: Convexo_Passport holders (via PassportGatedHook) OR Limited Partners (via CompliantLPHook)
 - Seamless currency conversion for SMEs
 
 ### 2. NFT-Permissioned Vaults
@@ -98,11 +98,11 @@ Create Treasury (optional) → Invest in Vaults → Earn Returns → Redeem
 
 #### Step 1: Compliance Verification
 ```
-1. Submit KYB via Veriff/Sumsub
+1. Submit KYB via Veriff (Individual) or Sumsub (Business)
 2. Pass compliance checks
-3. Admin approves via VeriffVerifier (NEW!)
-4. Receive Convexo_LPs NFT (Tier 2)
-5. Can now use liquidity pools to convert USDC ↔ Local Stables
+3. Admin approves via VeriffVerifier or SumsubVerifier
+4. Receive Limited_Partners_Individuals NFT (Individual) OR Limited_Partners_Business NFT (Business) - Both grant Tier 2
+5. Can now request credit scoring to upgrade to Tier 3
 ```
 
 **Benefits:**
@@ -111,9 +111,10 @@ Create Treasury (optional) → Invest in Vaults → Earn Returns → Redeem
 
 #### Step 2: Credit Scoring & Vault Creation
 ```
-1. Submit financial statements & business model to AI
+1. Submit financial statements & business model to AI (requires Tier 2)
 2. AI analyzes creditworthiness
-3. If score > 70: Receive Convexo_Vaults NFT (Tier 3)
+3. If score ≥ 70: Receive Ecreditscoring NFT (Tier 3) with IPFS metadata
+   - NFT includes: Credit Score, Max Loan Amount, Credit Tier (all editable)
 4. Create vault to request funding
 5. Investors fund the vault
 6. Sign contract with investors
@@ -131,9 +132,11 @@ Sign Contract → Withdraw → Repay → Protocol & Investors Withdraw
 ### For Business Investors (Lenders)
 
 ```
-1. Submit KYB via Veriff/Sumsub (business verification)
-2. Admin approves via VeriffVerifier
-3. Receive Convexo_LPs NFT (Tier 2)
+1. Submit KYB via Veriff (Individual) or Sumsub (Business)
+2. Admin approves via VeriffVerifier or SumsubVerifier
+3. Receive Limited_Partners_Individuals OR Limited_Partners_Business NFT (Tier 2) with IPFS metadata
+   - Individual NFT includes: Address, Verification ID
+   - Business NFT includes: Address, Company Name, Registration Number, Jurisdiction, Business Type
 4. Browse available vaults
 5. Review: APY (12%), risk level, maturity date
 6. Invest USDC in vault (purchase shares)
@@ -152,35 +155,109 @@ Sign Contract → Withdraw → Repay → Protocol & Investors Withdraw
 
 ## 🏗️ Architecture
 
-### Reputation Tiers (v2.1 - UPDATED)
+### Reputation Tiers (v2.2 - UPDATED)
 
-| Tier | NFTs Required | User Type | Access |
-|------|---------------|-----------|--------|
-| **Tier 0** | None | Unverified | No access |
-| **Tier 1** | Convexo_Passport | Individual | Treasury creation + Vault investments |
-| **Tier 2** | Convexo_LPs | Limited Partner | LP pools + Vault investments |
-| **Tier 3** | Convexo_Vaults | Vault Creator | All above + Vault creation |
+| Tier | NFTs Required | User Type | Access | IPFS Metadata |
+|------|---------------|-----------|--------|---------------|
+| **Tier 0** | None | Unverified | No access | - |
+| **Tier 1** | Convexo_Passport | Individual Investor | LP Pool Swaps (PassportGatedHook) + Treasury creation + Vault investments | ✅ Verification traits |
+| **Tier 2** | Limited_Partners_Individuals OR Limited_Partners_Business | Limited Partner | Request Credit Score + Monetization + OTC Trades + Vault investments | ✅ Individual: Verification ID<br>✅ Business: Company details |
+| **Tier 3** | Ecreditscoring | Vault Creator | All above + Vault creation | ✅ Credit Score (editable)<br>✅ Max Loan Amount (editable)<br>✅ Credit Tier (editable) |
 
-**Note:** Highest tier wins (progressive KYC). Users can upgrade from Tier 1 to Tier 2/3.
+**Key Points:**
+- **Tier 2 Requirement for Tier 3**: Must hold Limited_Partners_Individuals OR Limited_Partners_Business before requesting Ecreditscoring NFT
+- **Highest tier wins** (progressive KYC). Users can upgrade from Tier 1 → Tier 2 → Tier 3
+- **Both LP NFTs grant identical permissions** - only difference is identity marker (Individual vs Business)
+
+### NFT Traits & IPFS Metadata
+
+All NFTs are minted with IPFS metadata URIs containing unique images and on-chain traits:
+
+#### ✅ Convexo_Passport (Tier 1)
+**Stored Traits:**
+- Recipient Address (owner)
+- Unique Identifier (hash)
+- Personhood Proof
+- Verification Date
+- ZKPassport Timestamp
+- Status (Active/Inactive)
+- KYC Verified (boolean)
+- Face Match Passed (boolean)
+- Sanctions Passed (boolean)
+- Is Over 18 (boolean)
+
+**IPFS Metadata:** Profile image + verification traits
+
+---
+
+#### ✅ Limited_Partners_Individuals (Tier 2)
+**Stored Traits:**
+- Recipient Address (owner)
+- Verification ID (Veriff session ID)
+
+**IPFS Metadata:** Member badge image + verification ID
+
+**Minted By:** `VeriffVerifier` contract upon admin approval
+
+---
+
+#### ✅ Limited_Partners_Business (Tier 2)
+**Stored Traits:**
+- Recipient Address (owner)
+- Company Name
+- Registration Number
+- Jurisdiction
+- Business Type
+- Sumsub Applicant ID
+
+**IPFS Metadata:** Business badge image + company details
+
+**Minted By:** `SumsubVerifier` contract upon admin approval
+
+---
+
+#### ✅ Ecreditscoring (Tier 3)
+**Stored Traits:**
+- Recipient Address (owner)
+- **Credit Score (0-100)** ✅ **EDITABLE**
+- **Max Loan Amount in USDC** ✅ **EDITABLE**
+- **Reference ID** ✅ **EDITABLE**
+- **Date of Validation (scoredAt)** ✅ **EDITABLE**
+- **Credit Tier** ✅ **EDITABLE**
+
+**IPFS Metadata:** Credit badge image + all credit traits
+
+**Requirements:**
+- Must hold `Limited_Partners_Individuals` OR `Limited_Partners_Business` NFT (Tier 2)
+- Must have AI credit score ≥ 70
+
+**Editable Traits:** Admin can update credit score, max loan amount, credit tier, and validation date without re-minting
+
+---
 
 ### Core Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│              Verification Layer (Dual Path)                  │
-│                                                              │
-│  Individual Path (Tier 1):                                   │
-│  ZKPassport → Self-Mint → Convexo_Passport NFT              │
-│  (Treasury creation + Vault investments)                     │
-│                                                              │
-│  Business Path (Tier 2):                                     │
-│  Veriff KYB → VeriffVerifier → Convexo_LPs NFT              │
-│  (LP pools + Vault investments)                              │
-│                                                              │
-│  Advanced Business (Tier 3):                                 │
-│  AI Credit Score → Admin → Convexo_Vaults NFT               │
-│  (All above + Vault creation)                                │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Verification Layer (Three-Path System)                    │
+│                                                                              │
+│  Path 1: Individual Investors (Tier 1)                                       │
+│  ZKPassport → Self-Mint → Convexo_Passport NFT (IPFS metadata)              │
+│  Access: LP Pool Swaps + Treasury creation + Vault investments               │
+│                                                                              │
+│  Path 2a: Individual Limited Partners (Tier 2)                               │
+│  Veriff KYC → VeriffVerifier (Registry) → Limited_Partners_Individuals      │
+│  IPFS Metadata: Address + Verification ID                                    │
+│                                                                              │
+│  Path 2b: Business Limited Partners (Tier 2)                                 │
+│  Sumsub KYB → SumsubVerifier (Registry) → Limited_Partners_Business         │
+│  IPFS Metadata: Address + Company Name + Registration + Jurisdiction         │
+│                                                                              │
+│  Path 3: Vault Creators (Tier 3) - REQUIRES TIER 2 FIRST                    │
+│  LP NFT (Tier 2) + AI Credit Score (≥70) → Ecreditscoring NFT               │
+│  IPFS Metadata: Credit Score, Max Loan Amount, Credit Tier (all editable)    │
+│  Access: All above + Vault creation                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                 Treasury System (NEW)                        │
@@ -281,22 +358,31 @@ forge test -vvv
 
 **Note**: All networks on v2.1 with 12 contracts. ZKPassport verifier: `0x1D000001000EFD9a6371f4d90bB8920D5431c0D8` (same address on all chains).
 
-### 📦 Deployed Contracts (12 Total)
+### 📦 Deployed Contracts (16 Total - v2.2)
 
-| # | Contract | Purpose |
-|---|----------|---------|
-| 1 | **Convexo_LPs** | NFT for liquidity pool access (Tier 2 - Limited Partner) |
-| 2 | **Convexo_Vaults** | NFT for vault creation (Tier 3 - Vault Creator) |
-| 3 | **Convexo_Passport** | NFT for individual investors (Tier 1 - ZKPassport) |
-| 4 | **HookDeployer** | Helper for deploying hooks with correct addresses |
-| 5 | **CompliantLPHook** | Uniswap V4 hook for gated pool access |
-| 6 | **PoolRegistry** | Registry for compliant pools |
-| 7 | **ReputationManager** | User tier calculation system |
-| 8 | **PriceFeedManager** | Chainlink price feed integration |
-| 9 | **ContractSigner** | Multi-signature contract system |
-| 10 | **VaultFactory** | Factory for creating tokenized bond vaults |
-| 11 | **TreasuryFactory** | Factory for creating personal treasuries (NEW) |
-| 12 | **VeriffVerifier** | Human-approved KYC/KYB verification (NEW) |
+| # | Contract | Purpose | IPFS Metadata |
+|---|----------|---------|---------------|
+| 1 | **Convexo_Passport** | NFT for individual investors (Tier 1 - ZKPassport) | ✅ Verification traits |
+| 2 | **Limited_Partners_Individuals** | NFT for individual Limited Partners (Tier 2 - Veriff KYC) | ✅ Address + Verification ID |
+| 3 | **Limited_Partners_Business** | NFT for business Limited Partners (Tier 2 - Sumsub KYB) | ✅ Company details |
+| 4 | **Ecreditscoring** | NFT for vault creators (Tier 3 - AI Credit Score) | ✅ Credit data (editable) |
+| 5 | **VeriffVerifier** | Registry for individual KYC verification workflow | - |
+| 6 | **SumsubVerifier** | Registry for business KYB verification workflow | - |
+| 7 | **ReputationManager** | User tier calculation system | - |
+| 8 | **HookDeployer** | Helper for deploying hooks with correct addresses | - |
+| 9 | **CompliantLPHook** | Uniswap V4 hook for Tier 2+ LP pool access | - |
+| 10 | **PassportGatedHook** | Uniswap V4 hook for Tier 1+ LP pool access | - |
+| 11 | **PoolRegistry** | Registry for compliant pools | - |
+| 12 | **PriceFeedManager** | Chainlink price feed integration | - |
+| 13 | **ContractSigner** | Multi-signature contract system | - |
+| 14 | **VaultFactory** | Factory for creating tokenized bond vaults | - |
+| 15 | **TreasuryFactory** | Factory for creating personal treasuries | - |
+| 16 | **TreasuryVault** | Multi-sig USDC treasury (instance) | - |
+
+**Architecture Notes:**
+- **Verifier Contracts** (VeriffVerifier, SumsubVerifier) = Registry contracts that manage approval workflows
+- **NFT Contracts** (Limited_Partners_*) = ERC721 tokens minted by verifier contracts upon approval
+- **All NFTs include IPFS metadata** with unique images and on-chain traits
 
 ---
 
@@ -464,23 +550,38 @@ function useUserTier(address: `0x${string}`) {
 
 ---
 
-## ✨ What's New in v2.1
+## ✨ What's New in v2.2
 
-### 🆕 New Contracts (12 total)
+### 🆕 Major Changes from v2.1
 
-1. **TreasuryFactory** - Create personal multi-sig treasuries (Tier 1+)
-2. **TreasuryVault** - Multi-sig USDC treasury management
-3. **VeriffVerifier** - Human-approved KYC/KYB for Limited Partner access
+1. **NFT Contract Renames & Split**
+   - ❌ `Convexo_LPs` → ✅ `Limited_Partners_Individuals` (Veriff KYC)
+   - ❌ `Convexo_LPs` → ✅ `Limited_Partners_Business` (Sumsub KYB)
+   - ❌ `Convexo_Vaults` → ✅ `Ecreditscoring` (AI Credit Score)
 
-### 🏆 Tier System Changes
+2. **IPFS Metadata for All NFTs**
+   - All NFTs now minted with IPFS image URLs
+   - On-chain traits stored for each NFT type
+   - **Ecreditscoring has editable traits**: Credit Score, Max Loan Amount, Credit Tier, Date of Validation
+
+3. **Two-Contract Architecture for Tier 2**
+   - **Verifier Contracts** (VeriffVerifier, SumsubVerifier) = Registry + approval workflow
+   - **NFT Contracts** (Limited_Partners_*) = ERC721 tokens minted upon approval
+   - Clear separation of concerns
+
+4. **Tier 2 Requirement for Tier 3**
+   - Must hold `Limited_Partners_Individuals` OR `Limited_Partners_Business` before requesting `Ecreditscoring` NFT
+   - Enforces progressive KYC pathway
+
+5. **Updated Tier System**
 
 | Tier | NFT | User Type | Access |
 |------|-----|-----------|--------|
-| **Tier 1** | Passport | Individual | Treasury + Vault investments |
-| **Tier 2** | LPs | Limited Partner | LP pools + Vault investments |
-| **Tier 3** | Vaults | Vault Creator | All above + Vault creation |
+| **Tier 1** | Convexo_Passport | Individual Investor | LP Pool Swaps + Treasury + Vault investments |
+| **Tier 2** | LP_Individuals OR LP_Business | Limited Partner | Request Credit Score + Monetization + OTC + Vaults |
+| **Tier 3** | Ecreditscoring | Vault Creator | All above + Vault creation |
 
-**Key Change:** Tier hierarchy reversed. Passport is now entry-level (Tier 1).
+**Key Feature:** Tier 1 now has LP Pool access via `PassportGatedHook` (Uniswap V4)
 
 ### 🔒 Privacy-Compliant Verification
 
@@ -513,11 +614,14 @@ New functions:
 
 | Metric | Value |
 |--------|-------|
-| **Version** | 2.1 (Treasury + Veriff Integration) |
+| **Version** | 2.2 (IPFS Metadata + Split LP NFTs) |
 | **Test Coverage** | 48/48 tests passing (100%) |
-| **Contracts** | 12 contracts per network |
+| **Contracts** | 16 contracts per network (v2.2) |
+| **NFT Types** | 4 NFT contracts (Passport + 2 LP types + Ecreditscoring) |
 | **Networks Supported** | 3 mainnets, 3 testnets |
-| **Verification Methods** | 2 paths (ZKPassport + Veriff) |
+| **Verification Methods** | 3 paths (ZKPassport + Veriff + Sumsub) |
+| **IPFS Metadata** | ✅ All NFTs include images and traits |
+| **Editable Traits** | ✅ Ecreditscoring NFT (Credit Score, Max Loan, Tier) |
 | **Investor Returns** | 12% APY |
 | **Min Credit Score** | 70 (for vault creation) |
 | **Protocol Fee** | 2% of principal (protected) |
@@ -542,12 +646,21 @@ New functions:
 
 ### 1. Compliance & NFT Issuance
 ```solidity
-// Individual: ZKPassport verification
-convexoPassport.safeMintWithIdentifier(uniqueIdentifier);
+// Path 1: Individual Investors (Tier 1)
+convexoPassport.safeMintWithIdentifier(uniqueIdentifier, ipfsMetadataUri);
+// → Mints Convexo_Passport with IPFS metadata
 
-// Business: Veriff verification
-veriffVerifier.approveVerification(businessAddress);
-// → Automatically mints Convexo_LPs NFT
+// Path 2a: Individual Limited Partners (Tier 2)
+veriffVerifier.approveVerification(userAddress);
+// → Automatically mints Limited_Partners_Individuals NFT with IPFS metadata
+
+// Path 2b: Business Limited Partners (Tier 2)
+sumsubVerifier.approveVerification(businessAddress);
+// → Automatically mints Limited_Partners_Business NFT with IPFS metadata
+
+// Path 3: Vault Creators (Tier 3) - REQUIRES TIER 2 FIRST
+ecreditscoring.mint(lpHolder, creditScore, maxLoanAmount, referencId, ipfsUri);
+// → Mints Ecreditscoring NFT with editable credit traits
 ```
 
 ### 2. Reputation Check
@@ -633,28 +746,39 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 ## 🎉 Status
 
-**🆕 VERSION 2.1 - TREASURY + VERIFF INTEGRATION COMPLETE**
+**🆕 VERSION 2.2 - IPFS METADATA + SPLIT LP NFTs COMPLETE**
 
-All 12 contracts deployed, verified, and ready for production.
+All 16 contracts deployed, verified, and ready for production.
 
 **Development Status:**
-- ✅ 12 smart contracts implemented
+- ✅ 16 smart contracts implemented (v2.2)
 - ✅ Comprehensive testing (48 tests, 100% coverage)
 - ✅ Deployment scripts updated
-- ✅ Documentation complete
+- ✅ Documentation complete (FRONTEND_INTEGRATION.md + CONTRACTS_REFERENCE.md updated)
 - ✅ Security review complete
 - ✅ Deployed on all 6 networks
 
-**Version 2.1 Features:**
-- 🆕 **TreasuryFactory** - Personal multi-sig treasuries for Tier 1+
-- 🆕 **VeriffVerifier** - Human-approved KYB for Tier 2 access
-- 🆕 **Updated Tier System** - Passport is Tier 1 (entry-level)
-- 🆕 **Privacy-Compliant** - Only verification traits stored
-- 🆕 **Progressive KYC** - Upgrade from individual to business
+**Version 2.2 Features:**
+- 🆕 **IPFS Metadata for All NFTs** - Images and traits stored on IPFS
+- 🆕 **Split LP NFTs** - `Limited_Partners_Individuals` (Veriff) + `Limited_Partners_Business` (Sumsub)
+- 🆕 **Ecreditscoring NFT** - Replaces Convexo_Vaults, includes editable credit traits
+- 🆕 **Editable Traits** - Credit Score, Max Loan Amount, Credit Tier, Date of Validation
+- 🆕 **Tier 2 Requirement** - Must hold LP NFT before requesting Ecreditscoring
+- 🆕 **Two-Contract Architecture** - Verifier registries separate from NFT contracts
+- 🆕 **PassportGatedHook** - Tier 1 can now access LP pools (Uniswap V4)
+- ✅ Progressive KYC pathway: Tier 1 → Tier 2 → Tier 3
+- ✅ Both LP NFT types grant identical permissions (only identity marker differs)
+- ✅ Privacy-compliant (only verification traits stored)
 - ✅ Borrower-initiated vault creation (Tier 3)
 - ✅ Flexible repayment system
 - ✅ Independent withdrawals for all parties
 - ✅ Protocol fees protected in vault
+
+**NFT Architecture:**
+- ✅ 4 NFT contracts with IPFS metadata
+- ✅ Verifier contracts act as registries (VeriffVerifier, SumsubVerifier)
+- ✅ NFT contracts minted upon admin approval
+- ✅ Soulbound NFTs (non-transferable)
 
 **Test Results:**
 - ✅ Original tests: 14/14 passing

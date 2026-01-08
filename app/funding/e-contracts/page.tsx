@@ -4,13 +4,13 @@ import { useAccount, useChainId, useReadContract } from 'wagmi';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { ContractsTable } from '@/components/ContractsTable';
+import { CreateContractForm } from '@/components/CreateContractForm';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ContractSignerABI } from '@/lib/contracts/abis';
 import Link from 'next/link';
 import {
   DocumentTextIcon,
   LockClosedIcon,
-  PlusCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function EContractsPage() {
@@ -77,7 +77,7 @@ export default function EContractsPage() {
                 <span className="text-white">E-Contracts</span>
               </div>
               <h1 className="text-3xl font-bold text-white mb-2">E-Contracts</h1>
-              <p className="text-gray-400">View and manage loan agreements linked to your vaults</p>
+              <p className="text-gray-400">Create and manage loan agreements with multi-party signing</p>
             </div>
           </div>
 
@@ -97,29 +97,22 @@ export default function EContractsPage() {
             </div>
           </div>
 
-          {/* Info Banner */}
-          <div className="card bg-blue-900/20 border-blue-700/50 p-4">
-            <p className="text-blue-300">
-              <strong>Note:</strong> Contracts are created by admins after your vault is fully funded. 
-              All parties must sign before funds can be withdrawn.
-            </p>
-          </div>
-
-          {/* Contracts Table */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-white mb-4">All Contracts</h2>
-            <ContractsTable />
-          </div>
+          {/* Create New Contract Section */}
+          <CreateContractForm
+            onSuccess={() => {
+              // Optionally refresh contract list
+            }}
+          />
 
           {/* Contract Flow */}
           <div className="card">
             <h3 className="text-lg font-semibold text-white mb-4">Contract Signing Flow</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[
-                { step: '1', title: 'Vault Funded', desc: 'Investors fill your vault to 100%' },
-                { step: '2', title: 'Contract Created', desc: 'Admin creates loan agreement' },
-                { step: '3', title: 'All Sign', desc: 'Borrower, investors, and admin sign' },
-                { step: '4', title: 'Executed', desc: 'Contract attached to vault, funds released' },
+                { step: '1', title: 'Create Contract', desc: 'Upload document and add signers' },
+                { step: '2', title: 'Notify Signers', desc: 'Signers receive notifications' },
+                { step: '3', title: 'All Sign', desc: 'Each signer approves the contract' },
+                { step: '4', title: 'Executed', desc: 'Contract attached to vault' },
               ].map((item) => (
                 <div key={item.step} className="text-center p-4">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-white font-bold mx-auto mb-3">
@@ -130,6 +123,12 @@ export default function EContractsPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Contracts Table */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-white mb-4">All Contracts</h2>
+            <ContractsTable />
           </div>
         </div>
       </div>

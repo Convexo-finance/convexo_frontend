@@ -94,63 +94,138 @@ export const CONTRACTS = {
   // Ethereum Sepolia (11155111)
   ETHEREUM_SEPOLIA: {
     CHAIN_ID: 11155111,
-    CONVEXO_PASSPORT: '0x259adc4917c442dd9a509cb8333a9bed88fe5c70',
-    LP_INDIVIDUALS: '0x6d2101b853e80ea873d2c7c0ec6138c837779c6a',    // Limited_Partners_Individuals
-    LP_BUSINESS: '0xd1ff2d103a864ccb150602dedc09804037b8ce85',       // Limited_Partners_Business
-    ECREDITSCORING: '0x...',  // Ecreditscoring NFT (TBD)
-    REPUTATION_MANAGER: '0x82e856e70a0057fc6e26c17793a890ec38194cfc',
-    VAULT_FACTORY: '0x4fc5ca49812b0c312046b000d234a96e9084effb',
-    TREASURY_FACTORY: '0x53d38e2ca13d085d14a44b0deadc47995a82eca3',
-    CONTRACT_SIGNER: '0x59b0f14ac23cd3b0a6a926a302ac01e4221785bf',
-    VERIFF_VERIFIER: '0xb11f1c681b8719e6d82098e1316d2573477834ab',
+    CONVEXO_PASSPORT: '0x04b26cac4419132c010ea339316dba3baa638acc',
+    LP_INDIVIDUALS: '0x484c05645ebacc71f1adde1cfd6a052f6fad29ed',
+    LP_BUSINESS: '0x10fc2c87e6b673849bbc8833ed6f9343494225a3',
+    ECREDITSCORING: '0xe45cad4eb3c9b49c5bac985f043d635627becceb',
+    REPUTATION_MANAGER: '0xe618c18dc57a431a5826abf5fe4329b4422f9eb0',
+    VAULT_FACTORY: '0x7a88b6f5039f86d827fb098aa83eacca7345a182',
+    TREASURY_FACTORY: '0xa1117a2df674b896b57cacd3ca0c77a667e6ab6e',
+    CONTRACT_SIGNER: '0x54b9675e649765e401632db548ee2f09f83e359c',
+    VERIFF_VERIFIER: '0x1cbf87e0410338e0ea6bfcd21f66584e92d168bb',
+    SUMSUB_VERIFIER: '0xe9c905ebf5e1bb970a2571d6112eb1d37f550ca8',
     COMPLIANT_LP_HOOK: '0xb1697c34cc15cb1fba579f94693e9ab53292b51b',
-    POOL_REGISTRY: '0x710299e39b130db198dd2a6973c2ccd7bcc2d093',
-    PRICE_FEED_MANAGER: '0xebb59c7e14ea002924bf34eedf548836c25a3440',
+    POOL_REGISTRY: '0x4b99d117b1d058ab7efda061560f035e0280b355',
+    PRICE_FEED_MANAGER: '0xf3e60a65f93720e2b863a7182208a93cb23a3af8',
+    HOOK_DEPLOYER: '0x0c34b1c9cdd55f62cdbe070af46b57c33527d80b',
+    PASSPORT_GATED_HOOK: '0xe43c57a4be9578b8f8be98608135bb6ff7e7941a',
     USDC: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
   },
 
   // Base Sepolia (84532)
   BASE_SEPOLIA: {
     CHAIN_ID: 84532,
-    CONVEXO_PASSPORT: '0x5078300fa7e2d29c2e2145beb8a6eb5ad0d45e0c',
-    LP_INDIVIDUALS: '0xf048da86da99a76856c02a83fb53e72277acacdf',
-    LP_BUSINESS: '0xe9309e75f168b5c98c37a5465e539a0fdbf33eb9',
-    ECREDITSCORING: '0x...',
-    REPUTATION_MANAGER: '0xc8d1160e2e7719e29b34ab36402aaa0ec24d8c01',
-    VAULT_FACTORY: '0xb987dd28a350d0d88765ac7310c0895b76fa0828',
-    TREASURY_FACTORY: '0x68ec89e0884d05d3b4d2f9b27e4212820b1a56e5',
-    CONTRACT_SIGNER: '0x437e0a14a515fa5dc5655a11856fe28c7bb78477',
-    VERIFF_VERIFIER: '0x6f7413e36ffed4bde41b4521cf240aef0668201f',
+    CONVEXO_PASSPORT: '0x6a7fa6e40315b54f22555d892569b1f310a500e3',
+    LP_INDIVIDUALS: '0xdfd8aeec2594faf1f2ad9b86893b22f32f1be2bb',
+    LP_BUSINESS: '0xf017d61001441139d9e48e8558479d347a1689a7',
+    ECREDITSCORING: '0x83b1707ca91f0888ea7401cab66e4eb6a045eec2',
+    REPUTATION_MANAGER: '0x023a4bd2805b5af96db90aa42150f800dd5c4717',
+    VAULT_FACTORY: '0x60aedc85a107edb27f075c40c18494c44427456f',
+    TREASURY_FACTORY: '0x9d956ceb48c1c5ce07fe9aee2574b81fbf92e16c',
+    CONTRACT_SIGNER: '0x40d2f2830fb94f055ef4f57b1f6318659033ee8d',
+    VERIFF_VERIFIER: '0x2a4a50c324a12881c732d7bb23fce472195994a7',
+    SUMSUB_VERIFIER: '0x3b47b35f65086309861f293448f579df4f2ae727',
     COMPLIANT_LP_HOOK: '0x058faa5e95b3deb41e6ecabe4dd870b8e3d90475',
-    POOL_REGISTRY: '0x6ad2b7bd52d6382bc7ba37687be5533eb2cf4cd2',
-    PRICE_FEED_MANAGER: '0x653bcfc6ea735fb67d73ff537746b804c75cd1f4',
+    POOL_REGISTRY: '0x426d9dfb361d5374c114116778b3c225944aec32',
+    PRICE_FEED_MANAGER: '0xf186dadf2a9366101009b87b08fc168874b758d6',
+    HOOK_DEPLOYER: '0x3609c081d5558e4ec5d3a848ffc738a7c3d21cd5',
+    PASSPORT_GATED_HOOK: '0xd3c603e95f06d2e9f398caa198f44477f78b28fd',
     USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   },
 
   // Unichain Sepolia (1301)
   UNICHAIN_SEPOLIA: {
     CHAIN_ID: 1301,
-    CONVEXO_PASSPORT: '0xab83ce760054c1d048d5a9de5194b05398a09d41',
-    LP_INDIVIDUALS: '0xfb965542aa0b58538a9b50fe020314dd687eb128',
-    LP_BUSINESS: '0x503f203ce6d6462f433cd04c7ad2b05d61b56548',
-    ECREDITSCORING: '0x...',
-    REPUTATION_MANAGER: '0x62227ff7ccbdb4d72c3511290b28c3424f1500ef',
-    VAULT_FACTORY: '0x2cfa02372782cf20ef8342b0193fd69e4c5b04a8',
-    TREASURY_FACTORY: '0xecde45fefb5c2ef6e5cc615291de9be9a99b46a6',
-    CONTRACT_SIGNER: '0xa932e3eaa0a5e5e65f0567405207603266937618',
-    VERIFF_VERIFIER: '0xe99a49bd81bbe61cdf7f6b7d247f76cacc2e5776',
+    CONVEXO_PASSPORT: '0xe48f35fd0e00af2059f18cf67268cce6e87f4ea4',
+    LP_INDIVIDUALS: '0x8f63093ded306d36002213af027e597210b6bb21',
+    LP_BUSINESS: '0x1115fc70b349ec8d3912fedac903ff27527bbb30',
+    ECREDITSCORING: '0x35f82e74ef83c94d11474e1a6f69361f4e961117',
+    REPUTATION_MANAGER: '0x4230cdf3e203fb65e5f8462d36b3e8627dd1486d',
+    VAULT_FACTORY: '0x12b632d56ec9ae105ace77ac37b5ffadf9e049a8',
+    TREASURY_FACTORY: '0x6542604acd10edfee43836d545ceea3cc6320b3c',
+    CONTRACT_SIGNER: '0x9ea14625f8b596c0b7361a861642035bb7f8b422',
+    VERIFF_VERIFIER: '0x29da93ef19643d51dc27c78af271f4ee2394938f',
+    SUMSUB_VERIFIER: '0x6d2101b853e80ea873d2c7c0ec6138c837779c6a',
     COMPLIANT_LP_HOOK: '0x50ace0dce54df668477adee4e9d6a6c0df4fedee',
-    POOL_REGISTRY: '0xa46629011e0b8561a45ea03b822d28c0b2432c3a',
-    PRICE_FEED_MANAGER: '0x8efc7e25c12a815329331da5f0e96affb4014472',
+    POOL_REGISTRY: '0xf7e960e07cc225c33e383d5219af5a57555a4fce',
+    PRICE_FEED_MANAGER: '0x318415c639fb2687d55da236f097a146dbcf5366',
+    HOOK_DEPLOYER: '0xf8093cb4d499790e4cb87dce82b2b0a924610775',
+    PASSPORT_GATED_HOOK: '0xee93435e75f18468e518ee5bc9e5b3b99197d31f',
     USDC: '0x31d0220469e10c4E71834a79b1f276d740d3768F',
+  },
+
+  // Base Mainnet (8453)
+  BASE_MAINNET: {
+    CHAIN_ID: 8453,
+    CONVEXO_PASSPORT: '0xecde45fefb5c2ef6e5cc615291de9be9a99b46a6',
+    LP_INDIVIDUALS: '0xe99a49bd81bbe61cdf7f6b7d247f76cacc2e5776',
+    LP_BUSINESS: '0x83df102f62c4640ac8be584c2b4e20c8c373dc2e',
+    ECREDITSCORING: '0x60afa63fdf17a75534e8218baac1d64e7fd93b4a',
+    REPUTATION_MANAGER: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
+    VAULT_FACTORY: '0xda82a962e5671cfa97663e25495028c313a524e8',
+    TREASURY_FACTORY: '0x7fcc3c235cbd5bd6059e4744c3a005c68a2d4da4',
+    CONTRACT_SIGNER: '0x19d9fc7c6c3e62c1c7358504f47e629333b10627',
+    VERIFF_VERIFIER: '0x43d5c9507f399e689ddf4c05ba542a3ad5dbe53e',
+    SUMSUB_VERIFIER: '0x549858f0f85ecce1f9713dc3ba5b61c7f9cca69d',
+    COMPLIANT_LP_HOOK: '0x805b733cc50818dabede4847c4a775a7b1610f96',
+    POOL_REGISTRY: '0x2f781b3fffd6853a3d8ffca338d33b1d61ffab0e',
+    PRICE_FEED_MANAGER: '0xefa4e787c96df9df08de5230ec6cf6126a211edc',
+    HOOK_DEPLOYER: '0xe6b658c4d1e00a675df046ca0baeb86bef7da985',
+    PASSPORT_GATED_HOOK: '0x8c2d66210a43201bae2a7bf924eca0f53364967f',
+    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  },
+
+  // Unichain Mainnet (130)
+  UNICHAIN_MAINNET: {
+    CHAIN_ID: 130,
+    CONVEXO_PASSPORT: '0xe99a49bd81bbe61cdf7f6b7d247f76cacc2e5776',
+    LP_INDIVIDUALS: '0x83df102f62c4640ac8be584c2b4e20c8c373dc2e',
+    LP_BUSINESS: '0x60afa63fdf17a75534e8218baac1d64e7fd93b4a',
+    ECREDITSCORING: '0x6a9af3b1da3fc07c78c37c380368773b1e830fac',
+    REPUTATION_MANAGER: '0xe6b658c4d1e00a675df046ca0baeb86bef7da985',
+    VAULT_FACTORY: '0x7fcc3c235cbd5bd6059e4744c3a005c68a2d4da4',
+    TREASURY_FACTORY: '0x43d5c9507f399e689ddf4c05ba542a3ad5dbe53e',
+    CONTRACT_SIGNER: '0xda82a962e5671cfa97663e25495028c313a524e8',
+    VERIFF_VERIFIER: '0x549858f0f85ecce1f9713dc3ba5b61c7f9cca69d',
+    SUMSUB_VERIFIER: '0xd34de952cec3af29abab321e68d7e51c098dc063',
+    COMPLIANT_LP_HOOK: '0x2a0d9da5a72dfe20b65b25e9fefc0e6e090ac194',
+    POOL_REGISTRY: '0xefa4e787c96df9df08de5230ec6cf6126a211edc',
+    PRICE_FEED_MANAGER: '0x19d9fc7c6c3e62c1c7358504f47e629333b10627',
+    HOOK_DEPLOYER: '0x8c2d66210a43201bae2a7bf924eca0f53364967f',
+    PASSPORT_GATED_HOOK: '0x2f781b3fffd6853a3d8ffca338d33b1d61ffab0e',
+    USDC: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+  },
+
+  // Ethereum Mainnet (1)
+  ETHEREUM_MAINNET: {
+    CHAIN_ID: 1,
+    CONVEXO_PASSPORT: '0x6b51adc34a503b23db99444048ac7c2dc735a12e',
+    LP_INDIVIDUALS: '0x5d88bcf0d62f17846d41e161e92e497d4224764d',
+    LP_BUSINESS: '0x6a6357c387331e75d6eeb4d4abc0f0200cd32830',
+    ECREDITSCORING: '0xafb16cfaf1389713c59f7aee3c1a08d3cedc3ee3',
+    REPUTATION_MANAGER: '0xc5e04ab886025b3fe3d99249d1db069e0b599d8e',
+    VAULT_FACTORY: '0xdd973ce09ba55260e217d10f9dec6d7945d73e79',
+    TREASURY_FACTORY: '0x24d91b11b0dd12d6520e58c72f8fcc9dc1c5b935',
+    CONTRACT_SIGNER: '0xe0c0d95701558ef10768a13a944f56311ead4649',
+    VERIFF_VERIFIER: '0x3770bb3bbeb0102a36f51aa253e69034058e4f84',
+    SUMSUB_VERIFIER: '0x2fa95f79ce8c5c01581f6792acc4181282aaefb0',
+    COMPLIANT_LP_HOOK: '0x6a6357c387331e75d6eeb4d4abc0f0200cd32830',
+    POOL_REGISTRY: '0xbabee8acecc117c1295f8950f51db59f7a881646',
+    PRICE_FEED_MANAGER: '0xd189d95ee1a126a66fc5a84934372aa0fc0bb6d2',
+    HOOK_DEPLOYER: '0xd09e7252c6402155f9d13653de24ae4f0a220fec',
+    PASSPORT_GATED_HOOK: '0x74577d6e9140944db7ae2f1e103a39962c80c235',
+    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
   },
 } as const;
 
 // Helper to get contracts for current chain
 export function getContracts(chainId: number) {
   switch (chainId) {
+    case 1: return CONTRACTS.ETHEREUM_MAINNET;
     case 11155111: return CONTRACTS.ETHEREUM_SEPOLIA;
+    case 8453: return CONTRACTS.BASE_MAINNET;
     case 84532: return CONTRACTS.BASE_SEPOLIA;
+    case 130: return CONTRACTS.UNICHAIN_MAINNET;
     case 1301: return CONTRACTS.UNICHAIN_SEPOLIA;
     default: return CONTRACTS.BASE_SEPOLIA;
   }
@@ -181,7 +256,24 @@ export {
   ERC20ABI,
 };
 ```
+ with IPFS Metadata
 
+### NFT Types & IPFS Images
+
+Each NFT is minted with unique metadata stored on IPFS, with images displayed across the frontend:
+
+| NFT Type | Tier | Purpose | Traits | IPFS Metadata |
+|----------|------|---------|--------|---------------|
+| **Convexo Passport** | Tier 1 | Individual investor verification | Verification Date | ✅ Profile Image |
+| **LP Individuals** | Tier 2 | Limited Partner (Individual) | LP Status, Joined Date | ✅ Member Badge |
+| **LP Business** | Tier 2 | Limited Partner (Business) | Business Type, Joined Date | ✅ Business Badge |
+| **Ecreditscoring** | Tier 3 | Vault Creator with credit data  | Enable swaps on Uniswap V4
+  LimitedPartner = 2, // LP_Individuals OR LP_Business - LP access | Monetization + OTC Trade
+**Key Features:**
+- All NFTs have IPFS-hosted metadata with unique images
+- Credit Score NFT has editable traits for dynamic updates
+- Images are automatically displayed in the frontend UI
+- Traits update on-chain without re-minting
 ---
 
 ## 🎫 NFT & Reputation System
@@ -207,7 +299,29 @@ export interface UserReputation {
   // Access permissions
   canAccessLPPools: boolean;
   canCreateTreasury: boolean;
-  canInvestInVaults: boolean;
+  
+
+export const TIER_FEATURES: Record<ReputationTier, string[]> = {
+  [ReputationTier.None]: [],
+  [ReputationTier.Passport]: [
+    '🛂 Treasury creation',
+    '💰 Vault investments',
+    '🔄 Uniswap V4 swaps (via PassportGatedHook)',
+  ],
+  [ReputationTier.LimitedPartner]: [
+    '🛂 Treasury creation',
+    '💰 Vault investments',
+    '💸 Monetization access',
+    '🔀 OTC Trades',
+  ],
+  [ReputationTier.VaultCreator]: [
+    '🛂 Treasury creation',
+    '💰 Vault investments',
+    '💸 Monetization access',
+    '🔀 OTC Trades',
+    '🏗️ Vault creation',
+  ],
+};canInvestInVaults: boolean;
   canRequestCreditScore: boolean;
   canCreateVaults: boolean;
 }
@@ -373,39 +487,62 @@ export function AccessMatrix({ reputation }: AccessMatrixProps) {
             <span className={item.hasAccess ? 'text-green-500' : 'text-gray-400'}>
               {item.hasAccess ? '✅' : '❌'}
             </span>
-            <span className="text-sm font-medium">{item.label}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+            <span className=" - Tier 1 with IPFS Metadata
+
+```typescript
+// hooks/useMintPassport.ts
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { keccak256, toBytes } from 'viem';
+import { ConvexoPassportABI } from '../config/abis';
+import { getContracts } from '../config/contracts';
+
+export interface PassportMetadata {
+  name: string;
+  description: string;
+  image: string; // IPFS image URL (ipfs://QmHash)
+  attributes: {
+    trait_type: string;
+    value: string;
+  }[];
 }
-```
 
----
+export function useMintPassport(chainId: number) {
+  const contracts = getContracts(chainId);
+  
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-## 🔐 User Authentication Flow
+  const mintWithIdentifier = async (uniqueIdentifier: `0x${string}`, ipfsMetadataUri: string) => {
+    await writeContract({
+      address: contracts.CONVEXO_PASSPORT as `0x${string}`,
+      abi: ConvexoPassportABI,
+      functionName: 'safeMintWithIdentifier',
+      args: [uniqueIdentifier, ipfsMetadataUri],
+    });
+  };
 
-### Authentication Flow Diagram
+  // Helper to generate identifier from ZKPassport data
+  const generateIdentifier = (publicKey: string, scope: string): `0x${string}` => {
+    const combined = publicKey + scope.replace('0x', '');
+    return keccak256(toBytes(combined));
+  };
 
-```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                         USER AUTHENTICATION FLOWS                          │
-├────────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│  PATH 1: International Investor (Tier 1)                                  │
-│  ═══════════════════════════════════════                                  │
-│  ZKPassport ──▶ safeMintWithIdentifier() ──▶ Convexo_Passport NFT         │
-│                                                                            │
-│  PATH 2: Individual LP (Tier 2)                                           │
-│  ═══════════════════════════════                                          │
-│  Veriff KYC ──▶ VeriffVerifier.approveVerification() ──▶ LP_Individuals   │
-│                                                                            │
-│  PATH 3: Business LP (Tier 2)                                             │
-│  ═════════════════════════════                                            │
-│  Sumsub KYB ──▶ SumsubVerifier.approveVerification() ──▶ LP_Business      │
-│                                                                            │
-│  PATH 4: Vault Creator (Tier 3)                                           │
+  // Helper to create IPFS metadata for Passport
+  const createPassportMetadata = (address: string, verificationDate: string): PassportMetadata => ({
+    name: `Convexo Passport #${address.slice(-6).toUpperCase()}`,
+    description: 'Verified individual investor on Convexo Protocol. Enables treasury creation, vault investments, and Uniswap V4 swaps.',
+    image: 'ipfs://YOUR_IPFS_IMAGE_HASH', // Upload to IPFS and replace
+    attributes: [
+      { trait_type: 'Tier', value: '1 - Passport' },
+      { trait_type: 'Verification Date', value: verificationDate },
+      { trait_type: 'Status', value: 'Active' },
+    ],
+  });
+
+  return {
+    mintWithIdentifier,
+    generateIdentifier,
+    createPassportMetadataor (Tier 3)                                           │
 │  ═══════════════════════════════                                          │
 │  LP NFT + AI Credit Score ──▶ mint() ──▶ Ecreditscoring NFT               │
 │                                                                            │

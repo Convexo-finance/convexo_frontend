@@ -11,9 +11,14 @@
 | Tier | NFT | Verification | Access |
 |------|-----|--------------|--------|
 | **0** | None | - | No access |
-| **1** | Convexo_Passport | ZKPassport | Treasury + Vault investments |
-| **2** | LP_Individuals / LP_Business | Veriff / Sumsub | LP pools + Vault investments |
-| **3** | Ecreditscoring | AI Credit Score | All above + Vault creation |
+| **1** | Convexo_Passport | ZKPassport | **LP Pool Swaps** (via Uniswap V4 hook) + Vault investments |
+| **2** | LP_Individuals / LP_Business | Veriff / Sumsub | **Request Credit Score** + Monetization + OTC Orders + Vault investments |
+| **3** | Ecreditscoring | AI Credit Score | All above + **Vault creation** |
+
+**Note:**
+- **Limited_Partners_Individuals** and **Limited_Partners_Business** grant identical permissions (Tier 2)
+- They differ only as identity markers: Individual (KYC via Veriff) vs Business (KYB via Sumsub)
+- Both can request credit scoring to upgrade to Tier 3 (Ecreditscoring NFT)
 
 ---
 
@@ -287,23 +292,87 @@ function isContractSigned(bytes32 documentHash, address signer) returns (bool)
 
 ---
 
-## VeriffVerifier
+## Verification System Architecture (Tier 2)
 
-Human-approved KYC for Limited Partners (Tier 2).
+### Overview
+
+**Tier 2 uses a two-contract system:**
+
+1. **Verifier Contracts** (VeriffVerifier, SumsubVerifier) = **Registry & Approval Workflow**
+   - Act as registries that store verification submissions
+   - Admin reviews and approves/rejects/resets submissions
+   - Upon approval, they call the NFT contract to mint
+
+2. **NFT Contracts** (Limited_Partners_Individuals, Limited_Partners_Business) = **Access Token**
+   - Soulbound ERC721 tokens
+   - Grant identical Tier 2 permissions (only difference: person vs business identifier)
+   - Can only be minted by their respective verifier contracts
+
+**Key Point:** Both LP NFT types grant the same access:
+- ✅ Request Credit Score (upgrade to Tier 3)
+- ✅ Monetization features
+- ✅ OTC Orders
+- ✅ Vault investments
+
+### Verification Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  INDIVIDUAL PATH (Veriff)                                    │
+│                                                              │
+│  1. User completes Veriff KYC                                │
+│  2. Backend → VeriffVerifier.submitVerification()            │
+│  3. Admin → VeriffVerifier.approveVerification()             │
+│  4. VeriffVerifier → Limited_Partners_Individuals.safeMint() │
+│  5. User receives LP Individual NFT (Tier 2)                 │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  BUSINESS PATH (Sumsub)                                      │
+│                                                              │
+│  1. Business completes Sumsub KYB                            │
+│  2. Backend → SumsubVerifier.submitVerification()            │
+│  3. Admin → SumsubVerifier.approveVerification()             │
+│  4. SumsubVerifier → Limited_Partners_Business.safeMint()    │
+│  5. Business receives LP Business NFT (Tier 2)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## VeriffVerifier (Registry Contract)
+
+**Purpose:** Human-approved KYC registry for individual Limited Partners.
+
+**Architecture:** This is NOT the NFT contract. It acts as a registry that:
+- Stores verification submissions (Pending/Approved/Rejected status)
+- Requires admin approval before minting NFTs
+- Calls `Limited_Partners_Individuals.safeMint()` upon approval
+
+### Verification States
+
+```solidity
+enum VerificationStatus {
+    None,       // No submission
+    Pending,    // Submitted, awaiting admin review
+    Approved,   // Approved → NFT minted
+    Rejected    // Rejected by admin
+}
+```
 
 ### Write Functions
 
 ```solidity
-// Submit verification result
+// Submit verification result (backend calls this after Veriff webhook)
 function submitVerification(address user, string calldata sessionId) // VERIFIER_ROLE
 
-// Approve and mint LP NFT
+// Approve and mint LP Individual NFT
 function approveVerification(address user) // VERIFIER_ROLE
 
 // Reject with reason
 function rejectVerification(address user, string calldata reason) // VERIFIER_ROLE
 
-// Reset rejected verification
+// Reset rejected verification (allows resubmission)
 function resetVerification(address user) // DEFAULT_ADMIN_ROLE
 ```
 
@@ -318,17 +387,172 @@ function getUserBySessionId(string calldata sessionId) returns (address)
 
 ---
 
-## CompliantLPHook
+## SumsubVerifier (Registry Contract)
 
-Uniswap V4 hook that gates pool access to Tier 1+.
+**Purpose:** Human-approved KYB registry for business Limited Partners.
+
+**Architecture:** This is NOT the NFT contract. It acts as a registry that:
+- Stores business verification submissions with company details
+- Requires admin approval before minting NFTs
+- Calls `Limited_Partners_Business.safeMint()` upon approval
+
+### Verification States
+
+```solidity
+enum VerificationStatus {
+    None,       // No submission
+    Pending,    // Submitted, awaiting admin review
+    Approved,   // Approved → NFT minted
+    Rejected    // Rejected by admin
+}
+```
+
+### Write Functions
+
+```solidity
+// Submit KYB verification (backend calls this after Sumsub webhook)
+function submitVerification(
+    address user,
+    string calldata applicantId,
+    string calldata companyName,
+    string calldata registrationNumber,
+    string calldata jurisdiction,
+    BusinessType businessType
+) // VERIFIER_ROLE
+
+// Approve and mint LP Business NFT
+function approveVerification(address user) // VERIFIER_ROLE
+
+// Reject with reason
+function rejectVerification(address user, string calldata reason) // VERIFIER_ROLE
+
+// Reset rejected verification (allows resubmission)
+function resetVerification(address user) // DEFAULT_ADMIN_ROLE
+```
+
+### Read Functions
+
+```solidity
+function getVerificationStatus(address user) returns (VerificationRecord memory)
+function isVerified(address user) returns (bool)
+function isApplicantIdUsed(string calldata applicantId) returns (bool)
+function isRegistrationUsed(string calldata registrationNumber) returns (bool)
+function getUserByApplicantId(string calldata applicantId) returns (address)
+function getUserByRegistration(string calldata registrationNumber) returns (address)
+function getCompanyDetails(address user) returns (companyName, registrationNumber, jurisdiction, businessType)
+```
+
+---
+
+## Limited_Partners_Individuals (NFT Contract)
+
+**Purpose:** Soulbound NFT for verified individual Limited Partners (Tier 2).
+
+**Architecture:** This is the ERC721 NFT contract. It can ONLY be minted by the VeriffVerifier contract.
+
+**Access Granted:**
+- Request credit score (upgrade to Tier 3 Ecreditscoring NFT)
+- Monetization features
+- OTC Orders
+- Vault investments
+
+**Note:** This NFT grants the SAME permissions as Limited_Partners_Business. The only difference is the identity marker (individual vs business).
+
+### Write Functions
+
+```solidity
+// Mint NFT (only callable by VeriffVerifier contract)
+function safeMint(address to, string memory verificationId, string memory uri) returns (uint256) // MINTER_ROLE
+
+// Set token state
+function setTokenState(uint256 tokenId, bool isActive) // DEFAULT_ADMIN_ROLE
+
+// Burn token
+function burn(uint256 tokenId) // Token owner only
+```
+
+### Read Functions
+
+```solidity
+function balanceOf(address owner) returns (uint256)
+function ownerOf(uint256 tokenId) returns (address)
+function getTokenState(uint256 tokenId) returns (bool)
+function getVerificationId(uint256 tokenId) returns (string memory)
+```
+
+---
+
+## Limited_Partners_Business (NFT Contract)
+
+**Purpose:** Soulbound NFT for verified business Limited Partners (Tier 2).
+
+**Architecture:** This is the ERC721 NFT contract. It can ONLY be minted by the SumsubVerifier contract.
+
+**Access Granted:**
+- Request credit score (upgrade to Tier 3 Ecreditscoring NFT)
+- Monetization features
+- OTC Orders
+- Vault investments
+
+**Note:** This NFT grants the SAME permissions as Limited_Partners_Individuals. The only difference is the identity marker (business vs individual).
+
+### Write Functions
+
+```solidity
+// Mint NFT (only callable by SumsubVerifier contract)
+function safeMint(
+    address to,
+    string memory companyName,
+    string memory registrationNumber,
+    string memory jurisdiction,
+    BusinessType businessType,
+    string memory sumsubApplicantId,
+    string memory uri
+) returns (uint256) // MINTER_ROLE
+
+// Set token state
+function setTokenState(uint256 tokenId, bool isActive) // DEFAULT_ADMIN_ROLE
+
+// Burn token
+function burn(uint256 tokenId) // Token owner only
+```
+
+### Read Functions
+
+```solidity
+function balanceOf(address owner) returns (uint256)
+function ownerOf(uint256 tokenId) returns (address)
+function getTokenState(uint256 tokenId) returns (bool)
+function getCompanyName(uint256 tokenId) returns (string memory)
+function getBusinessInfo(uint256 tokenId) returns (BusinessInfo memory) // Admin only
+```
+
+---
+
+## CompliantLPHook (Uniswap V4 Integration)
+
+**Purpose:** Uniswap V4 hook that gates LP pool access to Tier 1+ users.
+
+**Architecture:** This hook is attached to Uniswap V4 liquidity pools to enforce KYC requirements.
+
+**Access Requirements:**
+- **Tier 1 (Convexo_Passport)**: ✅ Can swap, add liquidity, remove liquidity
+- **Tier 2+ (Limited Partners, Vault Creators)**: ✅ Can swap, add liquidity, remove liquidity
+- **Tier 0 (No NFT)**: ❌ Cannot interact with gated pools
+
+**Key Feature:** This is THE contract that enables Tier 1 passport holders to access LP pools.
 
 ### Hook Functions (Automatic)
 
+These functions are called automatically by Uniswap V4 before each operation:
+
 ```solidity
-function beforeSwap(...) // Requires Tier 1+
-function beforeAddLiquidity(...) // Requires Tier 1+
-function beforeRemoveLiquidity(...) // Requires Tier 1+
+function beforeSwap(...) // Requires Tier 1+ (Convexo_Passport or higher)
+function beforeAddLiquidity(...) // Requires Tier 1+ (Convexo_Passport or higher)
+function beforeRemoveLiquidity(...) // Requires Tier 1+ (Convexo_Passport or higher)
 ```
+
+**Integration:** Liquidity pools register this hook via the PoolRegistry contract.
 
 ---
 
