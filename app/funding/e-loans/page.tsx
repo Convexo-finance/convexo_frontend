@@ -17,11 +17,12 @@ import {
 
 export default function ELoansPage() {
   const { isConnected } = useAccount();
-  const { hasVaultsNFT } = useNFTBalance();
+  const { hasVaultsNFT, hasEcreditscoringNFT } = useNFTBalance();
   const { count, isLoading: isLoadingCount } = useVaultCount();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const canAccess = hasVaultsNFT;
+  // User can access if they have either the new Ecreditscoring NFT (Tier 3) or legacy Vaults NFT
+  const canAccess = hasVaultsNFT || hasEcreditscoringNFT;
 
   if (!isConnected) {
     return (
@@ -46,7 +47,7 @@ export default function ELoansPage() {
               <LockClosedIcon className="w-16 h-16 mx-auto mb-4 text-gray-500" />
               <h2 className="text-2xl font-bold text-white mb-2">Tier 3 Required</h2>
               <p className="text-gray-400 mb-6">
-                You need a Convexo Vaults NFT (Tier 3) to create loan vaults.
+                You need a Credit Score NFT (Tier 3) to create loan vaults. Complete the AI-powered credit verification to unlock vault creation.
               </p>
               <Link href="/digital-id/credit-score">
                 <button className="btn-primary">Get Credit Verified</button>

@@ -22,7 +22,12 @@ export function useVerificationStatus(userAddress?: `0x${string}`) {
     abi: VeriffVerifierABI,
     functionName: 'getVerificationStatus',
     args: user ? [user] : undefined,
-    query: { enabled: !!user && !!contracts },
+    query: {
+      enabled: !!user && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0, // Always refetch to get latest verification status
+    },
   });
 
   const parsed = status as [
@@ -77,7 +82,12 @@ export function useIsVerified(userAddress?: `0x${string}`) {
     abi: VeriffVerifierABI,
     functionName: 'isVerified',
     args: user ? [user] : undefined,
-    query: { enabled: !!user && !!contracts },
+    query: {
+      enabled: !!user && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
+    },
   });
 
   return { isVerified: isVerified === true, isLoading, refetch, error };

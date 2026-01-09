@@ -167,6 +167,32 @@ export default function WalletPage() {
     });
   };
 
+  const calculateTotalPortfolioValue = () => {
+    let total = 0;
+
+    // Add USDC value
+    if (usdcBalance) {
+      total += parseFloat(formatUnits(usdcBalance as bigint, 6));
+    }
+
+    // Add ETH value
+    if (ethBalance?.value && ethPrice) {
+      const ethAmount = parseFloat(formatUnits(ethBalance.value, 18));
+      total += ethAmount * ethPrice;
+    }
+
+    // Add ECOP value
+    if (ecopBalance && copRate) {
+      const ecopAmount = parseFloat(formatUnits(ecopBalance as bigint, 18));
+      total += ecopAmount / copRate;
+    }
+
+    return total.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   if (!isConnected) {
     return (
       <DashboardLayout>
@@ -213,11 +239,11 @@ export default function WalletPage() {
           <div className="card bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-700/30">
             <p className="text-gray-400 text-sm mb-2">Total Portfolio Value</p>
             <p className="text-4xl font-bold text-white mb-4">
-              ${usdcBalance ? parseFloat(formatUnits(usdcBalance as bigint, 6)).toLocaleString() : '0.00'}
+              ${calculateTotalPortfolioValue()}
               <span className="text-lg text-gray-400 ml-2">USD</span>
             </p>
             <p className="text-sm text-gray-500">
-              * Only USDC value shown. ETH and ECOP values require price oracles.
+              Includes ETH, USDC, and ECOP balances converted to USD
             </p>
           </div>
 

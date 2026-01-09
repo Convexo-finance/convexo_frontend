@@ -7,16 +7,17 @@
  * - Tier 3: Ecreditscoring (AI Credit Score)
  */
 
+import { useEffect } from 'react';
 import { useAccount, useChainId, useReadContract } from 'wagmi';
 import { getContractsForChain } from '@/lib/contracts/addresses';
-import { 
-  ConvexoPassportABI, 
-  LPIndividualsABI, 
-  LPBusinessABI, 
+import {
+  ConvexoPassportABI,
+  LPIndividualsABI,
+  LPBusinessABI,
   EcreditscoringABI,
   // Legacy
-  ConvexoLPsABI, 
-  ConvexoVaultsABI 
+  ConvexoLPsABI,
+  ConvexoVaultsABI
 } from '@/lib/contracts/abis';
 
 export function useNFTBalance() {
@@ -32,6 +33,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0, // Always refetch when data is requested
     },
   });
 
@@ -42,6 +46,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -52,6 +59,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -63,6 +73,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -74,6 +87,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -85,6 +101,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -96,6 +115,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -107,6 +129,9 @@ export function useNFTBalance() {
     args: address ? [address] : undefined,
     query: {
       enabled: !!address && !!contracts,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      staleTime: 0,
     },
   });
 
@@ -136,6 +161,32 @@ export function useNFTBalance() {
     if (hasPassportNFT || hasActivePassport === true) return 1; // Passport
     return 0; // None
   };
+
+  // Refetch all balances when chain or address changes
+  useEffect(() => {
+    // Add a small delay to ensure the contracts are properly initialized
+    const timer = setTimeout(() => {
+      if (address && contracts) {
+        console.log(`[useNFTBalance] Refetching all balances for chain ${chainId}`);
+
+        // Refetch all balances
+        Promise.all([
+          refetchPassport(),
+          refetchLPIndividuals(),
+          refetchLPBusiness(),
+          refetchEcreditscoring(),
+          refetchLPs(),
+          refetchVaults(),
+        ]).then(() => {
+          console.log(`[useNFTBalance] All balances refetched for chain ${chainId}`);
+        }).catch((error) => {
+          console.error(`[useNFTBalance] Error refetching balances:`, error);
+        });
+      }
+    }, 100); // Small delay to ensure contract addresses are loaded
+
+    return () => clearTimeout(timer);
+  }, [chainId, address]); // Only depend on chainId and address to avoid infinite loops
 
   return {
     // Tier 1: Passport

@@ -148,15 +148,12 @@ const navigationSections: NavSection[] = [
   },
 ];
 
-// User tier calculation
+// User tier calculation - memoized to prevent unnecessary re-renders
 function useUserTier() {
-  const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasVaultsNFT, hasActivePassport, hasEcreditscoringNFT } = useNFTBalance();
-  
-  // Highest tier wins (per CONTRACTS_REFERENCE.md)
-  if (hasVaultsNFT || hasEcreditscoringNFT) return 3; // Vault Creator
-  if (hasLPIndividualsNFT || hasLPBusinessNFT) return 2; // Limited Partner
-  if (hasPassportNFT || hasActivePassport) return 1; // Passport
-  return 0; // None
+  const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasVaultsNFT, hasActivePassport, hasEcreditscoringNFT, userTier } = useNFTBalance();
+
+  // Use the calculated userTier from the hook for consistency
+  return userTier;
 }
 
 // Admin check
