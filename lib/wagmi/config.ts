@@ -15,10 +15,10 @@ export const unichainSepolia = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL || 'https://unichain-sepolia.infura.io/v3/'],
+      http: [process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL || 'https://sepolia.unichain.org'],
     },
     public: {
-      http: [process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL || 'https://unichain-sepolia.infura.io/v3/'],
+      http: [process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL || 'https://sepolia.unichain.org'],
     },
   },
   blockExplorers: {
