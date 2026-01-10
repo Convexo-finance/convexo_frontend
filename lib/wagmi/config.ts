@@ -46,13 +46,13 @@ export const unichainMainnet = defineChain({
     },
   },
   blockExplorers: {
-    default: { name: 'Uniscan', url: 'https://uniscan.uniwhale.io' },
+    default: { name: 'Uniscan', url: 'https://unichain-sepolia.blockscout.com/' },
   },
   testnet: false,
 });
 
 // Fallback project ID for development - replace with your actual WalletConnect Cloud project ID
-const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'c4f79cc821d18d9e3e2c5b8b5e3e5c7a';
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
 export const config = getDefaultConfig({
   appName: 'Convexo Protocol',
