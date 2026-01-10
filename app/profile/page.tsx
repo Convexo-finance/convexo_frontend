@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getContractsForChain, getAddressExplorerLink } from '@/lib/contracts/addresses';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   WalletIcon,
   BuildingLibraryIcon,
@@ -22,7 +23,14 @@ export default function ProfilePage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasPassportNFT, hasLPsNFT, hasVaultsNFT, hasActivePassport } = useNFTBalance();
+  const {
+    hasPassportNFT,
+    hasLPIndividualsNFT,
+    hasLPBusinessNFT,
+    hasEcreditscoringNFT,
+    hasActivePassport,
+    userTier,
+  } = useNFTBalance();
   const [copied, setCopied] = useState(false);
 
   const { data: ethBalance } = useBalance({ address });
@@ -33,8 +41,6 @@ export default function ProfilePage() {
     args: address ? [address] : undefined,
     query: { enabled: !!address && !!contracts },
   });
-
-  const userTier = hasVaultsNFT ? 3 : hasLPsNFT ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
 
   const tierConfig = {
     0: { label: 'Unverified', color: 'text-gray-400', bg: 'bg-gray-800', border: 'border-gray-700' },
@@ -141,7 +147,10 @@ export default function ProfilePage() {
             <div className="card p-5">
               <p className="text-gray-400 text-sm mb-1">NFTs Owned</p>
               <p className="text-2xl font-bold text-purple-400">
-                {(hasPassportNFT ? 1 : 0) + (hasLPsNFT ? 1 : 0) + (hasVaultsNFT ? 1 : 0)} / 3
+                {(hasPassportNFT || hasActivePassport ? 1 : 0) +
+                 (hasLPIndividualsNFT ? 1 : 0) +
+                 (hasLPBusinessNFT ? 1 : 0) +
+                 (hasEcreditscoringNFT ? 1 : 0)} / 4
               </p>
             </div>
           </div>
@@ -149,11 +158,40 @@ export default function ProfilePage() {
           {/* NFT Status */}
           <div className="card">
             <h2 className="text-lg font-semibold text-white mb-4">NFT Holdings</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { name: 'Convexo Passport', owned: hasPassportNFT || hasActivePassport, tier: 1, desc: 'Individual investor access' },
-                { name: 'Limited Partner', owned: hasLPsNFT, tier: 2, desc: 'LP pool access' },
-                { name: 'Vault Creator', owned: hasVaultsNFT, tier: 3, desc: 'Create funding vaults' },
+                {
+                  name: 'Humanity (ZK Passport)',
+                  owned: hasPassportNFT || hasActivePassport,
+                  tier: 1,
+                  desc: 'Individual investor access',
+                  image: '/NFTs/convexo_zkpassport.png',
+                  gradient: 'from-emerald-600 to-teal-600',
+                },
+                {
+                  name: 'LP - Individuals',
+                  owned: hasLPIndividualsNFT,
+                  tier: 2,
+                  desc: 'Individual KYC verified',
+                  image: '/NFTs/Convexo_lps.png',
+                  gradient: 'from-blue-600 to-cyan-600',
+                },
+                {
+                  name: 'LP - Business',
+                  owned: hasLPBusinessNFT,
+                  tier: 2,
+                  desc: 'Business KYB verified',
+                  image: '/NFTs/Convexo_lps.png',
+                  gradient: 'from-purple-600 to-pink-600',
+                },
+                {
+                  name: 'Credit Score',
+                  owned: hasEcreditscoringNFT,
+                  tier: 3,
+                  desc: 'Create funding vaults',
+                  image: '/NFTs/convexo_vaults.png',
+                  gradient: 'from-purple-600 to-pink-600',
+                },
               ].map((nft) => (
                 <div
                   key={nft.name}
@@ -163,13 +201,23 @@ export default function ProfilePage() {
                       : 'bg-gray-800/50 border-gray-700/50'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    {nft.owned ? (
-                      <CheckBadgeIcon className="w-6 h-6 text-emerald-400" />
-                    ) : (
-                      <XCircleIcon className="w-6 h-6 text-gray-500" />
-                    )}
-                    <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`relative w-16 h-16 rounded-xl overflow-hidden ${
+                      nft.owned ? '' : 'opacity-50 grayscale'
+                    }`}>
+                      <Image
+                        src={nft.image}
+                        alt={nft.name}
+                        fill
+                        className="object-cover"
+                      />
+                      {nft.owned && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                          <CheckBadgeIcon className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
                       <p className={`font-medium ${nft.owned ? 'text-white' : 'text-gray-400'}`}>
                         {nft.name}
                       </p>
