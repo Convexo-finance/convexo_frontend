@@ -13,10 +13,10 @@ import {
 
 export default function MarketLPsPage() {
   const { isConnected } = useAccount();
-  const { hasLPsNFT, hasVaultsNFT } = useNFTBalance();
+  const { hasAnyLPNFT, hasEcreditscoringNFT } = useNFTBalance();
 
   // LP pools require Tier 2 (Limited Partner)
-  const canAccess = hasLPsNFT || hasVaultsNFT;
+  const canAccess = hasAnyLPNFT || hasEcreditscoringNFT;
 
   const pools = [
     {

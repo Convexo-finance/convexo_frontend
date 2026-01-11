@@ -22,14 +22,13 @@ export default function DigitalIDPage() {
     hasPassportNFT,
     hasLPIndividualsNFT,
     hasLPBusinessNFT,
-    hasVaultsNFT,
     hasEcreditscoringNFT,
     hasActivePassport,
     verifiedIdentity
   } = useNFTBalance();
 
-  // Calculate user tier - Tier 3 includes both Ecreditscoring and legacy Vaults NFTs
-  const userTier = (hasVaultsNFT || hasEcreditscoringNFT) ? 3 : (hasLPIndividualsNFT || hasLPBusinessNFT) ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
+  // Calculate user tier - Tier 3 is Ecreditscoring NFTs
+  const userTier = hasEcreditscoringNFT ? 3 : (hasLPIndividualsNFT || hasLPBusinessNFT) ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
 
   const nftCards = [
     {
@@ -71,7 +70,7 @@ export default function DigitalIDPage() {
       href: '/digital-id/credit-score',
       icon: SparklesIcon,
       image: '/NFTs/convexo_vaults.png',
-      owned: hasEcreditscoringNFT || hasVaultsNFT, // Check both new and legacy NFTs
+      owned: hasEcreditscoringNFT,
       tier: 3,
       benefits: ['Create funding vaults', 'Access credit lines', 'All Tier 2 benefits'],
       gradient: 'from-purple-600 to-pink-600',

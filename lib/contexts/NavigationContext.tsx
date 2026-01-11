@@ -34,9 +34,6 @@ export interface NFTStatus {
   hasAnyLP: boolean;
   // Tier 3
   hasEcreditscoring: boolean;
-  // Legacy (backwards compatibility)
-  hasLPs: boolean;
-  hasVaults: boolean;
 }
 
 export interface NavigationState {
@@ -84,9 +81,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     hasAnyLPNFT,
     // Tier 3
     hasEcreditscoringNFT,
-    // Legacy
-    hasLPsNFT,
-    hasVaultsNFT,
     // Computed
     userTier: nftUserTier,
     canAccessTreasury: nftCanAccessTreasury,
@@ -132,10 +126,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     hasAnyLP: hasAnyLPNFT,
     // Tier 3
     hasEcreditscoring: hasEcreditscoringNFT,
-    // Legacy
-    hasLPs: hasLPsNFT || hasAnyLPNFT,
-    hasVaults: hasVaultsNFT || hasEcreditscoringNFT,
-  }), [hasPassportNFT, hasActivePassport, hasLPIndividualsNFT, hasLPBusinessNFT, hasAnyLPNFT, hasEcreditscoringNFT, hasLPsNFT, hasVaultsNFT]);
+  }), [hasPassportNFT, hasActivePassport, hasLPIndividualsNFT, hasLPBusinessNFT, hasAnyLPNFT, hasEcreditscoringNFT]);
 
   const refetchAll = () => {
     refetchNFT();

@@ -19,9 +19,9 @@ import {
 
 export default function CreditScorePage() {
   const { isConnected } = useAccount();
-  const { hasVaultsNFT, hasAnyLPNFT, canRequestCreditScore } = useNFTBalance();
+  const { hasEcreditscoringNFT, hasAnyLPNFT, canRequestCreditScore } = useNFTBalance();
 
-  const isVerified = hasVaultsNFT;
+  const isVerified = hasEcreditscoringNFT;
 
   const evaluationCategories = [
     {

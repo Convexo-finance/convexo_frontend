@@ -5,8 +5,9 @@
 
 // NFT & Core Contract Hooks
 export {
-  useConvexoLPs,
-  useConvexoVaultsNFT,
+  useLPIndividuals,
+  useLPBusiness,
+  useEcreditscoring,
   useConvexoPassport,
   useReputationManager,
   useVaultFactory,

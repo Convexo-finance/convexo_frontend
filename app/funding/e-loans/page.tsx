@@ -17,12 +17,12 @@ import {
 
 export default function ELoansPage() {
   const { isConnected } = useAccount();
-  const { hasVaultsNFT, hasEcreditscoringNFT } = useNFTBalance();
+  const { hasEcreditscoringNFT } = useNFTBalance();
   const { count, isLoading: isLoadingCount } = useVaultCount();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // User can access if they have either the new Ecreditscoring NFT (Tier 3) or legacy Vaults NFT
-  const canAccess = hasVaultsNFT || hasEcreditscoringNFT;
+  // User can access if they have Ecreditscoring NFT (Tier 3)
+  const canAccess = hasEcreditscoringNFT;
 
   if (!isConnected) {
     return (

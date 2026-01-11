@@ -15,13 +15,13 @@ import {
 
 export default function FundingPage() {
   const { isConnected } = useAccount();
-  const { hasVaultsNFT, hasPassportNFT, hasActivePassport, canAccessTreasury, userTier } = useNFTBalance();
+  const { hasEcreditscoringNFT, hasPassportNFT, hasActivePassport, canAccessTreasury, userTier } = useNFTBalance();
   const { count: vaultCount } = useVaultCount();
 
   // Tier 1+ can access funding features (E-Contracts)
   const canAccess = hasPassportNFT || hasActivePassport || canAccessTreasury || userTier >= 1;
   // Only Tier 3 can create vaults
-  const canCreateVaults = hasVaultsNFT || userTier >= 3;
+  const canCreateVaults = hasEcreditscoringNFT || userTier >= 3;
 
   if (!isConnected) {
     return (

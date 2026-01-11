@@ -16,10 +16,10 @@ import {
 
 export default function InvestmentsPage() {
   const { isConnected } = useAccount();
-  const { hasPassportNFT, hasActivePassport, hasLPsNFT, hasVaultsNFT } = useNFTBalance();
+  const { hasPassportNFT, hasActivePassport, hasAnyLPNFT, hasEcreditscoringNFT } = useNFTBalance();
   const { count: vaultCount } = useVaultCount();
 
-  const canAccess = hasPassportNFT || hasActivePassport || hasLPsNFT || hasVaultsNFT;
+  const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
   if (!isConnected) {
     return (

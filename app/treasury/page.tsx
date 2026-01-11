@@ -20,9 +20,9 @@ export default function TreasuryPage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasPassportNFT, hasActivePassport, hasLPsNFT, hasVaultsNFT } = useNFTBalance();
+  const { hasPassportNFT, hasActivePassport, hasAnyLPNFT, hasEcreditscoringNFT } = useNFTBalance();
 
-  const canAccess = hasPassportNFT || hasActivePassport || hasLPsNFT || hasVaultsNFT;
+  const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
   const { data: usdcBalance } = useReadContract({
     address: contracts?.USDC,

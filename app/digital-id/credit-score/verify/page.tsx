@@ -16,7 +16,7 @@ type CreditScore = {
 export default function AICreditCheckPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { hasVaultsNFT, vaultsBalance } = useNFTBalance();
+  const { hasEcreditscoringNFT, ecreditscoringBalance } = useNFTBalance();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [creditScore, setCreditScore] = useState<CreditScore | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -108,7 +108,7 @@ export default function AICreditCheckPage() {
     );
   }
 
-  if (hasVaultsNFT) {
+  if (hasEcreditscoringNFT) {
     return (
       <DashboardLayout>
         <div className="max-w-2xl mx-auto">
@@ -122,7 +122,7 @@ export default function AICreditCheckPage() {
               Already Verified
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You have already completed credit verification and hold {vaultsBalance?.toString() || '0'} Vaults NFT(s).
+              You have already completed credit verification and hold {ecreditscoringBalance?.toString() || '0'} Credit Score NFT(s).
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
               Wallet: {address}

@@ -150,7 +150,7 @@ const navigationSections: NavSection[] = [
 
 // User tier calculation - memoized to prevent unnecessary re-renders
 function useUserTier() {
-  const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasVaultsNFT, hasActivePassport, hasEcreditscoringNFT, userTier } = useNFTBalance();
+  const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasActivePassport, hasEcreditscoringNFT, userTier } = useNFTBalance();
 
   // Use the calculated userTier from the hook for consistency
   return userTier;

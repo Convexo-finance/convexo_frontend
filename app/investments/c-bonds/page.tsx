@@ -15,11 +15,11 @@ import { useState } from 'react';
 
 export default function CBondsPage() {
   const { isConnected } = useAccount();
-  const { hasPassportNFT, hasActivePassport, hasLPsNFT, hasVaultsNFT } = useNFTBalance();
+  const { hasPassportNFT, hasActivePassport, hasAnyLPNFT, hasEcreditscoringNFT } = useNFTBalance();
   const { count, isLoading: isLoadingCount } = useVaultCount();
   const [filter, setFilter] = useState('all');
 
-  const canAccess = hasPassportNFT || hasActivePassport || hasLPsNFT || hasVaultsNFT;
+  const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
   if (!isConnected) {
     return (

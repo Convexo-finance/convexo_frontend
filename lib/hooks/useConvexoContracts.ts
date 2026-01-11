@@ -1,14 +1,16 @@
 /**
  * Comprehensive Convexo Protocol Contract Hooks
  * Provides read and write functions for all protocol contracts
+ * Version 3.1 - Uses new tier system: Passport (1) → LP_Individuals/LP_Business (2) → Ecreditscoring (3)
  */
 
 import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { getContractsForChain, ERC20_ABI } from '@/lib/contracts/addresses';
 import {
-  ConvexoLPsABI,
-  ConvexoVaultsABI,
   ConvexoPassportABI,
+  LPIndividualsABI,
+  LPBusinessABI,
+  EcreditscoringABI,
   ReputationManagerABI,
   VaultFactoryABI,
   PoolRegistryABI,
@@ -19,18 +21,18 @@ import {
 } from '@/lib/contracts/abis';
 
 // ============================================
-// CONVEXO LPs NFT HOOKS
+// LP INDIVIDUALS NFT HOOKS (Tier 2 - Veriff KYC)
 // ============================================
 
-export function useConvexoLPs() {
+export function useLPIndividuals() {
   const { address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
   // Read: Get balance
   const { data: balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useReadContract({
-    address: contracts?.CONVEXO_LPS,
-    abi: ConvexoLPsABI,
+    address: contracts?.LP_INDIVIDUALS,
+    abi: LPIndividualsABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: { enabled: !!address && !!contracts },
@@ -39,20 +41,9 @@ export function useConvexoLPs() {
   // Read: Get token state (active/inactive)
   const useTokenState = (tokenId: bigint) => {
     return useReadContract({
-      address: contracts?.CONVEXO_LPS,
-      abi: ConvexoLPsABI,
+      address: contracts?.LP_INDIVIDUALS,
+      abi: LPIndividualsABI,
       functionName: 'getTokenState',
-      args: [tokenId],
-      query: { enabled: !!contracts },
-    });
-  };
-
-  // Read: Get company ID for token
-  const useCompanyId = (tokenId: bigint) => {
-    return useReadContract({
-      address: contracts?.CONVEXO_LPS,
-      abi: ConvexoLPsABI,
-      functionName: 'getCompanyId',
       args: [tokenId],
       query: { enabled: !!contracts },
     });
@@ -61,8 +52,8 @@ export function useConvexoLPs() {
   // Read: Get token URI
   const useTokenURI = (tokenId: bigint) => {
     return useReadContract({
-      address: contracts?.CONVEXO_LPS,
-      abi: ConvexoLPsABI,
+      address: contracts?.LP_INDIVIDUALS,
+      abi: LPIndividualsABI,
       functionName: 'tokenURI',
       args: [tokenId],
       query: { enabled: !!contracts },
@@ -75,24 +66,23 @@ export function useConvexoLPs() {
     isLoadingBalance,
     refetchBalance,
     useTokenState,
-    useCompanyId,
     useTokenURI,
   };
 }
 
 // ============================================
-// CONVEXO VAULTS NFT HOOKS
+// LP BUSINESS NFT HOOKS (Tier 2 - Sumsub KYB)
 // ============================================
 
-export function useConvexoVaultsNFT() {
+export function useLPBusiness() {
   const { address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
   // Read: Get balance
   const { data: balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useReadContract({
-    address: contracts?.CONVEXO_VAULTS,
-    abi: ConvexoVaultsABI,
+    address: contracts?.LP_BUSINESS,
+    abi: LPBusinessABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: { enabled: !!address && !!contracts },
@@ -101,8 +91,8 @@ export function useConvexoVaultsNFT() {
   // Read: Get token state
   const useTokenState = (tokenId: bigint) => {
     return useReadContract({
-      address: contracts?.CONVEXO_VAULTS,
-      abi: ConvexoVaultsABI,
+      address: contracts?.LP_BUSINESS,
+      abi: LPBusinessABI,
       functionName: 'getTokenState',
       args: [tokenId],
       query: { enabled: !!contracts },
@@ -112,8 +102,8 @@ export function useConvexoVaultsNFT() {
   // Read: Get company ID for token
   const useCompanyId = (tokenId: bigint) => {
     return useReadContract({
-      address: contracts?.CONVEXO_VAULTS,
-      abi: ConvexoVaultsABI,
+      address: contracts?.LP_BUSINESS,
+      abi: LPBusinessABI,
       functionName: 'getCompanyId',
       args: [tokenId],
       query: { enabled: !!contracts },
@@ -131,7 +121,57 @@ export function useConvexoVaultsNFT() {
 }
 
 // ============================================
-// CONVEXO PASSPORT HOOKS
+// ECREDITSCORING NFT HOOKS (Tier 3 - AI Credit Score)
+// ============================================
+
+export function useEcreditscoring() {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+
+  // Read: Get balance
+  const { data: balance, isLoading: isLoadingBalance, refetch: refetchBalance } = useReadContract({
+    address: contracts?.ECREDITSCORING,
+    abi: EcreditscoringABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && !!contracts },
+  });
+
+  // Read: Get credit score for token
+  const useCreditScore = (tokenId: bigint) => {
+    return useReadContract({
+      address: contracts?.ECREDITSCORING,
+      abi: EcreditscoringABI,
+      functionName: 'getCreditScore',
+      args: [tokenId],
+      query: { enabled: !!contracts },
+    });
+  };
+
+  // Read: Get token URI
+  const useTokenURI = (tokenId: bigint) => {
+    return useReadContract({
+      address: contracts?.ECREDITSCORING,
+      abi: EcreditscoringABI,
+      functionName: 'tokenURI',
+      args: [tokenId],
+      query: { enabled: !!contracts },
+    });
+  };
+
+  return {
+    balance: balance as bigint | undefined,
+    hasNFT: balance ? (balance as bigint) > 0n : false,
+    isLoadingBalance,
+    refetchBalance,
+    useCreditScore,
+    useTokenURI,
+  };
+}
+
+// ============================================
+// CONVEXO PASSPORT HOOKS (Tier 1 - ZKPassport)
 // ============================================
 
 export function useConvexoPassport() {
@@ -340,18 +380,26 @@ export function useReputationManager() {
   });
 
   // Read: Check NFT holdings
-  const { data: holdsLPs } = useReadContract({
+  const { data: holdsLPIndividuals } = useReadContract({
     address: contracts?.REPUTATION_MANAGER,
     abi: ReputationManagerABI,
-    functionName: 'holdsConvexoLPs',
+    functionName: 'holdsLPIndividuals',
     args: address ? [address] : undefined,
     query: { enabled: !!address && !!contracts },
   });
 
-  const { data: holdsVaults } = useReadContract({
+  const { data: holdsLPBusiness } = useReadContract({
     address: contracts?.REPUTATION_MANAGER,
     abi: ReputationManagerABI,
-    functionName: 'holdsConvexoVaults',
+    functionName: 'holdsLPBusiness',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && !!contracts },
+  });
+
+  const { data: holdsEcreditscoring } = useReadContract({
+    address: contracts?.REPUTATION_MANAGER,
+    abi: ReputationManagerABI,
+    functionName: 'holdsEcreditscoring',
     args: address ? [address] : undefined,
     query: { enabled: !!address && !!contracts },
   });
@@ -395,9 +443,10 @@ export function useReputationManager() {
     canCreateVaults: canCreateVaults === true,
     canInvestInVaults: canInvestInVaults === true,
     canCreateTreasury: canCreateTreasury === true,
-    // NFT holdings
-    holdsLPs: holdsLPs === true,
-    holdsVaults: holdsVaults === true,
+    // NFT holdings (new names)
+    holdsLPIndividuals: holdsLPIndividuals === true,
+    holdsLPBusiness: holdsLPBusiness === true,
+    holdsEcreditscoring: holdsEcreditscoring === true,
     holdsPassport: holdsPassport === true,
   };
 }
@@ -600,19 +649,21 @@ export function usePriceFeedManager() {
 // ============================================
 
 export function useConvexoProtocol() {
-  const lps = useConvexoLPs();
-  const vaults = useConvexoVaultsNFT();
+  const lpIndividuals = useLPIndividuals();
+  const lpBusiness = useLPBusiness();
+  const ecreditscoring = useEcreditscoring();
   const passport = useConvexoPassport();
   const reputation = useReputationManager();
   const vaultFactory = useVaultFactory();
   const usdc = useUSDC();
 
   return {
-    // NFT holdings
+    // NFT holdings (Tier System)
     nfts: {
-      lps,
-      vaults,
-      passport,
+      passport,           // Tier 1
+      lpIndividuals,      // Tier 2
+      lpBusiness,         // Tier 2
+      ecreditscoring,     // Tier 3
     },
     // Reputation
     reputation,

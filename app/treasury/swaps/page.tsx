@@ -24,14 +24,14 @@ export default function SwapsPage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasPassportNFT, hasActivePassport, hasLPsNFT, hasVaultsNFT } = useNFTBalance();
+  const { hasPassportNFT, hasActivePassport, hasAnyLPNFT, hasEcreditscoringNFT } = useNFTBalance();
   
   const [fromToken, setFromToken] = useState(tokens[0]);
   const [toToken, setToToken] = useState(tokens[1]);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
 
-  const canAccess = hasPassportNFT || hasActivePassport || hasLPsNFT || hasVaultsNFT;
+  const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
   const { data: usdcBalance } = useReadContract({
     address: contracts?.USDC,

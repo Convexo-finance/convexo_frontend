@@ -2,17 +2,23 @@
 
 import { useAccount, useBalance, useContractRead, useChainId } from 'wagmi';
 import { formatUnits } from 'viem';
-import { CONTRACTS, getContractsForChain } from '@/lib/contracts/addresses';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { erc20Abi } from 'viem';
 import { ecopAbi } from '@/lib/contracts/ecopAbi';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
-import { ConvexoLPsABI, ConvexoVaultsABI } from '@/lib/contracts/abis';
+import { LPIndividualsABI, LPBusinessABI, EcreditscoringABI } from '@/lib/contracts/abis';
 import { VaultFactoryABI, ContractSignerABI } from '@/lib/contracts/abis';
 import { useState, useEffect } from 'react';
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'lime-famous-condor-7.mypinata.cloud';
-const VAULTS_IPFS = 'bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e';
-const LPS_IPFS = 'bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em';
+
+// IPFS hashes for NFT images
+const IPFS_HASHES = {
+  passport: 'bafybeiekwlyujx32cr5u3ixt5esfxhusalt5ljtrmsng74q7k45tilugh4',
+  lpIndividuals: 'bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em',
+  lpBusiness: 'bafkreiejesvgsvohwvv7q5twszrbu5z6dnpke6sg5cdiwgn2rq7dilu33m',
+  ecreditscoring: 'bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e',
+};
 
 interface NFTMetadata {
   name?: string;
@@ -25,7 +31,13 @@ export function DashboardStats() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasLPsNFT, hasVaultsNFT, hasPassportNFT, lpsBalance, vaultsBalance } = useNFTBalance();
+  const { 
+    hasPassportNFT, 
+    hasLPIndividualsNFT, 
+    hasLPBusinessNFT, 
+    hasEcreditscoringNFT,
+    hasAnyLPNFT,
+  } = useNFTBalance();
 
   // ETH Balance
   const { data: ethBalance, isLoading: isLoadingETH } = useBalance({
@@ -75,101 +87,64 @@ export function DashboardStats() {
     },
   });
 
-  // Get NFT Token IDs (if contract supports tokenOfOwnerByIndex)
-  // Note: If these functions don't exist, the hook will just return undefined
-  const { data: lpsTokenId } = useContractRead({
-    address: address && hasLPsNFT && contracts ? contracts.CONVEXO_LPS : undefined,
-    abi: ConvexoLPsABI,
-    functionName: 'tokenOfOwnerByIndex',
-    args: address ? [address, 0n] : undefined,
-    query: {
-      enabled: false, // Disabled - enable if contract supports this function
-    },
-  });
-
-  const { data: vaultsTokenId } = useContractRead({
-    address: address && hasVaultsNFT && contracts ? contracts.CONVEXO_VAULTS : undefined,
-    abi: ConvexoVaultsABI,
-    functionName: 'tokenOfOwnerByIndex',
-    args: address ? [address, 0n] : undefined,
-    query: {
-      enabled: false, // Disabled - enable if contract supports this function
-    },
-  });
-
   // Get NFT Metadata from IPFS
-  const [lpsMetadata, setLpsMetadata] = useState<NFTMetadata | null>(null);
-  const [vaultsMetadata, setVaultsMetadata] = useState<NFTMetadata | null>(null);
-  const [lpsImageUrl, setLpsImageUrl] = useState<string | null>(null);
-  const [vaultsImageUrl, setVaultsImageUrl] = useState<string | null>(null);
+  const [lpIndividualsMetadata, setLpIndividualsMetadata] = useState<NFTMetadata | null>(null);
+  const [lpBusinessMetadata, setLpBusinessMetadata] = useState<NFTMetadata | null>(null);
+  const [ecreditscoringMetadata, setEcreditscoringMetadata] = useState<NFTMetadata | null>(null);
 
   useEffect(() => {
-    if (hasLPsNFT) {
-      const metadataUrl = `https://${GATEWAY_URL}/ipfs/${LPS_IPFS}`;
-      // Try to fetch as JSON first (metadata)
+    if (hasLPIndividualsNFT) {
+      const metadataUrl = `https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.lpIndividuals}`;
       fetch(metadataUrl)
         .then((res) => {
           const contentType = res.headers.get('content-type');
           if (contentType?.includes('application/json')) {
-            return res.json().then((data) => {
-              setLpsMetadata(data);
-              if (data.image) {
-                // If image is relative, make it absolute
-                const imageUrl = data.image.startsWith('ipfs://')
-                  ? `https://${GATEWAY_URL}/ipfs/${data.image.replace('ipfs://', '')}`
-                  : data.image.startsWith('http')
-                  ? data.image
-                  : `https://${GATEWAY_URL}/ipfs/${data.image}`;
-                setLpsImageUrl(imageUrl);
-              }
-            });
+            return res.json().then((data) => setLpIndividualsMetadata(data));
           } else {
-            // If it's an image, use it directly
-            setLpsImageUrl(metadataUrl);
-            setLpsMetadata({ name: 'Convexo_LPs NFT', image: metadataUrl });
+            setLpIndividualsMetadata({ name: 'LP Individual NFT', image: metadataUrl });
           }
         })
         .catch(() => {
-          // Fallback: assume it's an image
-          setLpsImageUrl(metadataUrl);
-          setLpsMetadata({ name: 'Convexo_LPs NFT', image: metadataUrl });
+          setLpIndividualsMetadata({ name: 'LP Individual NFT', image: metadataUrl });
         });
     }
-  }, [hasLPsNFT]);
+  }, [hasLPIndividualsNFT]);
 
   useEffect(() => {
-    if (hasVaultsNFT) {
-      const metadataUrl = `https://${GATEWAY_URL}/ipfs/${VAULTS_IPFS}`;
-      // Try to fetch as JSON first (metadata)
+    if (hasLPBusinessNFT) {
+      const metadataUrl = `https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.lpBusiness}`;
       fetch(metadataUrl)
         .then((res) => {
           const contentType = res.headers.get('content-type');
           if (contentType?.includes('application/json')) {
-            return res.json().then((data) => {
-              setVaultsMetadata(data);
-              if (data.image) {
-                // If image is relative, make it absolute
-                const imageUrl = data.image.startsWith('ipfs://')
-                  ? `https://${GATEWAY_URL}/ipfs/${data.image.replace('ipfs://', '')}`
-                  : data.image.startsWith('http')
-                  ? data.image
-                  : `https://${GATEWAY_URL}/ipfs/${data.image}`;
-                setVaultsImageUrl(imageUrl);
-              }
-            });
+            return res.json().then((data) => setLpBusinessMetadata(data));
           } else {
-            // If it's an image, use it directly
-            setVaultsImageUrl(metadataUrl);
-            setVaultsMetadata({ name: 'Convexo_Vaults NFT', image: metadataUrl });
+            setLpBusinessMetadata({ name: 'LP Business NFT', image: metadataUrl });
           }
         })
         .catch(() => {
-          // Fallback: assume it's an image
-          setVaultsImageUrl(metadataUrl);
-          setVaultsMetadata({ name: 'Convexo_Vaults NFT', image: metadataUrl });
+          setLpBusinessMetadata({ name: 'LP Business NFT', image: metadataUrl });
         });
     }
-  }, [hasVaultsNFT]);
+  }, [hasLPBusinessNFT]);
+
+  useEffect(() => {
+    if (hasEcreditscoringNFT) {
+      const metadataUrl = `https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.ecreditscoring}`;
+      fetch(metadataUrl)
+        .then((res) => {
+          const contentType = res.headers.get('content-type');
+          if (contentType?.includes('application/json')) {
+            return res.json().then((data) => setEcreditscoringMetadata(data));
+          } else {
+            setEcreditscoringMetadata({ name: 'Credit Score NFT', image: metadataUrl });
+          }
+        })
+        .catch(() => {
+          setEcreditscoringMetadata({ name: 'Credit Score NFT', image: metadataUrl });
+        });
+    }
+  }, [hasEcreditscoringNFT]);
 
   // Get total counts
   const { data: vaultCount } = useContractRead({
@@ -231,33 +206,42 @@ export function DashboardStats() {
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
           NFT Holdings
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <NFTCard
             name="Convexo Passport"
-            tokenId={undefined}
             metadata={null}
-            ipfsUrl="/NFTs/convexo_zkpassport.png"
+            ipfsUrl={`https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.passport}`}
             imageUrl="/NFTs/convexo_zkpassport.png"
             isOwned={hasPassportNFT}
-            benefits="Tier 3 Soulbound NFT for verified individual investors. Required to unlock Treasury and Payments modules. Provides KYC/AML compliance."
+            tier={1}
+            benefits="Tier 1 - ZKPassport verified. Access to Treasury, Vaults, and LP Pools."
           />
           <NFTCard
-            name="Convexo_Vaults NFT"
-            tokenId={vaultsTokenId ? String(vaultsTokenId) : undefined}
-            metadata={vaultsMetadata}
-            ipfsUrl={`https://${GATEWAY_URL}/ipfs/${VAULTS_IPFS}`}
-            imageUrl={vaultsImageUrl || vaultsMetadata?.image || `https://${GATEWAY_URL}/ipfs/${VAULTS_IPFS}`}
-            isOwned={hasVaultsNFT}
-            benefits="Tier 2 NFT required for creating funding vaults. Enables access to credit scoring features and advanced lending products."
+            name="LP Individual"
+            metadata={lpIndividualsMetadata}
+            ipfsUrl={`https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.lpIndividuals}`}
+            imageUrl={lpIndividualsMetadata?.image || `https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.lpIndividuals}`}
+            isOwned={hasLPIndividualsNFT}
+            tier={2}
+            benefits="Tier 2 - Veriff KYC verified individual. Credit scoring and monetization access."
           />
           <NFTCard
-            name="Convexo_LPs NFT"
-            tokenId={lpsTokenId ? String(lpsTokenId) : undefined}
-            metadata={lpsMetadata}
-            ipfsUrl={`https://${GATEWAY_URL}/ipfs/${LPS_IPFS}`}
-            imageUrl={lpsImageUrl || lpsMetadata?.image || `https://${GATEWAY_URL}/ipfs/${LPS_IPFS}`}
-            isOwned={hasLPsNFT}
-            benefits="Tier 1 NFT required for compliant liquidity pool access. Enables participation in Uniswap V4 pools with ECOP/USDC."
+            name="LP Business"
+            metadata={lpBusinessMetadata}
+            ipfsUrl={`https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.lpBusiness}`}
+            imageUrl={lpBusinessMetadata?.image || `https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.lpBusiness}`}
+            isOwned={hasLPBusinessNFT}
+            tier={2}
+            benefits="Tier 2 - Sumsub KYB verified business. Credit scoring and monetization access."
+          />
+          <NFTCard
+            name="Credit Score"
+            metadata={ecreditscoringMetadata}
+            ipfsUrl={`https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.ecreditscoring}`}
+            imageUrl={ecreditscoringMetadata?.image || `https://${GATEWAY_URL}/ipfs/${IPFS_HASHES.ecreditscoring}`}
+            isOwned={hasEcreditscoringNFT}
+            tier={3}
+            benefits="Tier 3 - AI Credit Score verified. Vault creation and advanced lending."
           />
         </div>
       </div>
@@ -271,12 +255,12 @@ export function DashboardStats() {
           <StatCard
             label="Total Vaults"
             value={vaultCount ? Number(vaultCount) : 0}
-            href="/loans/vaults"
+            href="/investments/vaults"
           />
           <StatCard
             label="Total Contracts"
             value={contractCount ? Number(contractCount) : 0}
-            href="/loans/contracts"
+            href="/funding/e-contracts"
           />
         </div>
       </div>
@@ -327,85 +311,77 @@ function BalanceCard({
 
 function NFTCard({
   name,
-  tokenId,
   metadata,
   ipfsUrl,
   imageUrl,
   isOwned,
+  tier,
   benefits,
 }: {
   name: string;
-  tokenId?: string;
   metadata: NFTMetadata | null;
   ipfsUrl: string;
   imageUrl: string;
   isOwned: boolean;
+  tier: number;
   benefits: string;
 }) {
+  const tierColors: Record<number, string> = {
+    1: 'bg-blue-500',
+    2: 'bg-purple-500',
+    3: 'bg-amber-500',
+  };
+
   return (
     <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 relative">
+      <div className="flex flex-col items-center">
+        <div className="relative mb-3">
           <img
             src={imageUrl}
             alt={name}
-            className="w-24 h-24 rounded-lg object-cover border-2 border-gray-300 dark:border-gray-600"
+            className="w-20 h-20 rounded-lg object-cover border-2 border-gray-300 dark:border-gray-600"
             onError={(e) => {
-              // Fallback if image fails to load
-              (e.target as HTMLImageElement).src = `https://via.placeholder.com/96?text=${name}`;
+              (e.target as HTMLImageElement).src = `https://via.placeholder.com/80?text=${name}`;
             }}
           />
-          {/* Ownership Status Badge */}
+          {/* Tier Badge */}
+          <div className={`absolute -top-2 -left-2 w-6 h-6 ${tierColors[tier]} rounded-full flex items-center justify-center text-white text-xs font-bold shadow`}>
+            {tier}
+          </div>
+          {/* Ownership Badge */}
           <div className="absolute -top-2 -right-2">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg ${
-                isOwned
-                  ? 'bg-green-500 dark:bg-green-600'
-                  : 'bg-red-500 dark:bg-red-600'
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs shadow ${
+                isOwned ? 'bg-green-500' : 'bg-red-500'
               }`}
-              title={isOwned ? 'Owned' : 'Not Owned'}
             >
               {isOwned ? '✓' : '✗'}
             </div>
           </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {name}
-            </h3>
-            <span
-              className={`text-xs font-medium px-2 py-1 rounded ${
-                isOwned
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-              }`}
-            >
-              {isOwned ? 'Owned (1)' : 'Not Owned (0)'}
-            </span>
-          </div>
-          {tokenId && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Token ID: {tokenId}
-            </p>
-          )}
-          <div className="mb-2">
-            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Benefits:
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {benefits}
-            </p>
-          </div>
-          <a
-            href={ipfsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            View Metadata →
-          </a>
-        </div>
+        <h3 className="font-semibold text-sm text-gray-900 dark:text-white text-center mb-1">
+          {name}
+        </h3>
+        <span
+          className={`text-xs font-medium px-2 py-0.5 rounded mb-2 ${
+            isOwned
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+          }`}
+        >
+          {isOwned ? 'Owned' : 'Not Owned'}
+        </span>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-center mb-2">
+          {benefits}
+        </p>
+        <a
+          href={ipfsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          View on IPFS →
+        </a>
       </div>
     </div>
   );

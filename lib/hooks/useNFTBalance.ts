@@ -1,5 +1,5 @@
 /**
- * NFT Balance Hook - Version 3.0
+ * NFT Balance Hook - Version 3.1
  * 
  * Tier System:
  * - Tier 1: Convexo_Passport (ZKPassport verified)
@@ -15,9 +15,6 @@ import {
   LPIndividualsABI,
   LPBusinessABI,
   EcreditscoringABI,
-  // Legacy
-  ConvexoLPsABI,
-  ConvexoVaultsABI
 } from '@/lib/contracts/abis';
 
 export function useNFTBalance() {
@@ -35,7 +32,7 @@ export function useNFTBalance() {
       enabled: !!address && !!contracts,
       refetchOnMount: true,
       refetchOnWindowFocus: true,
-      staleTime: 0, // Always refetch when data is requested
+      staleTime: 0,
     },
   });
 
@@ -107,56 +104,24 @@ export function useNFTBalance() {
     },
   });
 
-  // Legacy: Convexo_LPs (backwards compatibility)
-  const { data: lpsBalance, refetch: refetchLPs } = useReadContract({
-    address: address && contracts ? contracts.CONVEXO_LPS : undefined,
-    abi: ConvexoLPsABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-    },
-  });
-
-  // Legacy: Convexo_Vaults (backwards compatibility)
-  const { data: vaultsBalance, refetch: refetchVaults } = useReadContract({
-    address: address && contracts ? contracts.CONVEXO_VAULTS : undefined,
-    abi: ConvexoVaultsABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-    },
-  });
-
   // Parse balances
   const passport = passportBalance ?? undefined;
   const lpIndividuals = lpIndividualsBalance ?? undefined;
   const lpBusiness = lpBusinessBalance ?? undefined;
   const ecreditscoring = ecreditscoringBalance ?? undefined;
-  const lps = lpsBalance ?? undefined;
-  const vaults = vaultsBalance ?? undefined;
 
   // NFT ownership flags
   const hasPassportNFT = typeof passport === 'bigint' && passport > 0n;
   const hasLPIndividualsNFT = typeof lpIndividuals === 'bigint' && lpIndividuals > 0n;
   const hasLPBusinessNFT = typeof lpBusiness === 'bigint' && lpBusiness > 0n;
   const hasEcreditscoringNFT = typeof ecreditscoring === 'bigint' && ecreditscoring > 0n;
-  const hasLPsNFT = typeof lps === 'bigint' && lps > 0n;
-  const hasVaultsNFT = typeof vaults === 'bigint' && vaults > 0n;
 
   // Combined checks
-  const hasAnyLPNFT = hasLPIndividualsNFT || hasLPBusinessNFT || hasLPsNFT;
+  const hasAnyLPNFT = hasLPIndividualsNFT || hasLPBusinessNFT;
 
   // Calculate user tier (highest tier wins)
   const getUserTier = (): number => {
-    if (hasEcreditscoringNFT || hasVaultsNFT) return 3; // VaultCreator
+    if (hasEcreditscoringNFT) return 3; // VaultCreator
     if (hasAnyLPNFT) return 2; // LimitedPartner
     if (hasPassportNFT || hasActivePassport === true) return 1; // Passport
     return 0; // None
@@ -164,29 +129,25 @@ export function useNFTBalance() {
 
   // Refetch all balances when chain or address changes
   useEffect(() => {
-    // Add a small delay to ensure the contracts are properly initialized
     const timer = setTimeout(() => {
       if (address && contracts) {
         console.log(`[useNFTBalance] Refetching all balances for chain ${chainId}`);
 
-        // Refetch all balances
         Promise.all([
           refetchPassport(),
           refetchLPIndividuals(),
           refetchLPBusiness(),
           refetchEcreditscoring(),
-          refetchLPs(),
-          refetchVaults(),
         ]).then(() => {
           console.log(`[useNFTBalance] All balances refetched for chain ${chainId}`);
         }).catch((error) => {
           console.error(`[useNFTBalance] Error refetching balances:`, error);
         });
       }
-    }, 100); // Small delay to ensure contract addresses are loaded
+    }, 100);
 
     return () => clearTimeout(timer);
-  }, [chainId, address]); // Only depend on chainId and address to avoid infinite loops
+  }, [chainId, address]);
 
   return {
     // Tier 1: Passport
@@ -216,12 +177,6 @@ export function useNFTBalance() {
     hasEcreditscoringNFT,
     ecreditscoringBalance: typeof ecreditscoring === 'bigint' ? ecreditscoring : undefined,
 
-    // Legacy (backwards compatibility)
-    hasLPsNFT,
-    hasVaultsNFT,
-    lpsBalance: typeof lps === 'bigint' ? lps : undefined,
-    vaultsBalance: typeof vaults === 'bigint' ? vaults : undefined,
-
     // Computed tier
     userTier: getUserTier(),
 
@@ -238,8 +193,6 @@ export function useNFTBalance() {
       refetchLPIndividuals();
       refetchLPBusiness();
       refetchEcreditscoring();
-      refetchLPs();
-      refetchVaults();
     },
   };
 }

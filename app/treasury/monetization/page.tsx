@@ -20,12 +20,12 @@ export default function MonetizationPage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { hasPassportNFT, hasActivePassport, hasLPsNFT, hasVaultsNFT } = useNFTBalance();
+  const { hasPassportNFT, hasActivePassport, hasAnyLPNFT, hasEcreditscoringNFT } = useNFTBalance();
   const [copAmount, setCopAmount] = useState('');
   const [ecopAmount, setEcopAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
-  const canAccess = hasPassportNFT || hasActivePassport || hasLPsNFT || hasVaultsNFT;
+  const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
   // Fetch exchange rate
   useEffect(() => {

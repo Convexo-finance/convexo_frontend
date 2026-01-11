@@ -52,7 +52,7 @@ export const unichainMainnet = defineChain({
 });
 
 // Fallback project ID for development - replace with your actual WalletConnect Cloud project ID
-const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id';
 
 export const config = getDefaultConfig({
   appName: 'Convexo Protocol',
