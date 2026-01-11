@@ -1,15 +1,19 @@
 /**
- * NFT Balance Hook - Version 3.1
+ * NFT Balance Hook - Version 3.2
  * 
  * Tier System:
  * - Tier 1: Convexo_Passport (ZKPassport verified)
  * - Tier 2: LP_Individuals (Veriff) OR LP_Business (Sumsub)
  * - Tier 3: Ecreditscoring (AI Credit Score)
+ * 
+ * Features:
+ * - Automatic refetch on chain switch
+ * - Proper query key invalidation per chain
  */
 
-import { useEffect } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useAccount, useChainId, useReadContract } from 'wagmi';
-import { getContractsForChain } from '@/lib/contracts/addresses';
+import { getContractsForChain, type ChainId } from '@/lib/contracts/addresses';
 import {
   ConvexoPassportABI,
   LPIndividualsABI,
@@ -21,86 +25,107 @@ export function useNFTBalance() {
   const { address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
+  const [lastChainId, setLastChainId] = useState<number | null>(null);
+
+  // Debug: Log chain changes
+  useEffect(() => {
+    console.log(`[useNFTBalance] Chain: ${chainId}, Contracts loaded: ${!!contracts}, Address: ${address?.slice(0, 8)}...`);
+    if (contracts) {
+      console.log(`[useNFTBalance] CONVEXO_PASSPORT: ${contracts.CONVEXO_PASSPORT}`);
+    }
+  }, [chainId, contracts, address]);
 
   // Tier 1: Convexo Passport (ZKPassport verified)
-  const { data: passportBalance, refetch: refetchPassport } = useReadContract({
-    address: address && contracts ? contracts.CONVEXO_PASSPORT : undefined,
+  const { data: passportBalance, refetch: refetchPassport, isLoading: isLoadingPassport } = useReadContract({
+    address: contracts?.CONVEXO_PASSPORT,
     abi: ConvexoPassportABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    chainId: chainId as ChainId,
     query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
+      enabled: !!address && !!contracts?.CONVEXO_PASSPORT,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+      gcTime: 0,
     },
   });
 
-  const { data: hasActivePassport } = useReadContract({
-    address: address && contracts ? contracts.CONVEXO_PASSPORT : undefined,
+  const { data: hasActivePassport, refetch: refetchActivePassport } = useReadContract({
+    address: contracts?.CONVEXO_PASSPORT,
     abi: ConvexoPassportABI,
     functionName: 'holdsActivePassport',
     args: address ? [address] : undefined,
+    chainId: chainId as ChainId,
     query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
+      enabled: !!address && !!contracts?.CONVEXO_PASSPORT,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+      gcTime: 0,
     },
   });
 
-  const { data: verifiedIdentity } = useReadContract({
-    address: address && contracts ? contracts.CONVEXO_PASSPORT : undefined,
+  const { data: verifiedIdentity, refetch: refetchVerifiedIdentity } = useReadContract({
+    address: contracts?.CONVEXO_PASSPORT,
     abi: ConvexoPassportABI,
     functionName: 'getVerifiedIdentity',
     args: address ? [address] : undefined,
+    chainId: chainId as ChainId,
     query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
+      enabled: !!address && !!contracts?.CONVEXO_PASSPORT,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+      gcTime: 0,
     },
   });
 
   // Tier 2: LP Individuals (Veriff verified)
   const { data: lpIndividualsBalance, refetch: refetchLPIndividuals } = useReadContract({
-    address: address && contracts ? contracts.LP_INDIVIDUALS : undefined,
+    address: contracts?.LP_INDIVIDUALS,
     abi: LPIndividualsABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    chainId: chainId as ChainId,
     query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
+      enabled: !!address && !!contracts?.LP_INDIVIDUALS,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+      gcTime: 0,
     },
   });
 
   // Tier 2: LP Business (Sumsub verified)
   const { data: lpBusinessBalance, refetch: refetchLPBusiness } = useReadContract({
-    address: address && contracts ? contracts.LP_BUSINESS : undefined,
+    address: contracts?.LP_BUSINESS,
     abi: LPBusinessABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    chainId: chainId as ChainId,
     query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
+      enabled: !!address && !!contracts?.LP_BUSINESS,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+      gcTime: 0,
     },
   });
 
   // Tier 3: Ecreditscoring (AI Credit Score)
   const { data: ecreditscoringBalance, refetch: refetchEcreditscoring } = useReadContract({
-    address: address && contracts ? contracts.ECREDITSCORING : undefined,
+    address: contracts?.ECREDITSCORING,
     abi: EcreditscoringABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    chainId: chainId as ChainId,
     query: {
-      enabled: !!address && !!contracts,
-      refetchOnMount: true,
+      enabled: !!address && !!contracts?.ECREDITSCORING,
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       staleTime: 0,
+      gcTime: 0,
     },
   });
 
@@ -127,27 +152,58 @@ export function useNFTBalance() {
     return 0; // None
   };
 
-  // Refetch all balances when chain or address changes
+  // Force refetch all balances when chain changes
+  const refetchAllBalances = useCallback(async () => {
+    if (!address || !contracts) {
+      console.log(`[useNFTBalance] Skip refetch - no address or contracts`);
+      return;
+    }
+    
+    console.log(`[useNFTBalance] 🔄 Refetching ALL balances for chain ${chainId} (${contracts.CHAIN_NAME})`);
+    
+    try {
+      const results = await Promise.all([
+        refetchPassport(),
+        refetchActivePassport(),
+        refetchVerifiedIdentity(),
+        refetchLPIndividuals(),
+        refetchLPBusiness(),
+        refetchEcreditscoring(),
+      ]);
+      
+      console.log(`[useNFTBalance] ✅ Balances refetched:`, {
+        passport: results[0].data?.toString(),
+        activePassport: results[1].data,
+        lpIndividuals: results[3].data?.toString(),
+        lpBusiness: results[4].data?.toString(),
+        ecreditscoring: results[5].data?.toString(),
+      });
+    } catch (error) {
+      console.error(`[useNFTBalance] ❌ Error refetching balances:`, error);
+    }
+  }, [address, contracts, chainId, refetchPassport, refetchActivePassport, refetchVerifiedIdentity, refetchLPIndividuals, refetchLPBusiness, refetchEcreditscoring]);
+
+  // Refetch when chain changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (address && contracts) {
-        console.log(`[useNFTBalance] Refetching all balances for chain ${chainId}`);
+    if (chainId !== lastChainId) {
+      console.log(`[useNFTBalance] 🔀 Chain changed: ${lastChainId} → ${chainId}`);
+      setLastChainId(chainId);
+      
+      // Small delay to ensure contract addresses are updated
+      const timer = setTimeout(() => {
+        refetchAllBalances();
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [chainId, lastChainId, refetchAllBalances]);
 
-        Promise.all([
-          refetchPassport(),
-          refetchLPIndividuals(),
-          refetchLPBusiness(),
-          refetchEcreditscoring(),
-        ]).then(() => {
-          console.log(`[useNFTBalance] All balances refetched for chain ${chainId}`);
-        }).catch((error) => {
-          console.error(`[useNFTBalance] Error refetching balances:`, error);
-        });
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [chainId, address]);
+  // Also refetch when address changes
+  useEffect(() => {
+    if (address && contracts) {
+      refetchAllBalances();
+    }
+  }, [address]);
 
   return {
     // Tier 1: Passport
@@ -187,12 +243,14 @@ export function useNFTBalance() {
     canRequestCreditScore: getUserTier() >= 2,
     canCreateVaults: getUserTier() >= 3,
 
+    // Loading state
+    isLoading: isLoadingPassport,
+
+    // Current chain info
+    chainId,
+    chainName: contracts?.CHAIN_NAME ?? 'Unknown',
+
     // Refetch all NFT balances
-    refetch: () => {
-      refetchPassport();
-      refetchLPIndividuals();
-      refetchLPBusiness();
-      refetchEcreditscoring();
-    },
+    refetch: refetchAllBalances,
   };
 }

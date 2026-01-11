@@ -39,14 +39,14 @@ export const unichainMainnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [process.env.NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL || 'https://rpc.unichain.org'],
+      http: [process.env.NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL || 'https://mainnet.unichain.org'],
     },
     public: {
-      http: [process.env.NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL || 'https://rpc.unichain.org'],
+      http: [process.env.NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL || 'https://mainnet.unichain.org'],
     },
   },
   blockExplorers: {
-    default: { name: 'Uniscan', url: 'https://unichain-sepolia.blockscout.com/' },
+    default: { name: 'Uniscan', url: 'https://unichain.blockscout.com' },
   },
   testnet: false,
 });
