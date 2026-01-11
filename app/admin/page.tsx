@@ -22,14 +22,17 @@ import { SumsubVerificationSystem } from '@/components/admin/SumsubVerificationS
 import { VaultsManagement } from '@/components/admin/VaultsManagement';
 import { TreasuriesView } from '@/components/admin/TreasuriesView';
 import { ContractsView } from '@/components/admin/ContractsView';
+import { NFTAdminPanel } from '@/components/admin/NFTAdminPanel';
 
-type TabType = 'dashboard' | 'users' | 'verification' | 'vaults' | 'treasuries' | 'contracts';
+type TabType = 'dashboard' | 'users' | 'verification' | 'nft-management' | 'vaults' | 'treasuries' | 'contracts';
 type VerificationTabType = 'veriff' | 'sumsub';
+type NFTTabType = 'lpIndividuals' | 'lpBusiness';
 
 const tabs = [
   { id: 'dashboard' as TabType, name: 'Dashboard', icon: ChartBarIcon },
   { id: 'users' as TabType, name: 'User Management', icon: UserGroupIcon },
   { id: 'verification' as TabType, name: 'Verifications', icon: ShieldCheckIcon },
+  { id: 'nft-management' as TabType, name: 'NFT Management', icon: CubeIcon },
   { id: 'vaults' as TabType, name: 'Vaults', icon: CubeIcon },
   { id: 'treasuries' as TabType, name: 'Treasuries', icon: BuildingLibraryIcon },
   { id: 'contracts' as TabType, name: 'Contracts', icon: DocumentTextIcon },
@@ -43,6 +46,7 @@ export default function AdminPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [verificationTab, setVerificationTab] = useState<VerificationTabType>('veriff');
+  const [nftTab, setNFTTab] = useState<NFTTabType>('lpIndividuals');
 
   if (!isConnected) {
     return (
@@ -183,6 +187,41 @@ export default function AdminPage() {
                 <div className="min-h-[500px]">
                   {verificationTab === 'veriff' && <VeriffVerificationSystem />}
                   {verificationTab === 'sumsub' && <SumsubVerificationSystem />}
+                </div>
+              </div>
+            )}
+            {activeTab === 'nft-management' && (
+              <div className="space-y-6">
+                {/* NFT Sub-tabs */}
+                <div className="border-b border-gray-800">
+                  <nav className="flex space-x-1">
+                    <button
+                      onClick={() => setNFTTab('lpIndividuals')}
+                      className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                        nftTab === 'lpIndividuals'
+                          ? 'border-blue-500 text-blue-400'
+                          : 'border-transparent text-gray-400 hover:text-white hover:border-gray-700'
+                      }`}
+                    >
+                      LP Individuals NFT
+                    </button>
+                    <button
+                      onClick={() => setNFTTab('lpBusiness')}
+                      className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+                        nftTab === 'lpBusiness'
+                          ? 'border-purple-500 text-purple-400'
+                          : 'border-transparent text-gray-400 hover:text-white hover:border-gray-700'
+                      }`}
+                    >
+                      LP Business NFT
+                    </button>
+                  </nav>
+                </div>
+
+                {/* NFT Admin Content */}
+                <div className="min-h-[500px]">
+                  {nftTab === 'lpIndividuals' && <NFTAdminPanel type="lpIndividuals" />}
+                  {nftTab === 'lpBusiness' && <NFTAdminPanel type="lpBusiness" />}
                 </div>
               </div>
             )}

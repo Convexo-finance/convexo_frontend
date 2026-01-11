@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { useVerificationStatus } from '@/lib/hooks/useVerification';
+import { NFTDisplayCard } from '@/components/NFTDisplayCard';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -66,48 +67,79 @@ export default function LimitedPartnerBusinessPage() {
             />
           </div>
 
-          {/* Status Card */}
-          <div className={`card p-6 ${
-            isVerified 
-              ? 'bg-purple-900/20 border-purple-700/50' 
-              : verificationPending 
-              ? 'bg-amber-900/20 border-amber-700/50'
-              : 'bg-gray-800/50'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {isVerified ? (
-                  <CheckBadgeIcon className="w-12 h-12 text-purple-400" />
-                ) : verificationPending ? (
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          {/* Show NFT Card when verified */}
+          {isVerified && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <NFTDisplayCard type="lpBusiness" address={address} />
+              <div className="space-y-4">
+                <div className="card p-6 bg-purple-900/20 border-purple-700/50">
+                  <div className="flex items-center gap-4">
+                    <CheckBadgeIcon className="w-12 h-12 text-purple-400" />
+                    <div>
+                      <p className="text-lg font-semibold text-white">Business LP Verified</p>
+                      <p className="text-gray-400">You have LP_Business NFT and full Tier 2 access</p>
+                    </div>
                   </div>
-                ) : (
-                  <XCircleIcon className="w-12 h-12 text-gray-500" />
-                )}
-                <div>
-                  <p className="text-lg font-semibold text-white">
-                    {isVerified ? 'Business LP Verified' : verificationPending ? 'Verification Pending' : 'Not Verified'}
-                  </p>
-                  <p className="text-gray-400">
-                    {isVerified 
-                      ? 'You have LP_Business NFT and full Tier 2 access' 
-                      : verificationPending
-                      ? 'Your KYB verification is being reviewed by admin'
-                      : 'Complete business KYB verification to get LP access'}
-                  </p>
+                  <div className="mt-4 flex justify-end">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/50 text-purple-400 border border-purple-700/50">
+                      <span className="w-2 h-2 rounded-full bg-purple-400" />
+                      Tier 2 Active
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Quick Access Links */}
+                <div className="card p-4">
+                  <h4 className="text-sm font-medium text-gray-400 mb-3">Quick Access</h4>
+                  <div className="space-y-2">
+                    <Link href="/investments/market-lps" className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition group">
+                      <span className="text-white">LP Market Pools</span>
+                      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
+                    </Link>
+                    <Link href="/digital-id/credit-score" className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition group">
+                      <span className="text-white">Request Credit Score</span>
+                      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
+                    </Link>
+                    <Link href="/funding/e-contracts" className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition group">
+                      <span className="text-white">E-Contracts</span>
+                      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
+                    </Link>
+                  </div>
                 </div>
               </div>
-              {isVerified && (
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/50 text-purple-400 border border-purple-700/50">
-                    <span className="w-2 h-2 rounded-full bg-purple-400" />
-                    Tier 2 Active
-                  </span>
-                </div>
-              )}
             </div>
-          </div>
+          )}
+
+          {/* Status Card - only show when NOT verified */}
+          {!isVerified && (
+            <div className={`card p-6 ${
+              verificationPending 
+                ? 'bg-amber-900/20 border-amber-700/50'
+                : 'bg-gray-800/50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {verificationPending ? (
+                    <div className="w-12 h-12 flex items-center justify-center">
+                      <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <XCircleIcon className="w-12 h-12 text-gray-500" />
+                  )}
+                  <div>
+                    <p className="text-lg font-semibold text-white">
+                      {verificationPending ? 'Verification Pending' : 'Not Verified'}
+                    </p>
+                    <p className="text-gray-400">
+                      {verificationPending
+                        ? 'Your KYB verification is being reviewed by admin'
+                        : 'Complete business KYB verification to get LP access'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Verification Process */}
           {!isVerified && (

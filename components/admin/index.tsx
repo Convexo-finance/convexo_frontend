@@ -5,3 +5,4 @@ export { VerificationSystems } from './VerificationSystems';
 export { VaultsManagement } from './VaultsManagement';
 export { TreasuriesView } from './TreasuriesView';
 export { ContractsView } from './ContractsView';
+export { NFTAdminPanel } from './NFTAdminPanel';

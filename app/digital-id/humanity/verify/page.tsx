@@ -8,7 +8,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt
 } from 'wagmi';
-import { keccak256, toBytes, encodePacked, pad, toHex } from 'viem';
+import { keccak256, encodePacked, toBytes } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getContractsForChain } from '@/lib/contracts/addresses';
@@ -83,20 +83,28 @@ export default function ZKVerificationPage() {
     },
   }) as { data: boolean | undefined; isLoading: boolean; refetch: () => void };
 
-  // Check if identifier has already been used
-  const identifierBytes32 = identifierInput && identifierInput.length > 0 
-    ? keccak256(toBytes(identifierInput)) 
-    : null;
-  
-  const { data: identifierUsed, refetch: refetchIdentifierUsed } = useReadContract({
+  // Check if identifier has already been used (sybil resistance)
+  // Contract accepts string directly and hashes internally
+  const { data: identifierUsed } = useReadContract({
     address: contracts?.CONVEXO_PASSPORT as `0x${string}`,
     abi: ConvexoPassportABI,
     functionName: 'isIdentifierUsed',
-    args: identifierBytes32 ? [identifierBytes32 as `0x${string}`] : undefined,
+    args: identifierInput ? [identifierInput] : undefined,
     query: {
-      enabled: !!identifierBytes32 && !!contracts?.CONVEXO_PASSPORT,
+      enabled: !!identifierInput && !!contracts?.CONVEXO_PASSPORT,
     },
-  }) as { data: boolean | undefined; refetch: () => void };
+  }) as { data: boolean | undefined };
+
+  // Log identifier status for debugging
+  useEffect(() => {
+    if (identifierInput) {
+      console.log('🔍 Identifier Check:', {
+        uniqueIdentifier: identifierInput,
+        isUsed: identifierUsed,
+      });
+    }
+  }, [identifierInput, identifierUsed]);
+
 
   // Get verified identity if passport exists
   const { data: identity } = useReadContract({
@@ -375,7 +383,26 @@ export default function ZKVerificationPage() {
     setError(null);
     
     try {
-      // Step 1: Create and upload NFT metadata to Pinata IPFS
+      // Use the uniqueIdentifier directly from ZKPassport (no conversion needed)
+      if (!identifierInput) {
+        setError('Invalid unique identifier. Please complete verification again.');
+        setStep('verified');
+        return;
+      }
+
+      // Check contract state - is this passport's identifier already used?
+      if (identifierUsed) {
+        setError('This passport has already been used to mint a CONVEXO PASSPORT. Each passport can only mint once across all wallets.');
+        setStep('verified');
+        return;
+      }
+
+      console.log('🔐 Minting CONVEXO PASSPORT:', {
+        uniqueIdentifier: identifierInput,
+        identifierUsed,
+      });
+
+      // Upload NFT metadata to Pinata IPFS
       console.log('📤 Uploading NFT metadata to Pinata IPFS...');
       
       const traits: PinataPassportTraits = {
@@ -400,48 +427,16 @@ export default function ZKVerificationPage() {
         return;
       }
       
-      // Step 2: Convert uniqueIdentifier to bytes32
-      // ZKPassport returns uniqueIdentifier as a decimal string (from Poseidon2 hash)
-      // We must convert it directly to bytes32 WITHOUT re-hashing to ensure sybil resistance
-      // The same passport will always produce the same uniqueIdentifier regardless of wallet
-      let uniqueIdentifierBytes32: `0x${string}`;
-      
-      const uid = passportTraits.uniqueIdentifier;
-      if (uid.startsWith('0x')) {
-        // Already a hex string - pad to 32 bytes
-        uniqueIdentifierBytes32 = pad(uid as `0x${string}`, { size: 32 });
-      } else {
-        // Decimal string from ZKPassport - convert to BigInt then to padded bytes32
-        try {
-          const uidBigInt = BigInt(uid);
-          uniqueIdentifierBytes32 = pad(toHex(uidBigInt), { size: 32 });
-        } catch (e) {
-          // Fallback: if not a valid number, use keccak256 (this shouldn't happen with ZKPassport)
-          console.warn('⚠️ uniqueIdentifier is not a valid number, using keccak256 fallback');
-          uniqueIdentifierBytes32 = keccak256(toBytes(uid)) as `0x${string}`;
-        }
-      }
-      
       const personhoodProofBytes32 = passportTraits.personhoodProof as `0x${string}`;
 
-      console.log('🔐 Minting with safeMintWithVerification:', {
-        originalUniqueIdentifier: passportTraits.uniqueIdentifier,
-        uniqueIdentifierBytes32,
-        personhoodProof: personhoodProofBytes32,
-        sanctionsPassed: passportTraits.sanctionsPassed,
-        isOver18: passportTraits.isOver18,
-        faceMatchPassed: passportTraits.faceMatchPassed,
-        ipfsMetadataHash,
-      });
-      console.log('🔒 Sybil resistance: Same passport = same uniqueIdentifierBytes32 = only ONE mint allowed');
-
-      // Step 3: Call safeMintWithVerification with verification results + IPFS hash
+      // Call safeMintWithVerification - pass uniqueIdentifier as string directly
+      // Contract hashes it internally with keccak256 for storage
       mintPassport({
         address: contracts.CONVEXO_PASSPORT,
         abi: ConvexoPassportABI,
         functionName: 'safeMintWithVerification',
         args: [
-          uniqueIdentifierBytes32,
+          identifierInput,  // String from ZKPassport SDK - passed directly!
           personhoodProofBytes32,
           passportTraits.sanctionsPassed,
           passportTraits.isOver18,

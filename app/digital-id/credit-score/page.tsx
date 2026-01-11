@@ -3,6 +3,7 @@
 import { useAccount } from 'wagmi';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
+import { NFTDisplayCard } from '@/components/NFTDisplayCard';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -18,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function CreditScorePage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { hasEcreditscoringNFT, hasAnyLPNFT, canRequestCreditScore } = useNFTBalance();
 
   const isVerified = hasEcreditscoringNFT;
@@ -111,61 +112,63 @@ export default function CreditScorePage() {
             />
           </div>
 
-          {/* Status Card */}
-          <div className={`card p-6 ${
-            isVerified 
-              ? 'bg-purple-900/20 border-purple-700/50' 
-              : 'bg-gray-800/50'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {isVerified ? (
-                  <CheckBadgeIcon className="w-12 h-12 text-purple-400" />
-                ) : (
-                  <XCircleIcon className="w-12 h-12 text-gray-500" />
-                )}
-                <div>
-                  <p className="text-lg font-semibold text-white">
-                    {isVerified ? 'Credit Verified' : 'Not Evaluated'}
-                  </p>
-                  <p className="text-gray-400">
-                    {isVerified 
-                      ? 'You can create funding vaults' 
-                      : 'Complete credit evaluation to unlock vault creation'}
-                  </p>
-                </div>
-              </div>
-              {isVerified && (
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/50 text-purple-400 border border-purple-700/50">
-                    <span className="w-2 h-2 rounded-full bg-purple-400" />
-                    Tier 3 Active
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {isVerified && (
-              <div className="mt-6 pt-6 border-t border-purple-700/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Credit Score</p>
-                    <p className="text-3xl font-bold text-purple-400">85 / 100</p>
+          {/* Show NFT Card when verified */}
+          {isVerified && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <NFTDisplayCard type="creditScore" address={address} />
+              <div className="space-y-4">
+                <div className="card p-6 bg-purple-900/20 border-purple-700/50">
+                  <div className="flex items-center gap-4">
+                    <CheckBadgeIcon className="w-12 h-12 text-purple-400" />
+                    <div>
+                      <p className="text-lg font-semibold text-white">Credit Verified</p>
+                      <p className="text-gray-400">You can create funding vaults</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Risk Rating</p>
-                    <span className="px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 text-sm font-medium">
-                      Low Risk
+                  <div className="mt-4 flex justify-end">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/50 text-purple-400 border border-purple-700/50">
+                      <span className="w-2 h-2 rounded-full bg-purple-400" />
+                      Tier 3 Active
                     </span>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Max Credit Line</p>
-                    <p className="text-xl font-semibold text-white">$500,000</p>
+                </div>
+                
+                {/* Quick Access Links */}
+                <div className="card p-4">
+                  <h4 className="text-sm font-medium text-gray-400 mb-3">Quick Access</h4>
+                  <div className="space-y-2">
+                    <Link href="/funding/e-contracts" className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition group">
+                      <span className="text-white">Create Funding Vault</span>
+                      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
+                    </Link>
+                    <Link href="/investments/vaults" className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition group">
+                      <span className="text-white">My Vaults</span>
+                      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
+                    </Link>
+                    <Link href="/funding/e-loans" className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800 transition group">
+                      <span className="text-white">Request E-Loan</span>
+                      <ArrowRightIcon className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
+                    </Link>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Status Card - only show when NOT verified */}
+          {!isVerified && (
+            <div className="card p-6 bg-gray-800/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <XCircleIcon className="w-12 h-12 text-gray-500" />
+                  <div>
+                    <p className="text-lg font-semibold text-white">Not Evaluated</p>
+                    <p className="text-gray-400">Complete credit evaluation to unlock vault creation</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Evaluation Categories */}
           <div className="space-y-6">
