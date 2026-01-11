@@ -8,7 +8,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt
 } from 'wagmi';
-import { keccak256, toBytes, encodePacked } from 'viem';
+import { keccak256, toBytes, encodePacked, pad, toHex } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getContractsForChain } from '@/lib/contracts/addresses';
@@ -400,18 +400,40 @@ export default function ZKVerificationPage() {
         return;
       }
       
-      // Step 2: Generate bytes32 values for contract call
-      const uniqueIdentifierBytes32 = keccak256(toBytes(passportTraits.uniqueIdentifier)) as `0x${string}`;
+      // Step 2: Convert uniqueIdentifier to bytes32
+      // ZKPassport returns uniqueIdentifier as a decimal string (from Poseidon2 hash)
+      // We must convert it directly to bytes32 WITHOUT re-hashing to ensure sybil resistance
+      // The same passport will always produce the same uniqueIdentifier regardless of wallet
+      let uniqueIdentifierBytes32: `0x${string}`;
+      
+      const uid = passportTraits.uniqueIdentifier;
+      if (uid.startsWith('0x')) {
+        // Already a hex string - pad to 32 bytes
+        uniqueIdentifierBytes32 = pad(uid as `0x${string}`, { size: 32 });
+      } else {
+        // Decimal string from ZKPassport - convert to BigInt then to padded bytes32
+        try {
+          const uidBigInt = BigInt(uid);
+          uniqueIdentifierBytes32 = pad(toHex(uidBigInt), { size: 32 });
+        } catch (e) {
+          // Fallback: if not a valid number, use keccak256 (this shouldn't happen with ZKPassport)
+          console.warn('⚠️ uniqueIdentifier is not a valid number, using keccak256 fallback');
+          uniqueIdentifierBytes32 = keccak256(toBytes(uid)) as `0x${string}`;
+        }
+      }
+      
       const personhoodProofBytes32 = passportTraits.personhoodProof as `0x${string}`;
 
       console.log('🔐 Minting with safeMintWithVerification:', {
-        uniqueIdentifier: uniqueIdentifierBytes32,
+        originalUniqueIdentifier: passportTraits.uniqueIdentifier,
+        uniqueIdentifierBytes32,
         personhoodProof: personhoodProofBytes32,
         sanctionsPassed: passportTraits.sanctionsPassed,
         isOver18: passportTraits.isOver18,
         faceMatchPassed: passportTraits.faceMatchPassed,
         ipfsMetadataHash,
       });
+      console.log('🔒 Sybil resistance: Same passport = same uniqueIdentifierBytes32 = only ONE mint allowed');
 
       // Step 3: Call safeMintWithVerification with verification results + IPFS hash
       mintPassport({

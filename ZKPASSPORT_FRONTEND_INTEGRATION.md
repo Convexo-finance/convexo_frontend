@@ -213,11 +213,10 @@ export async function createVerificationRequest() {
 }
 ```
 
-### Handle Verification Result & Extract Unique Identifier
+### Handle Verification Result & Get Unique Identifier
 
 ```typescript
 // lib/zkpassport.ts
-import { keccak256, toBytes, toHex } from 'viem';
 
 export interface VerificationResult {
   verified: boolean;
@@ -237,28 +236,22 @@ export interface VerificationResult {
   uniqueIdentifier?: `0x${string}`; // The unique identifier for minting
 }
 
-// Extract unique identifier from ZKPassport proof
-export function extractUniqueIdentifier(proof: any): `0x${string}` {
-  // ZKPassport provides publicKey and scope
-  // Unique identifier = keccak256(publicKey + scope)
-  const publicKey = proof.publicKey.startsWith('0x') 
-    ? proof.publicKey 
-    : `0x${proof.publicKey}`;
-  
-  const scope = proof.scope.startsWith('0x')
-    ? proof.scope
-    : `0x${proof.scope}`;
-
-  // Generate unique identifier (same as contract does)
-  const uniqueIdentifier = keccak256(
-    toBytes(publicKey + scope.slice(2)) // Concatenate without 0x prefix
-  ) as `0x${string}`;
-
-  return uniqueIdentifier;
-}
-
+/**
+ * IMPORTANT: Use the uniqueIdentifier directly from ZKPassport SDK!
+ * 
+ * ZKPassport computes the uniqueIdentifier using Poseidon2 hash:
+ *   uniqueIdentifier = Poseidon2(ID_data + domain + scope)
+ * 
+ * This ensures:
+ * - Same ID + same domain + same scope = SAME identifier (sybil resistance)
+ * - Different IDs = Different identifiers (unique per person)
+ * - Different domains = Different identifiers (privacy between services)
+ * 
+ * DO NOT manually compute the identifier! Use what ZKPassport provides.
+ */
 export function onResult(callback: (result: VerificationResult) => void) {
-  zkPassport.onResult(({ verified, result, proof }) => {
+  // ZKPassport SDK provides uniqueIdentifier directly in the callback
+  zkPassport.onResult(({ verified, result, uniqueIdentifier }) => {
     const verificationResult: VerificationResult = {
       verified,
       result: {
@@ -274,7 +267,9 @@ export function onResult(callback: (result: VerificationResult) => void) {
           fullname: result.disclosed?.fullname,
         },
       },
-      uniqueIdentifier: proof ? extractUniqueIdentifier(proof) : undefined,
+      // Use uniqueIdentifier directly from ZKPassport - DO NOT compute manually!
+      // The identifier is derived from: ID_data + domain + scope using Poseidon2
+      uniqueIdentifier: uniqueIdentifier ? `0x${uniqueIdentifier}` as `0x${string}` : undefined,
     };
 
     callback(verificationResult);
@@ -905,7 +900,7 @@ Before minting, check:
 - [ ] Set up environment variables
 - [ ] Initialize ZKPassport with app domain
 - [ ] Create verification request function
-- [ ] Implement `extractUniqueIdentifier()` helper
+- [ ] Use `uniqueIdentifier` directly from ZKPassport callback (DO NOT compute manually!)
 - [ ] Create verification component
 - [ ] Create mint NFT component
 - [ ] Add ETH balance check
