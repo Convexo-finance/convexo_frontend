@@ -19,13 +19,13 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 
-type NFTType = 'passport' | 'lp_individuals' | 'lp_business' | 'ecreditscoring';
+type NFTType = 'lp_individuals' | 'lp_business' | 'ecreditscoring';
 
 export function UserManagement() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const [selectedNFT, setSelectedNFT] = useState<NFTType>('passport');
+  const [selectedNFT, setSelectedNFT] = useState<NFTType>('lp_individuals');
   const [recipient, setRecipient] = useState('');
   const [uri, setUri] = useState('');
   const [lookupAddress, setLookupAddress] = useState('');
@@ -59,17 +59,6 @@ export function UserManagement() {
   });
 
   const nftTypes = [
-    {
-      id: 'passport' as NFTType,
-      name: 'Convexo Passport',
-      description: 'Tier 1 - ZKPassport verified',
-      icon: CheckBadgeIcon,
-      color: 'emerald',
-      ipfsHash: IPFS.CONVEXO_PASSPORT_HASH,
-      contractAddress: contracts?.CONVEXO_PASSPORT,
-      abi: ConvexoPassportABI,
-      defaultUri: IPFS.CONVEXO_PASSPORT_URI,
-    },
     {
       id: 'lp_individuals' as NFTType,
       name: 'LP Individuals',
@@ -115,10 +104,7 @@ export function UserManagement() {
 
     let args: any[] = [];
 
-    if (selectedNFT === 'passport') {
-      // Convexo_Passport: safeMint(address to, string uri)
-      args = [recipient as `0x${string}`, uri || selectedNFTConfig.defaultUri];
-    } else if (selectedNFT === 'lp_individuals') {
+    if (selectedNFT === 'lp_individuals') {
       // LP_Individuals: safeMint(address to, string verificationId, string uri)
       if (!verificationId) {
         alert('Please fill in verification ID for LP Individuals');

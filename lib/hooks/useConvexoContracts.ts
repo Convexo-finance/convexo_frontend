@@ -201,7 +201,7 @@ export function useConvexoPassport() {
     return mintWithZKPassport({
       address: contracts.CONVEXO_PASSPORT,
       abi: ConvexoPassportABI,
-      functionName: 'safeMintWithIdentifier',
+      functionName: 'safeMintWithZKPassport',
       args: [identifier],
     });
   };

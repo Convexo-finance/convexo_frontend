@@ -14,6 +14,11 @@ import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ConvexoPassportABI } from '@/lib/contracts/abis';
 import { 
+  createPassportMetadata, 
+  uploadMetadataToPinata,
+  type PassportTraits as PinataPassportTraits
+} from '@/lib/config/pinata';
+import { 
   ShieldCheckIcon, 
   FingerPrintIcon, 
   CheckBadgeIcon,
@@ -38,6 +43,15 @@ interface ConvexoPassportTraits {
   isOver18: boolean;
   zkPassportTimestamp: number;
   zkPassportResult: any; // Raw ZK Passport verification result for audit trail
+  // ZK Proof parameters for minting
+  zkProofParams?: {
+    publicKey: `0x${string}`;
+    nullifier: `0x${string}`;
+    proof: `0x${string}`;
+    attestationId: bigint;
+    scope: `0x${string}`;
+    currentDate: bigint;
+  };
 }
 
 export default function ZKVerificationPage() {
@@ -135,10 +149,35 @@ export default function ZKVerificationPage() {
 
       // Handle verification result
       onResult((callbackParams) => {
-        console.log('ZKPassport callback:', callbackParams);
-        console.log('ZKPassport result structure:', JSON.stringify(callbackParams, null, 2));
+        console.log('🔍 Full ZKPassport callback:', callbackParams);
+        console.log('📋 ZKPassport result structure (detailed):', JSON.stringify(callbackParams, null, 2));
 
-        const { verified, result, uniqueIdentifier: uid } = callbackParams as any;
+        // Extract all possible parameters from the callback
+        const { 
+          verified, 
+          result, 
+          uniqueIdentifier: uid,
+          proof: rawProof,
+          publicKey: cbPublicKey,
+          nullifier: cbNullifier,
+          attestationId: cbAttestationId,
+          data,
+          verificationData,
+          zkProof
+        } = callbackParams as any;
+
+        console.log('🔬 Analyzing proof data availability:', {
+          hasRawProof: !!rawProof,
+          hasPublicKey: !!cbPublicKey,
+          hasNullifier: !!cbNullifier,
+          hasAttestationId: !!cbAttestationId,
+          hasData: !!data,
+          hasVerificationData: !!verificationData,
+          hasZkProof: !!zkProof,
+          dataKeys: data ? Object.keys(data) : [],
+          verificationDataKeys: verificationData ? Object.keys(verificationData) : [],
+          zkProofKeys: zkProof ? Object.keys(zkProof) : []
+        });
 
         setIsGeneratingProof(false);
         setVerificationUrl(null);
@@ -167,6 +206,37 @@ export default function ZKVerificationPage() {
             'result[gte_age_18].passed': result?.['gte_age_18']?.passed,
             'Final isOver18': isOver18
           });
+
+          // Try to find proof data in various locations (for debugging/audit trail)
+          let proofData = null;
+          
+          // Check multiple possible locations for proof data
+          const possibleProofSources = [
+            rawProof,
+            data?.proof,
+            verificationData?.proof,
+            zkProof,
+            (callbackParams as any).proof,
+            result?.proof
+          ].filter(Boolean);
+
+          console.log('🔍 Searching for proof data in callback:', {
+            possibleProofSources: possibleProofSources.length,
+            sources: possibleProofSources.map((p, i) => ({ 
+              index: i, 
+              hasPublicKey: !!(p?.publicKey || p?.user?.publicKey),
+              hasNullifier: !!(p?.nullifier || p?.user?.nullifier),
+              hasProof: !!(p?.proof || p?.encodedProof || p?.zkProof),
+              hasAttestationId: !!(p?.attestationId || p?.attestationID),
+              keys: p ? Object.keys(p) : []
+            }))
+          });
+
+          // Try to extract proof parameters from the first available source
+          if (possibleProofSources.length > 0) {
+            proofData = possibleProofSources[0];
+            console.log('📦 Using proof source:', proofData);
+          }
 
           // Validate required proofs
           if (!facematchPassed) {
@@ -202,8 +272,39 @@ export default function ZKVerificationPage() {
             kycVerified: sanctionsPassed,
             faceMatchPassed: facematchPassed,
             sanctionsPassed,
-            isOver18
+            isOver18,
+            hasProofData: !!proofData
           });
+          
+          // Prepare ZK proof parameters if available
+          let zkProofParams = undefined;
+          if (proofData) {
+            const publicKey = proofData?.publicKey || proofData?.user?.publicKey || cbPublicKey;
+            const nullifier = proofData?.nullifier || proofData?.user?.nullifier || cbNullifier;
+            const proof = proofData?.proof || proofData?.encodedProof || proofData?.zkProof;
+            const attestationId = proofData?.attestationId || proofData?.attestationID || cbAttestationId;
+
+            if (publicKey && nullifier && proof && attestationId) {
+              zkProofParams = {
+                publicKey: publicKey as `0x${string}`,
+                nullifier: nullifier as `0x${string}`,
+                proof: proof as `0x${string}`,
+                attestationId: BigInt(attestationId),
+                scope: keccak256(toBytes(APP_SCOPE_STRING)),
+                currentDate: BigInt(timestamp)
+              };
+              console.log('🔐 Successfully extracted ZK proof parameters');
+            } else {
+              console.warn('⚠️ Partial proof data available but missing required fields:', {
+                hasPublicKey: !!publicKey,
+                hasNullifier: !!nullifier,
+                hasProof: !!proof,
+                hasAttestationId: !!attestationId
+              });
+            }
+          } else {
+            console.warn('⚠️ No proof data found in ZKPassport callback. This may indicate that the SDK is not configured for on-chain verification.');
+          }
           
           // Store the passport traits privately
           setPassportTraits({
@@ -214,7 +315,8 @@ export default function ZKVerificationPage() {
             sanctionsPassed: sanctionsPassed,
             isOver18: isOver18,
             zkPassportTimestamp: timestamp,
-            zkPassportResult: result // Store exact ZK Passport verification result
+            zkPassportResult: result, // Store exact ZK Passport verification result
+            zkProofParams: zkProofParams
           });
           setIdentifierInput(uid);
           setStep('verified');
@@ -247,7 +349,7 @@ export default function ZKVerificationPage() {
     }
   }, [isSuccess, refetchPassport]);
 
-  const handleMint = () => {
+  const handleMint = async () => {
     if (!identifierInput || !contracts?.CONVEXO_PASSPORT || !passportTraits) {
       setError('Please complete verification first');
       return;
@@ -272,15 +374,64 @@ export default function ZKVerificationPage() {
     setStep('minting');
     setError(null);
     
-    // Hash the identifier to bytes32
-    const identifierHash = keccak256(toBytes(identifierInput)) as `0x${string}`;
+    try {
+      // Step 1: Create and upload NFT metadata to Pinata IPFS
+      console.log('📤 Uploading NFT metadata to Pinata IPFS...');
+      
+      const traits: PinataPassportTraits = {
+        kycVerified: passportTraits.kycVerified,
+        faceMatchPassed: passportTraits.faceMatchPassed,
+        sanctionsPassed: passportTraits.sanctionsPassed,
+        isOver18: passportTraits.isOver18,
+      };
+      
+      // Generate a temporary token ID (will be assigned by contract)
+      const tempTokenId = Math.floor(Date.now() / 1000);
+      const metadata = createPassportMetadata(tempTokenId, traits);
+      
+      let ipfsMetadataHash: string;
+      try {
+        ipfsMetadataHash = await uploadMetadataToPinata(metadata);
+        console.log('✅ Metadata uploaded to IPFS:', ipfsMetadataHash);
+      } catch (uploadError) {
+        console.error('Failed to upload metadata to Pinata:', uploadError);
+        setError('Failed to upload NFT metadata to IPFS. Please try again.');
+        setStep('verified');
+        return;
+      }
+      
+      // Step 2: Generate bytes32 values for contract call
+      const uniqueIdentifierBytes32 = keccak256(toBytes(passportTraits.uniqueIdentifier)) as `0x${string}`;
+      const personhoodProofBytes32 = passportTraits.personhoodProof as `0x${string}`;
 
-    mintPassport({
-      address: contracts.CONVEXO_PASSPORT,
-      abi: ConvexoPassportABI,
-      functionName: 'safeMintWithIdentifier',
-      args: [identifierHash],
-    });
+      console.log('🔐 Minting with safeMintWithVerification:', {
+        uniqueIdentifier: uniqueIdentifierBytes32,
+        personhoodProof: personhoodProofBytes32,
+        sanctionsPassed: passportTraits.sanctionsPassed,
+        isOver18: passportTraits.isOver18,
+        faceMatchPassed: passportTraits.faceMatchPassed,
+        ipfsMetadataHash,
+      });
+
+      // Step 3: Call safeMintWithVerification with verification results + IPFS hash
+      mintPassport({
+        address: contracts.CONVEXO_PASSPORT,
+        abi: ConvexoPassportABI,
+        functionName: 'safeMintWithVerification',
+        args: [
+          uniqueIdentifierBytes32,
+          personhoodProofBytes32,
+          passportTraits.sanctionsPassed,
+          passportTraits.isOver18,
+          passportTraits.faceMatchPassed,
+          ipfsMetadataHash
+        ],
+      });
+    } catch (err: any) {
+      console.error('Mint error:', err);
+      setError(`Failed to prepare mint: ${err.message}`);
+      setStep('verified');
+    }
   };
 
   useEffect(() => {
