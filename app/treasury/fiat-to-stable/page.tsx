@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount } from 'wagmi';
+import { useAccount } from '@/lib/wagmi/compat';
 import { useState } from 'react';
 import { useContractRead } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useBalance, useChainId, useReadContract, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useBalance, useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { formatUnits, parseUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';

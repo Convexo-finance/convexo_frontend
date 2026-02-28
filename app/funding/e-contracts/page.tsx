@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount, useChainId, useReadContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract } from '@/lib/wagmi/compat';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { ContractsTable } from '@/components/ContractsTable';

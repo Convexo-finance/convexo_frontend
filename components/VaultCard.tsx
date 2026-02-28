@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useChainId } from 'wagmi';
-import { useContractRead, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId } from '@/lib/wagmi/compat';
+import { useContractRead, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
 import { TokenizedBondVaultABI } from '@/lib/contracts/abis';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { erc20Abi } from 'viem';
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
 interface VaultCardProps {
   vaultAddress: `0x${string}`;
@@ -251,14 +252,14 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     writeContract: approve,
     data: approveHash,
     isPending: isApproving,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Approve USDC for repayment
   const {
     writeContract: approveRepayment,
     data: approveRepaymentHash,
     isPending: isApprovingRepayment,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Purchase shares
   const {
@@ -266,7 +267,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     data: purchaseHash,
     isPending: isPurchasing,
     error: purchaseError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Withdraw funds
   const {
@@ -274,7 +275,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     data: withdrawHash,
     isPending: isWithdrawing,
     error: withdrawError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Attach contract
   const {
@@ -282,7 +283,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     data: attachHash,
     isPending: isAttaching,
     error: attachError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Make repayment
   const {
@@ -290,7 +291,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     data: repaymentHash,
     isPending: isRepaying,
     error: repaymentError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Withdraw protocol fees (for fee collector)
   const {
@@ -298,7 +299,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     data: withdrawFeesHash,
     isPending: isWithdrawingFees,
     error: withdrawFeesError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   // Redeem shares (for investors)
   const {
@@ -306,7 +307,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     data: redeemHash,
     isPending: isRedeeming,
     error: redeemError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   const { isLoading: isConfirmingPurchase, isSuccess: purchaseSuccess } =
     useWaitForTransactionReceipt({

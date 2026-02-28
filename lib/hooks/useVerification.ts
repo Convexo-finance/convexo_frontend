@@ -3,9 +3,10 @@
  * Complete read and write functions for VeriffVerifier contract
  */
 
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VeriffVerifierABI, type VerificationRecord, VerificationStatus, getVerificationStatusLabel } from '@/lib/contracts/abis';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
 // ============================================
 // VERIFICATION STATUS HOOKS
@@ -142,7 +143,7 @@ export function useSubmitVerification() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: submit, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: submit, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const submitVerification = async (sessionId: string, userAddress?: `0x${string}`) => {
@@ -169,7 +170,7 @@ export function useApproveVerification() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: approve, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: approve, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const approveVerification = async (userAddress: `0x${string}`) => {
@@ -189,7 +190,7 @@ export function useRejectVerification() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: reject, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: reject, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const rejectVerification = async (userAddress: `0x${string}`, reason: string) => {
@@ -209,7 +210,7 @@ export function useResetVerification() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: reset, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: reset, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const resetVerification = async (userAddress: `0x${string}`) => {

@@ -4,8 +4,9 @@
  * Version 3.1 - Uses new tier system: Passport (1) → LP_Individuals/LP_Business (2) → Ecreditscoring (3)
  */
 
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { getContractsForChain, ERC20_ABI } from '@/lib/contracts/addresses';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import {
   ConvexoPassportABI,
   LPIndividualsABI,
@@ -215,7 +216,7 @@ export function useConvexoPassport() {
   });
 
   // Write: Mint passport with ZK proof
-  const { writeContract: mintWithZKPassport, data: mintHash, isPending: isMinting } = useWriteContract();
+  const { writeContract: mintWithZKPassport, data: mintHash, isPending: isMinting } = useConvexoWrite();
   const { isLoading: isConfirmingMint, isSuccess: isMintSuccess } = useWaitForTransactionReceipt({ hash: mintHash });
 
   const mintPassportWithZK = async (params: {
@@ -491,7 +492,7 @@ export function useVaultFactory() {
   };
 
   // Write: Create vault
-  const { writeContract: createVaultWrite, data: createHash, isPending: isCreating, error: createError } = useWriteContract();
+  const { writeContract: createVaultWrite, data: createHash, isPending: isCreating, error: createError } = useConvexoWrite();
   const { isLoading: isConfirmingCreate, isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createHash });
 
   const createVault = async (params: {
@@ -564,7 +565,7 @@ export function useUSDC() {
   };
 
   // Write: Approve USDC spending
-  const { writeContract: approveWrite, data: approveHash, isPending: isApproving } = useWriteContract();
+  const { writeContract: approveWrite, data: approveHash, isPending: isApproving } = useConvexoWrite();
   const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
 
   const approve = async (spender: `0x${string}`, amount: bigint) => {
@@ -578,7 +579,7 @@ export function useUSDC() {
   };
 
   // Write: Transfer USDC
-  const { writeContract: transferWrite, data: transferHash, isPending: isTransferring } = useWriteContract();
+  const { writeContract: transferWrite, data: transferHash, isPending: isTransferring } = useConvexoWrite();
   const { isLoading: isConfirmingTransfer, isSuccess: isTransferSuccess } = useWaitForTransactionReceipt({ hash: transferHash });
 
   const transfer = async (to: `0x${string}`, amount: bigint) => {

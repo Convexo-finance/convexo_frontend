@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useChainId, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useChainId, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { getContractsForChain, getBlockExplorerUrl } from '@/lib/contracts/addresses';
 import { SumsubVerifierABI } from '@/lib/contracts/abis';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -46,7 +47,7 @@ export function SumsubVerificationSystem() {
   const [lookupAddress, setLookupAddress] = useState('');
   const [pendingVerifications, setPendingVerifications] = useState<PendingVerification[]>([]);
 
-  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { writeContract, data: hash, isPending, error: writeError } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   // Load pending verifications from localStorage on mount

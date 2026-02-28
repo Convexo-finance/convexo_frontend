@@ -11,7 +11,7 @@
  * | 3    | Ecreditscoring   | AI Credit Score | All above + Vault creation          |
  */
 
-import { useAccount, useChainId, useReadContract, useReadContracts } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useReadContracts } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ReputationManagerABI, ReputationTier, TIER_NAMES, TIER_COLORS, TIER_ICONS } from '@/lib/contracts/abis';
 

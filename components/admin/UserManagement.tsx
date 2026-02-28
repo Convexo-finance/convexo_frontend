@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useChainId, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useChainId, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { getContractsForChain, getBlockExplorerUrl, IPFS, getIPFSUrl } from '@/lib/contracts/addresses';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import {
   ConvexoPassportABI,
   LPIndividualsABI,
@@ -46,7 +47,7 @@ export function UserManagement() {
   const [maxLoanAmount, setMaxLoanAmount] = useState('');
   const [referenceId, setReferenceId] = useState('');
 
-  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+  const { writeContract, data: hash, isPending, error: writeError } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   // User lookup

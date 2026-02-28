@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount, useBalance, useContractRead, useChainId } from 'wagmi';
+import { useAccount, useBalance, useContractRead, useChainId } from '@/lib/wagmi/compat';
 import { formatUnits } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { erc20Abi } from 'viem';

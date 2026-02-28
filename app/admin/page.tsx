@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import { useState } from 'react';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import DashboardLayout from '@/components/DashboardLayout';

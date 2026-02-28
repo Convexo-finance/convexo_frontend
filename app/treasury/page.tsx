@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount, useChainId, useReadContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { formatUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';

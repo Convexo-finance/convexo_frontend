@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useChainId, useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from 'wagmi';
+import { useChainId, useWaitForTransactionReceipt, useReadContract, useAccount } from '@/lib/wagmi/compat';
 import { getContractsForChain, getBlockExplorerUrl } from '@/lib/contracts/addresses';
 import { LPIndividualsABI, LPBusinessABI } from '@/lib/contracts/abis';
 import { createLPIndividualMetadata, createLPBusinessMetadata, uploadMetadataToPinata } from '@/lib/config/pinata';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -35,7 +36,7 @@ export function NFTAdminPanel({ type }: NFTAdminProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { writeContract, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContract, data: hash, isPending, error: writeError, reset } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const contractAddress = type === 'lpIndividuals' 

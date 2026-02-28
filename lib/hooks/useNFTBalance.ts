@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useCallback, useState } from 'react';
-import { useAccount, useChainId, useReadContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain, type ChainId } from '@/lib/contracts/addresses';
 import {
   ConvexoPassportABI,

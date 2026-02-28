@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { 
   useAccount, 
   useChainId, 
-  useReadContract, 
-  useWriteContract,
+  useReadContract,
   useWaitForTransactionReceipt
-} from 'wagmi';
+} from '@/lib/wagmi/compat';
 import { keccak256, encodePacked, toBytes } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
@@ -29,6 +28,7 @@ import {
 import Image from 'next/image';
 import { ZKPassport } from '@zkpassport/sdk';
 import { QRCodeSVG } from 'qrcode.react';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
 // Your app's unique scope for identity verification
 const APP_SCOPE_STRING = 'convexo-passport-identity';
@@ -344,7 +344,7 @@ export default function ZKVerificationPage() {
   };
 
   // Mint CONVEXO PASSPORT with unique identifier
-  const { writeContract: mintPassport, data: hash, isPending: isMinting, error: mintError } = useWriteContract();
+  const { writeContract: mintPassport, data: hash, isPending: isMinting, error: mintError } = useConvexoWrite();
   const { isLoading: isWaiting, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   useEffect(() => {

@@ -3,8 +3,9 @@
  * Complete read and write functions for individual vault interactions
  */
 
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { getContractsForChain, ERC20_ABI } from '@/lib/contracts/addresses';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import {
   TokenizedBondVaultABI,
   type VaultInfo,
@@ -329,11 +330,11 @@ export function usePurchaseShares(vaultAddress?: `0x${string}`) {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: purchase, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: purchase, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   // Approve USDC first
-  const { writeContract: approve, data: approveHash, isPending: isApproving } = useWriteContract();
+  const { writeContract: approve, data: approveHash, isPending: isApproving } = useConvexoWrite();
   const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
 
   const approveUsdc = async (amount: bigint) => {
@@ -372,7 +373,7 @@ export function usePurchaseShares(vaultAddress?: `0x${string}`) {
 }
 
 export function useRedeemShares(vaultAddress?: `0x${string}`) {
-  const { writeContract: redeem, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: redeem, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const redeemShares = async (shares: bigint) => {
@@ -393,7 +394,7 @@ export function useRedeemShares(vaultAddress?: `0x${string}`) {
 // ============================================
 
 export function useWithdrawFunds(vaultAddress?: `0x${string}`) {
-  const { writeContract: withdraw, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: withdraw, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const withdrawFunds = async () => {
@@ -413,11 +414,11 @@ export function useMakeRepayment(vaultAddress?: `0x${string}`) {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: repay, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: repay, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   // Approve USDC first
-  const { writeContract: approve, data: approveHash, isPending: isApproving } = useWriteContract();
+  const { writeContract: approve, data: approveHash, isPending: isApproving } = useConvexoWrite();
   const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
 
   const approveUsdc = async (amount: bigint) => {
@@ -456,7 +457,7 @@ export function useMakeRepayment(vaultAddress?: `0x${string}`) {
 }
 
 export function useAttachContract(vaultAddress?: `0x${string}`) {
-  const { writeContract: attach, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: attach, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const attachContract = async (contractHash: `0x${string}`) => {
@@ -477,7 +478,7 @@ export function useAttachContract(vaultAddress?: `0x${string}`) {
 // ============================================
 
 export function useDisburseLoan(vaultAddress?: `0x${string}`) {
-  const { writeContract: disburse, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: disburse, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const disburseLoan = async () => {
@@ -494,7 +495,7 @@ export function useDisburseLoan(vaultAddress?: `0x${string}`) {
 }
 
 export function useMarkAsDefaulted(vaultAddress?: `0x${string}`) {
-  const { writeContract: markDefault, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: markDefault, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const markAsDefaulted = async () => {
@@ -511,7 +512,7 @@ export function useMarkAsDefaulted(vaultAddress?: `0x${string}`) {
 }
 
 export function useWithdrawProtocolFees(vaultAddress?: `0x${string}`) {
-  const { writeContract: withdraw, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: withdraw, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const withdrawProtocolFees = async () => {

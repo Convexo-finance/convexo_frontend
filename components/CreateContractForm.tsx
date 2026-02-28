@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useChainId, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ContractSignerABI } from '@/lib/contracts/abis';
 import { PinataUpload } from './PinataUpload';
 import { keccak256, toBytes } from 'viem';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import {
   DocumentPlusIcon,
   CheckCircleIcon,
@@ -42,7 +43,7 @@ export function CreateContractForm({ onSuccess }: CreateContractFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { writeContract, data: hash, isPending } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   if (!isConnected) {

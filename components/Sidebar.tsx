@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAuthModal, useSignerStatus, useLogout } from '@account-kit/react';
 import { useState, useEffect } from 'react';
-import { useAccount, useChainId, useReadContract } from 'wagmi';
+import { useAccount } from '@/lib/wagmi/compat';
+import { useChainId, useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
@@ -34,6 +35,42 @@ import {
   ArrowTrendingUpIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+
+// Connect button that uses Account Kit modals
+function SmartConnectButton() {
+  const { openAuthModal } = useAuthModal();
+  const { isConnected } = useSignerStatus();
+  const { logout } = useLogout();
+  const { address } = useAccount();
+
+  if (!isConnected) {
+    return (
+      <button
+        onClick={openAuthModal}
+        className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm transition-colors"
+      >
+        Connect Wallet
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0" />
+        <span className="text-sm text-gray-300 font-mono truncate">
+          {address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ''}
+        </span>
+      </div>
+      <button
+        onClick={() => logout()}
+        className="text-xs text-gray-500 hover:text-white transition-colors flex-shrink-0"
+      >
+        Disconnect
+      </button>
+    </div>
+  );
+}
 
 // Types
 interface NavItem {
@@ -93,9 +130,9 @@ const navItems: NavItem[] = [
     icon: CurrencyDollarIcon,
     requiredTier: 1,
     subItems: [
-      { name: 'Monetization', href: '/treasury/monetization', icon: CurrencyDollarIcon, description: 'COP ↔ ECOP' },
-      { name: 'Swaps', href: '/treasury/swaps', icon: ArrowsRightLeftIcon, description: 'ECOP/USDC/EUR Pools' },
       { name: 'OTC Orders', href: '/treasury/otc', icon: ClipboardDocumentListIcon, description: 'Large orders' },
+      { name: 'Swaps', href: '/treasury/swaps', icon: ArrowsRightLeftIcon, description: 'ECOP/USDC/EUR Pools' },
+      { name: 'Monetization', href: '/treasury/monetization', icon: CurrencyDollarIcon, description: 'COP ↔ ECOP' },
     ],
   },
   {
@@ -284,14 +321,7 @@ export function Sidebar({ onClose }: SidebarProps) {
 
       {/* Wallet connector */}
       <div className="px-4 py-3 border-b border-gray-800/50">
-        <ConnectButton
-          showBalance={false}
-          chainStatus="icon"
-          accountStatus={{
-            smallScreen: 'avatar',
-            largeScreen: 'full',
-          }}
-        />
+        <SmartConnectButton />
       </div>
 
       {/* User Status (when connected) */}

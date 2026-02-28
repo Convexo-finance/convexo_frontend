@@ -4,9 +4,10 @@
  * Used for digital contract signing and agreement management
  */
 
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { keccak256, toBytes } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 import { 
   ContractSignerABI, 
   type ContractDocument, 
@@ -196,7 +197,7 @@ export function useCreateContract() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: create, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: create, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const createContract = async (params: {
@@ -230,7 +231,7 @@ export function useSignContract() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: sign, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: sign, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const signContract = async (documentHash: `0x${string}`, signature: `0x${string}`) => {
@@ -250,7 +251,7 @@ export function useCancelContract() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: cancel, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: cancel, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const cancelContract = async (documentHash: `0x${string}`) => {
@@ -270,7 +271,7 @@ export function useExecuteContract() {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { writeContract: execute, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: execute, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const executeContract = async (documentHash: `0x${string}`, vaultId: bigint) => {

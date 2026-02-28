@@ -1,9 +1,9 @@
-import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { createConfig, injected } from 'wagmi';
 import { base, mainnet } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { http } from 'wagmi';
 
-// Define Unichain Mainnet
+// Define Unichain Mainnet (reads only — no smart wallet support)
 export const unichainMainnet = defineChain({
   id: 130,
   name: 'Unichain Mainnet',
@@ -27,13 +27,9 @@ export const unichainMainnet = defineChain({
   testnet: false,
 });
 
-// Fallback project ID for development - replace with your actual WalletConnect Cloud project ID
-const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id';
-
-export const config = getDefaultConfig({
-  appName: 'Convexo Protocol',
-  projectId: WALLETCONNECT_PROJECT_ID,
+export const config = createConfig({
   chains: [base, mainnet, unichainMainnet],
+  connectors: [injected()],  // enables MetaMask and other browser-injected wallets
   transports: {
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_MAINNET_RPC_URL),
     [mainnet.id]: http(process.env.NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL),
@@ -41,4 +37,3 @@ export const config = getDefaultConfig({
   },
   ssr: true,
 });
-

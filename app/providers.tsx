@@ -2,20 +2,12 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { AlchemyAccountProvider } from '@account-kit/react';
 import { config } from '@/lib/wagmi/config';
+import { alchemyConfig } from '@/lib/alchemy/config';
 import { NavigationProvider } from '@/lib/contexts/NavigationContext';
-import '@rainbow-me/rainbowkit/styles.css';
+import '@account-kit/react/styles.css';
 import { useState } from 'react';
-
-// Custom RainbowKit theme matching our design system
-const customTheme = darkTheme({
-  accentColor: '#8b5cf6', // Purple accent
-  accentColorForeground: 'white',
-  borderRadius: 'large',
-  fontStack: 'system',
-  overlayBlur: 'small',
-});
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -32,15 +24,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider 
-          theme={customTheme}
-          modalSize="compact"
-          showRecentTransactions={true}
-        >
+        <AlchemyAccountProvider config={alchemyConfig} queryClient={queryClient}>
           <NavigationProvider>
             {children}
           </NavigationProvider>
-        </RainbowKitProvider>
+        </AlchemyAccountProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

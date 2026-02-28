@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import DashboardLayout from '@/components/DashboardLayout';
 import { SparklesIcon, DocumentTextIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';

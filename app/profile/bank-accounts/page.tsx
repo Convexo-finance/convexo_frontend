@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount } from 'wagmi';
+import { useAccount } from '@/lib/wagmi/compat';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
   BuildingLibraryIcon,

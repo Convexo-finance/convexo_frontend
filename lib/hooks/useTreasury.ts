@@ -3,9 +3,10 @@
  * Complete read and write functions for treasury factory and individual treasury interactions
  */
 
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { getContractsForChain, ERC20_ABI } from '@/lib/contracts/addresses';
 import { TreasuryFactoryABI, TreasuryVaultABI } from '@/lib/contracts/abis';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
 // ============================================
 // TREASURY FACTORY HOOKS
@@ -65,7 +66,7 @@ export function useTreasuryFactory() {
   });
 
   // Write: Create treasury
-  const { writeContract: createTreasuryWrite, data: createHash, isPending: isCreating, error: createError } = useWriteContract();
+  const { writeContract: createTreasuryWrite, data: createHash, isPending: isCreating, error: createError } = useConvexoWrite();
   const { isLoading: isConfirmingCreate, isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({ hash: createHash });
 
   const createTreasury = async (signers: `0x${string}`[], signaturesRequired: bigint) => {
@@ -218,7 +219,7 @@ export function useHasConfirmed(treasuryAddress?: `0x${string}`, txIndex?: bigin
 // ============================================
 
 export function useSubmitTransaction(treasuryAddress?: `0x${string}`) {
-  const { writeContract: submit, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: submit, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const submitTransaction = async (to: `0x${string}`, value: bigint, data: `0x${string}`) => {
@@ -235,7 +236,7 @@ export function useSubmitTransaction(treasuryAddress?: `0x${string}`) {
 }
 
 export function useConfirmTransaction(treasuryAddress?: `0x${string}`) {
-  const { writeContract: confirm, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: confirm, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const confirmTransaction = async (txIndex: bigint) => {
@@ -252,7 +253,7 @@ export function useConfirmTransaction(treasuryAddress?: `0x${string}`) {
 }
 
 export function useRevokeConfirmation(treasuryAddress?: `0x${string}`) {
-  const { writeContract: revoke, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: revoke, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const revokeConfirmation = async (txIndex: bigint) => {
@@ -269,7 +270,7 @@ export function useRevokeConfirmation(treasuryAddress?: `0x${string}`) {
 }
 
 export function useExecuteTransaction(treasuryAddress?: `0x${string}`) {
-  const { writeContract: execute, data: hash, isPending, error } = useWriteContract();
+  const { writeContract: execute, data: hash, isPending, error } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const executeTransaction = async (txIndex: bigint) => {
@@ -294,7 +295,7 @@ export function useDepositToTreasury(treasuryAddress?: `0x${string}`) {
   const contracts = getContractsForChain(chainId);
 
   // Approve USDC
-  const { writeContract: approve, data: approveHash, isPending: isApproving } = useWriteContract();
+  const { writeContract: approve, data: approveHash, isPending: isApproving } = useConvexoWrite();
   const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
 
   const approveUsdc = async (amount: bigint) => {
@@ -308,7 +309,7 @@ export function useDepositToTreasury(treasuryAddress?: `0x${string}`) {
   };
 
   // Deposit
-  const { writeContract: deposit, data: depositHash, isPending: isDepositing } = useWriteContract();
+  const { writeContract: deposit, data: depositHash, isPending: isDepositing } = useConvexoWrite();
   const { isLoading: isConfirmingDeposit, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({ hash: depositHash });
 
   const depositUsdc = async (amount: bigint) => {

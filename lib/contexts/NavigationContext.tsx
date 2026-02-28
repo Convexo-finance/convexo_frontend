@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { useUserReputation } from '@/lib/hooks/useUserReputation';

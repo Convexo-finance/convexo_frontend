@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useChainId } from 'wagmi';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId } from '@/lib/wagmi/compat';
+import { useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI } from '@/lib/contracts/abis';
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
 interface CreateVaultFormProps {
   onSuccess?: () => void;
@@ -26,7 +27,7 @@ export function CreateVaultForm({ onSuccess }: CreateVaultFormProps = {}) {
     data: hash,
     isPending,
     error: writeError,
-  } = useWriteContract();
+  } = useConvexoWrite();
 
   const { isLoading: isConfirming, isSuccess } =
     useWaitForTransactionReceipt({
