@@ -3,13 +3,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { AlchemyAccountProvider } from '@account-kit/react';
+import { AlchemyClientState } from '@account-kit/core';
 import { config } from '@/lib/wagmi/config';
 import { alchemyConfig } from '@/lib/alchemy/config';
 import { NavigationProvider } from '@/lib/contexts/NavigationContext';
 import '@account-kit/react/styles.css';
 import { useState } from 'react';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialState,
+}: {
+  children: React.ReactNode;
+  initialState?: AlchemyClientState;
+}) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -24,7 +31,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AlchemyAccountProvider config={alchemyConfig} queryClient={queryClient}>
+        <AlchemyAccountProvider config={alchemyConfig} queryClient={queryClient} initialState={initialState}>
           <NavigationProvider>
             {children}
           </NavigationProvider>

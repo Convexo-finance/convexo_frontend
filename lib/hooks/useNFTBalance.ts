@@ -11,7 +11,7 @@
  * - Proper query key invalidation per chain
  */
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useAccount, useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain, type ChainId } from '@/lib/contracts/addresses';
 import {
@@ -27,14 +27,6 @@ export function useNFTBalance() {
   const contracts = getContractsForChain(chainId);
   const [lastChainId, setLastChainId] = useState<number | null>(null);
 
-  // Debug: Log chain changes
-  useEffect(() => {
-    console.log(`[useNFTBalance] Chain: ${chainId}, Contracts loaded: ${!!contracts}, Address: ${address?.slice(0, 8)}...`);
-    if (contracts) {
-      console.log(`[useNFTBalance] CONVEXO_PASSPORT: ${contracts.CONVEXO_PASSPORT}`);
-    }
-  }, [chainId, contracts, address]);
-
   // Tier 1: Convexo Passport (ZKPassport verified)
   const { data: passportBalance, refetch: refetchPassport, isLoading: isLoadingPassport } = useReadContract({
     address: contracts?.CONVEXO_PASSPORT,
@@ -44,10 +36,8 @@ export function useNFTBalance() {
     chainId: chainId as ChainId,
     query: {
       enabled: !!address && !!contracts?.CONVEXO_PASSPORT,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      gcTime: 0,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
     },
   });
 
@@ -59,10 +49,8 @@ export function useNFTBalance() {
     chainId: chainId as ChainId,
     query: {
       enabled: !!address && !!contracts?.CONVEXO_PASSPORT,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      gcTime: 0,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
     },
   });
 
@@ -74,10 +62,8 @@ export function useNFTBalance() {
     chainId: chainId as ChainId,
     query: {
       enabled: !!address && !!contracts?.CONVEXO_PASSPORT,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      gcTime: 0,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
     },
   });
 
@@ -90,10 +76,8 @@ export function useNFTBalance() {
     chainId: chainId as ChainId,
     query: {
       enabled: !!address && !!contracts?.LP_INDIVIDUALS,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      gcTime: 0,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
     },
   });
 
@@ -106,10 +90,8 @@ export function useNFTBalance() {
     chainId: chainId as ChainId,
     query: {
       enabled: !!address && !!contracts?.LP_BUSINESS,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      gcTime: 0,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
     },
   });
 
@@ -122,10 +104,8 @@ export function useNFTBalance() {
     chainId: chainId as ChainId,
     query: {
       enabled: !!address && !!contracts?.ECREDITSCORING,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      staleTime: 0,
-      gcTime: 0,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
     },
   });
 
@@ -145,24 +125,19 @@ export function useNFTBalance() {
   const hasAnyLPNFT = hasLPIndividualsNFT || hasLPBusinessNFT;
 
   // Calculate user tier (highest tier wins)
-  const getUserTier = (): number => {
+  const userTier = useMemo((): number => {
     if (hasEcreditscoringNFT) return 3; // VaultCreator
     if (hasAnyLPNFT) return 2; // LimitedPartner
     if (hasPassportNFT || hasActivePassport === true) return 1; // Passport
     return 0; // None
-  };
+  }, [hasEcreditscoringNFT, hasAnyLPNFT, hasPassportNFT, hasActivePassport]);
 
   // Force refetch all balances when chain changes
   const refetchAllBalances = useCallback(async () => {
-    if (!address || !contracts) {
-      console.log(`[useNFTBalance] Skip refetch - no address or contracts`);
-      return;
-    }
-    
-    console.log(`[useNFTBalance] 🔄 Refetching ALL balances for chain ${chainId} (${contracts.CHAIN_NAME})`);
-    
+    if (!address || !contracts) return;
+
     try {
-      const results = await Promise.all([
+      await Promise.all([
         refetchPassport(),
         refetchActivePassport(),
         refetchVerifiedIdentity(),
@@ -170,23 +145,14 @@ export function useNFTBalance() {
         refetchLPBusiness(),
         refetchEcreditscoring(),
       ]);
-      
-      console.log(`[useNFTBalance] ✅ Balances refetched:`, {
-        passport: results[0].data?.toString(),
-        activePassport: results[1].data,
-        lpIndividuals: results[3].data?.toString(),
-        lpBusiness: results[4].data?.toString(),
-        ecreditscoring: results[5].data?.toString(),
-      });
     } catch (error) {
-      console.error(`[useNFTBalance] ❌ Error refetching balances:`, error);
+      console.error(`[useNFTBalance] Error refetching balances:`, error);
     }
-  }, [address, contracts, chainId, refetchPassport, refetchActivePassport, refetchVerifiedIdentity, refetchLPIndividuals, refetchLPBusiness, refetchEcreditscoring]);
+  }, [address, contracts, refetchPassport, refetchActivePassport, refetchVerifiedIdentity, refetchLPIndividuals, refetchLPBusiness, refetchEcreditscoring]);
 
   // Refetch when chain changes
   useEffect(() => {
     if (chainId !== lastChainId) {
-      console.log(`[useNFTBalance] 🔀 Chain changed: ${lastChainId} → ${chainId}`);
       setLastChainId(chainId);
       
       // Small delay to ensure contract addresses are updated
@@ -234,14 +200,14 @@ export function useNFTBalance() {
     ecreditscoringBalance: typeof ecreditscoring === 'bigint' ? ecreditscoring : undefined,
 
     // Computed tier
-    userTier: getUserTier(),
+    userTier,
 
     // Access control helpers
-    canAccessTreasury: getUserTier() >= 1,
-    canInvestInVaults: getUserTier() >= 1,
-    canAccessLPPools: getUserTier() >= 2,
-    canRequestCreditScore: getUserTier() >= 2,
-    canCreateVaults: getUserTier() >= 3,
+    canAccessTreasury: userTier >= 1,
+    canInvestInVaults: userTier >= 1,
+    canAccessLPPools: userTier >= 2,
+    canRequestCreditScore: userTier >= 2,
+    canCreateVaults: userTier >= 3,
 
     // Loading state
     isLoading: isLoadingPassport,

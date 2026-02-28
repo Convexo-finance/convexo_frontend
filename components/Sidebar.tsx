@@ -3,14 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useAuthModal, useSignerStatus, useLogout } from '@account-kit/react';
-import { useState, useEffect } from 'react';
+import { useAuthModal, useLogout } from '@account-kit/react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
-import { useChainId, useReadContract } from 'wagmi';
-import { formatUnits } from 'viem';
-import { erc20Abi } from 'viem';
-import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
-import { getContractsForChain } from '@/lib/contracts/addresses';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import {
   UserCircleIcon,
   WalletIcon,
@@ -36,38 +32,29 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
-// Connect button that uses Account Kit modals
-function SmartConnectButton() {
+// Minimal bottom action — connect or disconnect
+function WalletButton() {
   const { openAuthModal } = useAuthModal();
-  const { isConnected } = useSignerStatus();
   const { logout } = useLogout();
-  const { address } = useAccount();
-
-  if (!isConnected) {
-    return (
-      <button
-        onClick={openAuthModal}
-        className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm transition-colors"
-      >
-        Connect Wallet
-      </button>
-    );
-  }
+  const { isConnected } = useAccount();
 
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0" />
-        <span className="text-sm text-gray-300 font-mono truncate">
-          {address ? `${address.slice(0, 6)}…${address.slice(-4)}` : ''}
-        </span>
-      </div>
-      <button
-        onClick={() => logout()}
-        className="text-xs text-gray-500 hover:text-white transition-colors flex-shrink-0"
-      >
-        Disconnect
-      </button>
+    <div className="p-4 border-t border-gray-800/50">
+      {isConnected ? (
+        <button
+          onClick={() => logout()}
+          className="w-full px-4 py-2.5 rounded-xl text-gray-500 hover:text-white hover:bg-gray-800/60 text-sm transition-colors"
+        >
+          Disconnect
+        </button>
+      ) : (
+        <button
+          onClick={openAuthModal}
+          className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm transition-colors"
+        >
+          Connect Wallet
+        </button>
+      )}
     </div>
   );
 }
@@ -115,17 +102,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: 'Funding',
-    href: '/funding',
-    icon: BanknotesIcon,
-    requiredTier: 1,
-    subItems: [
-      { name: 'E-Loans', href: '/funding/e-loans', icon: BanknotesIcon, description: 'Create loan vaults', requiredTier: 3 },
-      { name: 'E-Contracts', href: '/funding/e-contracts', icon: DocumentTextIcon, description: 'Sign & view contracts', requiredTier: 1 },
-    ],
-  },
-  {
-    name: 'Treasury',
+    name: 'Trade',
     href: '/treasury',
     icon: CurrencyDollarIcon,
     requiredTier: 1,
@@ -133,6 +110,16 @@ const navItems: NavItem[] = [
       { name: 'OTC Orders', href: '/treasury/otc', icon: ClipboardDocumentListIcon, description: 'Large orders' },
       { name: 'Swaps', href: '/treasury/swaps', icon: ArrowsRightLeftIcon, description: 'ECOP/USDC/EUR Pools' },
       { name: 'Monetization', href: '/treasury/monetization', icon: CurrencyDollarIcon, description: 'COP ↔ ECOP' },
+    ],
+  },
+  {
+    name: 'Funding',
+    href: '/funding',
+    icon: BanknotesIcon,
+    requiredTier: 1,
+    subItems: [
+      { name: 'E-Loans', href: '/funding/e-loans', icon: BanknotesIcon, description: 'Create loan vaults', requiredTier: 3 },
+      { name: 'E-Contracts', href: '/funding/e-contracts', icon: DocumentTextIcon, description: 'Sign & view contracts', requiredTier: 1 },
     ],
   },
   {
@@ -154,78 +141,7 @@ const navItems: NavItem[] = [
   },
 ];
 
-// User tier calculation
-function useUserTier() {
-  const { userTier } = useNFTBalance();
-  return userTier;
-}
 
-// Admin check
-function useIsAdmin() {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contracts = getContractsForChain(chainId);
-
-  if (!address || !contracts) return false;
-  return address.toLowerCase() === contracts.ADMIN_ADDRESS.toLowerCase();
-}
-
-// Total portfolio balance - shows USDC as stable value
-function TotalBalance() {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contracts = getContractsForChain(chainId);
-
-  const { data: usdcBalance } = useReadContract({
-    address: contracts?.USDC,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address && !!contracts },
-  });
-
-  const formatted = usdcBalance
-    ? parseFloat(formatUnits(usdcBalance as bigint, 6))
-    : 0;
-
-  const display =
-    formatted >= 1_000_000
-      ? `$${(formatted / 1_000_000).toFixed(2)}M`
-      : formatted >= 1_000
-      ? `$${(formatted / 1_000).toFixed(2)}K`
-      : `$${formatted.toFixed(2)}`;
-
-  return (
-    <div className="px-4 py-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Portfolio Value</p>
-      <p className="text-2xl font-bold text-white">{display}</p>
-      <p className="text-xs text-gray-500 mt-0.5">USDC balance</p>
-    </div>
-  );
-}
-
-// NFT tier status badge
-function NFTStatusBadges() {
-  const userTier = useUserTier();
-
-  const tierConfig = {
-    0: { label: 'Tier 0: Unverified', color: 'from-gray-700 to-gray-600' },
-    1: { label: 'Tier 1: Verified', color: 'from-emerald-700 to-teal-600' },
-    2: { label: 'Tier 2: Limited Partner', color: 'from-blue-700 to-cyan-600' },
-    3: { label: 'Tier 3: Vault Creator', color: 'from-purple-700 to-pink-600' },
-  };
-
-  const config = tierConfig[userTier as keyof typeof tierConfig] || tierConfig[0];
-
-  return (
-    <div className="px-4 pb-4 border-t border-gray-800/50 pt-3">
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r ${config.color}`}>
-        <div className="w-2 h-2 rounded-full bg-white" />
-        <span className="text-sm font-semibold text-white">{config.label}</span>
-      </div>
-    </div>
-  );
-}
 
 interface SidebarProps {
   onClose?: () => void;
@@ -233,9 +149,7 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { isConnected } = useAccount();
-  const userTier = useUserTier();
-  const isAdmin = useIsAdmin();
+  const { userTier, isAdmin } = useNavigation();
 
   // Track expanded items
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
@@ -261,13 +175,13 @@ export function Sidebar({ onClose }: SidebarProps) {
     });
   }, [pathname]);
 
-  const toggleExpand = (itemName: string) => {
+  const toggleExpand = useCallback((itemName: string) => {
     setExpandedItems(prev =>
       prev.includes(itemName)
         ? prev.filter(name => name !== itemName)
         : [...prev, itemName]
     );
-  };
+  }, []);
 
   const isItemActive = (href: string, subItems?: NavSubItem[]) => {
     if (pathname === href) return true;
@@ -283,10 +197,10 @@ export function Sidebar({ onClose }: SidebarProps) {
     return true;
   };
 
-  const visibleItems = navItems.filter(item => {
+  const visibleItems = useMemo(() => navItems.filter(item => {
     if (item.adminOnly) return isAdmin;
     return true;
-  });
+  }), [isAdmin]);
 
   return (
     <div className="w-72 flex flex-col h-full bg-[#0f1219] border-r border-gray-800/50">
@@ -318,19 +232,6 @@ export function Sidebar({ onClose }: SidebarProps) {
           </button>
         </div>
       </div>
-
-      {/* Wallet connector */}
-      <div className="px-4 py-3 border-b border-gray-800/50">
-        <SmartConnectButton />
-      </div>
-
-      {/* User Status (when connected) */}
-      {isConnected && (
-        <div className="border-b border-gray-800/50">
-          <TotalBalance />
-          <NFTStatusBadges />
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -466,6 +367,8 @@ export function Sidebar({ onClose }: SidebarProps) {
           );
         })}
       </nav>
+
+      <WalletButton />
     </div>
   );
 }

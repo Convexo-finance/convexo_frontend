@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
+import { cookieToInitialState } from '@account-kit/core';
 import './globals.css';
 import { Providers } from './providers';
+import { alchemyConfig } from '@/lib/alchemy/config';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,15 +18,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const initialState = cookieToInitialState(
+    alchemyConfig,
+    (await headers()).get('cookie') ?? undefined
+  );
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers initialState={initialState}>{children}</Providers>
       </body>
     </html>
   );

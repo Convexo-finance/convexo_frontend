@@ -1,11 +1,9 @@
 'use client';
 
-import { useAccount, useBalance, useChainId, useReadContract } from '@/lib/wagmi/compat';
-import { formatUnits } from 'viem';
-import { erc20Abi } from 'viem';
+import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
-import { getContractsForChain, getAddressExplorerLink } from '@/lib/contracts/addresses';
+import { getAddressExplorerLink } from '@/lib/contracts/addresses';
 import Image from 'next/image';
 import {
   WalletIcon,
@@ -58,21 +56,11 @@ function LinkedInIcon({ className }: { className?: string }) {
 export default function ProfilePage() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
-  const contracts = getContractsForChain(chainId);
   const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasEcreditscoringNFT, hasActivePassport, userTier } = useNFTBalance();
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState<ContactInfo>(defaultContact);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ContactInfo>(defaultContact);
-
-  const { data: ethBalance } = useBalance({ address });
-  const { data: usdcBalance } = useReadContract({
-    address: contracts?.USDC,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address && !!contracts },
-  });
 
   // Load saved contact info
   useEffect(() => {
@@ -176,38 +164,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Network</p>
-                <div className="flex items-center gap-2 justify-end">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-white font-medium">{contracts?.CHAIN_NAME || 'Unknown'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="card p-5">
-              <p className="text-gray-400 text-sm mb-1">ETH Balance</p>
-              <p className="text-2xl font-bold text-white">
-                {ethBalance ? parseFloat(formatUnits(ethBalance.value, 18)).toFixed(4) : '0.0000'}
-              </p>
-            </div>
-            <div className="card p-5">
-              <p className="text-gray-400 text-sm mb-1">USDC Balance</p>
-              <p className="text-2xl font-bold text-emerald-400">
-                ${usdcBalance ? parseFloat(formatUnits(usdcBalance as bigint, 6)).toLocaleString() : '0.00'}
-              </p>
-            </div>
-            <div className="card p-5">
-              <p className="text-gray-400 text-sm mb-1">NFTs Owned</p>
-              <p className="text-2xl font-bold text-purple-400">
-                {(hasPassportNFT || hasActivePassport ? 1 : 0) +
-                 (hasLPIndividualsNFT ? 1 : 0) +
-                 (hasLPBusinessNFT ? 1 : 0) +
-                 (hasEcreditscoringNFT ? 1 : 0)} / 4
-              </p>
             </div>
           </div>
 

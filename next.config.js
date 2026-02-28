@@ -16,8 +16,12 @@ const nextConfig = {
     ],
   },
   // Turbopack powers `next dev` (fast HMR, fast startup).
-  // Empty config here silences the "webpack config but no turbopack config" warning.
-  turbopack: {},
+  // thread-stream is a Node.js Worker Thread lib — alias it to the browser stub so Turbopack drops it.
+  turbopack: {
+    resolveAlias: {
+      'thread-stream': './lib/stubs/thread-stream.js',
+    },
+  },
   // Webpack powers `next build` (see package.json "build" script: --webpack).
   // thread-stream is a Node.js Worker Thread lib pulled in by pino → zkpassport/account-kit.
   // It must never be bundled for the browser — alias it to false so webpack drops it entirely.

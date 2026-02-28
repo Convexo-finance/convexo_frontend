@@ -3,11 +3,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSignerStatus, AuthCard } from '@account-kit/react';
+import { useAccount } from '@/lib/wagmi/compat';
 import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { isConnected, isInitializing } = useSignerStatus();
+  // useAccount covers both AlchemySigner (email/passkey/OAuth) AND external EOA wallets
+  const { isConnected } = useAccount();
+  const { isInitializing } = useSignerStatus();
 
   useEffect(() => {
     if (isConnected) {
@@ -39,7 +42,7 @@ export default function SignInPage() {
           </p>
         </div>
 
-        {/* Auth card — email, passkey, Google, external wallets */}
+        {/* Auth card — email · passkey · Google · WalletConnect · More wallets */}
         {!isInitializing && (
           <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
             <AuthCard />

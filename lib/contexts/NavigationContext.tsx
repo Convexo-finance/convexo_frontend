@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
 import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
@@ -128,12 +128,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     hasEcreditscoring: hasEcreditscoringNFT,
   }), [hasPassportNFT, hasActivePassport, hasLPIndividualsNFT, hasLPBusinessNFT, hasAnyLPNFT, hasEcreditscoringNFT]);
 
-  const refetchAll = () => {
+  const refetchAll = useCallback(() => {
     refetchNFT();
     refetchReputation();
-  };
+  }, [refetchNFT, refetchReputation]);
 
-  const state: NavigationState = {
+  const state = useMemo<NavigationState>(() => ({
     isConnected,
     address,
     chainId,
@@ -144,7 +144,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     ...accessControl,
     isLoading: false,
     refetchAll,
-  };
+  }), [isConnected, address, chainId, contracts, userTier, isAdmin, nftStatus, accessControl, refetchAll]);
 
   return (
     <NavigationContext.Provider value={state}>
