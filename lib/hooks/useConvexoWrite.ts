@@ -17,15 +17,21 @@ interface WriteContractParams {
 
 /**
  * Drop-in replacement for wagmi's useWriteContract.
- * Internally encodes the call and sends it as a user operation via Account Kit,
- * enabling gas sponsorship via the configured policyId.
+ * Internally encodes the call and sends it as a UserOperation via the ERC-4337
+ * path. Gas Manager sponsorship is applied automatically via the policyId set
+ * in lib/alchemy/config.ts (createConfig chains[].policyId).
+ *
+ * Account type: MultiOwnerModularAccount (MAv2 / EIP-7702)
+ *   - Signer EOA = Smart Wallet address (same address)
+ *   - Supports gas sponsorship, batching, session keys
  *
  * Usage is identical to useWriteContract:
  *   const { writeContract, isPending, data, isSuccess, error, reset } = useConvexoWrite();
  *   writeContract({ address, abi, functionName, args, value });
  */
 export function useConvexoWrite() {
-  const { client } = useSmartAccountClient({ type: 'LightAccount' });
+  // MAv2 = Modular Account V2 with EIP-7702 support
+  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
   const [resetKey, setResetKey] = useState(0);
 
   const {
@@ -45,6 +51,8 @@ export function useConvexoWrite() {
       args: params.args ?? [],
     });
 
+    // ERC-4337 path — Gas Manager paymaster applied automatically via policyId
+    // configured in lib/alchemy/config.ts createConfig chains[].policyId.
     sendUserOperation({
       uo: {
         target: params.address,

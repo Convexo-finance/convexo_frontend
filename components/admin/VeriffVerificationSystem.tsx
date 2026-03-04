@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useChainId, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useChainId, useWaitForTransactionReceipt, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain, getBlockExplorerUrl } from '@/lib/contracts/addresses';
 import { VeriffVerifierABI } from '@/lib/contracts/abis';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';

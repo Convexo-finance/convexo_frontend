@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useChainId, useReadContract } from 'wagmi';
+import { useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain, getBlockExplorerUrl, getIPFSUrl } from '@/lib/contracts/addresses';
 import { buildIPFSUrl, PINATA_CONFIG } from '@/lib/config/pinata';
 import {

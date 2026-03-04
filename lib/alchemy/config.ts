@@ -23,7 +23,7 @@ const uiConfig: AlchemyAccountsUIConfig = {
         },
       ],
     ],
-    addPasskeyOnSignup: false,
+    addPasskeyOnSignup: true,
     header: undefined,
   },
   supportUrl: 'support@convexo.xyz',
@@ -36,13 +36,21 @@ export const alchemyConfig = createConfig(
     chains: [
       {
         chain: base,
+        // Gas Manager policy for Base mainnet.
+        // Set NEXT_PUBLIC_ALCHEMY_POLICY_ID in .env.
+        // Create additional policies per chain at dashboard.alchemy.com/gas-manager
+        // and add chain-specific env vars (e.g. NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH)
+        // when ready to sponsor on other networks.
         policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID,
       },
       {
         chain: mainnet,
-        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID,
+        // Gas Manager policy for Ethereum mainnet.
+        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH,
       },
     ],
+    // Top-level policyId is the Base mainnet default (used when no chain-specific
+    // override is present). Matches NEXT_PUBLIC_ALCHEMY_POLICY_ID in .env.
     policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID,
     ssr: true,
     storage: cookieStorage,
@@ -52,7 +60,7 @@ export const alchemyConfig = createConfig(
     // injected() → auto-detects any EIP-6963 wallet (Rabby, Phantom, etc.)
     //   so they appear in "More wallets" even if not explicitly listed.
     connectors: [
-      metaMask(),
+      metaMask({ enableAnalytics: false }),
       coinbaseWallet({ appName: 'Convexo' }),
       injected(),
     ],

@@ -39,17 +39,18 @@ function getErc20Address(token: Exclude<TokenSymbol, 'ETH'>, chainId: number): `
  * Unified token-send hook.
  *
  * Smart account (email / passkey / OAuth):
- *   Sends via useSendUserOperation. Handles chain switching via useChain()
- *   before firing the UO — when the chain changes the pending params are
- *   consumed in a useEffect.
+ *   Sends via useSendUserOperation. Uses MultiOwnerModularAccount (MAv2)
+ *   with EIP-7702 — signer EOA IS the smart wallet address.
+ *   Handles chain switching via useChain() before firing the UO.
  *
  * EOA wallet (MetaMask / WalletConnect / Coinbase):
  *   Uses @wagmi/core writeContract / sendTransaction with Account Kit's
  *   internal wagmi config (the EOA connects there, not the parent WagmiProvider).
+ *   No smart wallet features — raw EOA transactions.
  */
 export function useSendToken() {
-  // ── Smart account ────────────────────────────────────────────────────────
-  const { client } = useSmartAccountClient({ type: 'LightAccount' });
+  // ── Smart account (MAv2 / EIP-7702) ──────────────────────────────────────
+  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
   const {
     sendUserOperation,
     isSendingUserOperation,

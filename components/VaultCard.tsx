@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useChainId } from '@/lib/wagmi/compat';
-import { useContractRead, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { parseUnits, formatUnits } from 'viem';
 import { TokenizedBondVaultABI } from '@/lib/contracts/abis';
 import { getContractsForChain } from '@/lib/contracts/addresses';
@@ -26,14 +25,14 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const [showRepaymentForm, setShowRepaymentForm] = useState(false);
 
   // Get vault metrics
-  const { data: metrics, isLoading: isLoadingMetrics } = useContractRead({
+  const { data: metrics, isLoading: isLoadingMetrics } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultMetrics',
   });
 
   // Get user's investment returns if they've invested
-  const { data: userReturnsData } = useContractRead({
+  const { data: userReturnsData } = useReadContract({
     address: address ? vaultAddress : undefined,
     abi: TokenizedBondVaultABI,
     functionName: 'getInvestorReturn',
@@ -46,20 +45,20 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const userReturns = userReturnsData as [bigint, bigint, bigint] | undefined;
 
   // Get vault name and symbol
-  const { data: name } = useContractRead({
+  const { data: name } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'name',
   });
 
-  const { data: symbol } = useContractRead({
+  const { data: symbol } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'symbol',
   });
 
   // Get borrower address
-  const { data: borrowerData } = useContractRead({
+  const { data: borrowerData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultBorrower',
@@ -67,7 +66,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const borrower = borrowerData as `0x${string}` | undefined;
 
   // Get lenders/investors
-  const { data: lendersData } = useContractRead({
+  const { data: lendersData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getInvestors',
@@ -75,7 +74,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const lenders = lendersData as `0x${string}`[] | undefined;
 
   // Get vault contract hash
-  const { data: vaultContractHashData } = useContractRead({
+  const { data: vaultContractHashData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultContractHash',
@@ -84,7 +83,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const hasContract = vaultContractHash && vaultContractHash !== '0x0000000000000000000000000000000000000000000000000000000000000000';
 
   // Get vault state
-  const { data: vaultStateData } = useContractRead({
+  const { data: vaultStateData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultState',
@@ -92,7 +91,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const vaultState = vaultStateData as number | undefined;
 
   // Get repayment status
-  const { data: repaymentStatusData } = useContractRead({
+  const { data: repaymentStatusData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getRepaymentStatus',
@@ -100,7 +99,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const repaymentStatus = repaymentStatusData as [bigint, bigint, bigint, bigint] | undefined;
 
   // Get accrued interest
-  const { data: accruedInterestData } = useContractRead({
+  const { data: accruedInterestData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getAccruedInterest',
@@ -108,7 +107,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const accruedInterest = accruedInterestData as [bigint, bigint] | undefined;
 
   // Get vault info
-  const { data: vaultInfoData } = useContractRead({
+  const { data: vaultInfoData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'vaultInfo',
@@ -129,35 +128,35 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const disbursedAt = vaultInfo?.[9] as bigint | undefined;
 
   // v2.2: Get accurate timestamps from contract
-  const { data: vaultCreatedAtData } = useContractRead({
+  const { data: vaultCreatedAtData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultCreatedAt',
   });
   const vaultCreatedAt = vaultCreatedAtData as bigint | undefined;
 
-  const { data: vaultFundedAtData } = useContractRead({
+  const { data: vaultFundedAtData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultFundedAt',
   });
   const vaultFundedAt = vaultFundedAtData as bigint | undefined;
 
-  const { data: vaultContractAttachedAtData } = useContractRead({
+  const { data: vaultContractAttachedAtData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultContractAttachedAt',
   });
   const vaultContractAttachedAt = vaultContractAttachedAtData as bigint | undefined;
 
-  const { data: vaultFundsWithdrawnAtData } = useContractRead({
+  const { data: vaultFundsWithdrawnAtData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getVaultFundsWithdrawnAt',
   });
   const vaultFundsWithdrawnAt = vaultFundsWithdrawnAtData as bigint | undefined;
 
-  const { data: actualDueDateData } = useContractRead({
+  const { data: actualDueDateData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getActualDueDate',
@@ -165,7 +164,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   const actualDueDate = actualDueDateData as bigint | undefined;
 
   // v2.2: Get available funds for investors (excludes protocol fees)
-  const { data: availableForInvestorsData } = useContractRead({
+  const { data: availableForInvestorsData } = useReadContract({
     address: vaultAddress,
     abi: TokenizedBondVaultABI,
     functionName: 'getAvailableForInvestors',
@@ -226,7 +225,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
     : 0n;
 
   // Check USDC allowance for investment
-  const { data: allowance } = useContractRead({
+  const { data: allowance } = useReadContract({
     address: address && vaultAddress && contracts ? contracts.USDC : undefined,
     abi: erc20Abi,
     functionName: 'allowance',
@@ -237,7 +236,7 @@ export function VaultCard({ vaultAddress, vaultId }: VaultCardProps) {
   });
 
   // Check USDC allowance for repayment
-  const { data: repaymentAllowance, refetch: refetchRepaymentAllowance } = useContractRead({
+  const { data: repaymentAllowance, refetch: refetchRepaymentAllowance } = useReadContract({
     address: address && vaultAddress && contracts ? contracts.USDC : undefined,
     abi: erc20Abi,
     functionName: 'allowance',

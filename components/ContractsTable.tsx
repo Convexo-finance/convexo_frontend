@@ -1,6 +1,6 @@
 'use client';
 
-import { useContractRead, useChainId } from 'wagmi';
+import { useReadContract, useChainId } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ContractSignerABI } from '@/lib/contracts/abis';
 
@@ -16,7 +16,7 @@ export function ContractsTable({ gatewayUrl }: ContractsTableProps) {
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
 
-  const { data: count, isLoading: isLoadingCount } = useContractRead({
+  const { data: count, isLoading: isLoadingCount } = useReadContract({
     address: contracts?.CONTRACT_SIGNER,
     abi: ContractSignerABI,
     functionName: 'getContractCount',
@@ -107,7 +107,7 @@ function ContractTableRow({
   contractSignerAddress: `0x${string}`;
 }) {
   // Get document hash at index
-  const { data: documentHash, isLoading: isLoadingHash } = useContractRead({
+  const { data: documentHash, isLoading: isLoadingHash } = useReadContract({
     address: contractSignerAddress,
     abi: ContractSignerABI,
     functionName: 'getDocumentHashAtIndex',
@@ -115,7 +115,7 @@ function ContractTableRow({
   });
 
   // Get contract details
-  const { data: contractData, isLoading: isLoadingContract } = useContractRead({
+  const { data: contractData, isLoading: isLoadingContract } = useReadContract({
     address: documentHash ? contractSignerAddress : undefined,
     abi: ContractSignerABI,
     functionName: 'getContract',

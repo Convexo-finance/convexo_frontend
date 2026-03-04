@@ -3,7 +3,7 @@
  * For new code, use useVaultFactory and useTokenizedBondVault from index.ts
  */
 
-import { useChainId, useReadContract } from 'wagmi';
+import { useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI } from '@/lib/contracts/abis';
 

@@ -11,6 +11,7 @@
   "dependencies": {
     "@account-kit/infra": "4.84.1",
     "@account-kit/react": "4.84.1",
+    "@account-kit/smart-contracts": "^4.84.1",
     "@heroicons/react": "^2.2.0",
     "@tanstack/react-query": "^5.17.0",
     "@zkpassport/sdk": "^0.12.4",

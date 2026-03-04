@@ -69,12 +69,130 @@ User connects wallet
 | Framework       | Next.js 16 (App Router) + TypeScript 5  |
 | Wallet (social) | Account Kit v4 (`@account-kit/react`)   |
 | Wallet (EOA)    | wagmi v2 + viem v2                      |
-| Smart Account   | Alchemy LightAccount (Base mainnet)     |
+| Smart Account   | Modular Account V2 — MAv2 (ERC-6900 · EIP-7702, Base mainnet) |
 | Auth            | SIWE (EIP-4361) + JWT Bearer            |
 | State / Cache   | @tanstack/react-query v5                |
 | Styling         | Tailwind CSS v3                         |
 | ZK Identity     | @zkpassport/sdk                         |
 | Bundler         | webpack (via Next.js)                   |
+
+---
+
+## Smart Wallet Architecture (MAv2 / EIP-7702)
+
+Convexo uses **Alchemy Modular Account V2 (MAv2)** as its smart wallet layer. MAv2 is an ERC-6900 account with EIP-7702 support, audited by ChainLight and Quantstamp, and ~40 % cheaper to deploy than alternatives like Safe.
+
+### Two modes
+
+| User type | Wallet mode | Smart account? | Gas sponsorship? |
+|-----------|-------------|----------------|------------------|
+| Email / Passkey / Google | Alchemy embedded signer → MAv2 via EIP-7702 | ✅ EOA address = smart wallet address | ✅ Gas Manager |
+| MetaMask / WalletConnect / Coinbase | External EOA (raw wagmi) | ❌ No UserOperations | ❌ Not supported |
+
+### EIP-7702 delegation is automatic
+
+No manual "activation" step is required. When an embedded-signer user sends their **first transaction**, Account Kit automatically:
+
+1. Detects that EIP-7702 delegation is needed
+2. Bundles the EIP-7702 authorization signature + the UserOperation into a **single on-chain submission**
+3. Delegates the signer's EOA to the MAv2 implementation contract at the same address
+
+```
+Delegation target: 0x69007702764179f14F51cdce752f4f775d74E139 (MAv2 on Base)
+```
+
+After that first transaction the address permanently behaves as a full smart contract wallet. No separate setup tx is ever needed.
+
+> Source: `setupalchemysmarts/transactions/sendtxns/how EIP7702works.md`
+> *"Transaction APIs automatically detect whether a user must first delegate via EIP-7702.
+>  We combine the delegation and transaction into a single onchain submission."*
+
+### Account type used everywhere
+
+```typescript
+// useWalletAccount.ts · useConvexoWrite.ts · useSendToken.ts
+type: 'MultiOwnerModularAccount'
+// ❌ Never use: type: 'LightAccount'
+```
+
+### Key hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useWalletAccount` (`lib/wagmi/compat.ts` → `useAccount`) | Merges embedded signer + external EOA. Returns `address`, `authMode`, `isResolvingAddress` |
+| `useConvexoWrite` | Drop-in `useWriteContract` — UO via MAv2 for embedded users, raw tx for external EOAs |
+| `useSendToken` | Unified ETH/ERC-20 transfer (UO vs raw tx, with chain switching) |
+
+### Gas Manager (sponsorship)
+
+Gas Manager policyId is set in `lib/alchemy/config.ts` `createConfig chains[].policyId`. The `AlchemySmartAccountClient` picks it up automatically and attaches the paymaster middleware to every `sendUserOperation` call. No manual policyId passing is needed at call sites.
+
+| Chain | Env var | Policy ID |
+|-------|---------|----------|
+| Base mainnet | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | `f09c26c8-7567-478d-861a-ace75dec3f28` |
+| Ethereum mainnet | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` | `063c2de8-1e92-4e84-b1ee-0444523e27c1` |
+
+### Import rules (enforced)
+
+```typescript
+// ✅ Always import wagmi hooks through the compat layer
+import { useReadContract, useWriteContract, useAccount } from '@/lib/wagmi/compat'
+
+// ❌ Never import directly
+import { useAccount } from 'wagmi'
+
+// ✅ useReadContract (wagmi v2)
+// ❌ useContractRead (deprecated wagmi v1 — removed from codebase)
+```
+
+`lib/wagmi/compat.ts` re-exports everything from `wagmi` and overrides `useAccount` with `useWalletAccount` so all components transparently handle both wallet modes.
+
+### Agent skill references
+
+Detailed Alchemy documentation lives in `setupalchemysmarts/`:
+
+```
+setupалchemysmarts/
+├── Low Level infra/
+│   ├── Smartcontraacttype.md/
+│   │   ├── Moduler Account V2.md           # MAv2 overview, cost & modularity
+│   │   └── gettinstarted Modular Acount V2.md  # createModularAccountV2Client
+│   ├── chosing smart account.md
+│   └── deployedaddreses.md
+├── sponsor gas/
+│   ├── full sponsorship.md             # Gas Manager policy setup
+│   └── sign/
+├── transactions/
+│   └── sendtxns/
+│       ├── how EIP7702works.md         # ⭐ EIP-7702 automatic delegation mechanics
+│       ├── singletransations.md
+│       ├── sendbatchtransaction.md
+│       ├── paralleltrandactions.md
+│       └── debugtransations.md
+├── getstarted read.md
+├── socialloginauth.md
+├── addpasskey.md
+└── passkeysignup.md
+```
+
+---
+
+## Codebase Health Status
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| Account type | ✅ `MultiOwnerModularAccount` everywhere | `useWalletAccount`, `useConvexoWrite`, `useSendToken` |
+| EIP-7702 delegation | ✅ Automatic | No manual activation. Account Kit bundles auth + UO on first tx |
+| `useSmartWalletActivation` | ✅ Removed | Was unnecessary — activation is handled by the SDK automatically |
+| `SmartWalletActivationBanner` | ✅ Removed | Replaced with static "Smart Wallet Active" pill in profile/wallet |
+| Deprecated `useContractRead` | ✅ Removed | All 28 sites replaced with `useReadContract` |
+| Raw `from 'wagmi'` imports | ✅ Removed | All components use `from '@/lib/wagmi/compat'` |
+| Auth race condition | ✅ Fixed | `AuthGuard` waits for both JWT init + Account Kit signer reconnection |
+| Profile page flash | ✅ Fixed | `profile/page.tsx` and `profile/wallet/page.tsx` show spinner during `isReconnecting` |
+| TypeScript errors | ✅ 0 errors | `npx tsc --noEmit` clean |
+| `@account-kit/smart-contracts` | ✅ `v4.84.1` installed | Required for `MultiOwnerModularAccount` type |
+| Gas Manager — Base mainnet | ✅ Active | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` = `f09c26c8-7567-478d-861a-ace75dec3f28` |
+| Gas Manager — Ethereum mainnet | ✅ Active | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` = `063c2de8-1e92-4e84-b1ee-0444523e27c1` |
 
 ---
 
@@ -145,7 +263,6 @@ convexo_frontend/
 │   │   ├── useAuth.ts                # SIWE sign-in/out + JWT storage
 │   │   ├── useWalletAccount.ts       # Unified: AlchemySigner + external EOA
 │   │   ├── useNFTBalance.ts          # NFT tier balances for access gating
-│   │   ├── useSmartWalletActivation.ts
 │   │   ├── useConvexoContracts.ts
 │   │   ├── useTokenizedBondVault.ts
 │   │   ├── useTreasury.ts
@@ -191,13 +308,23 @@ cp .env.local.example .env.local
 
 ### 3. Start the backend
 
-The frontend calls `convexo-backend` for auth and all data operations. See `../convexo-backend/README.md`.
+The frontend calls `convexo-backend` for auth and all data operations. Make sure the backend is initialized and running first.
+
+See [convexo-backend/README.md](../convexo-backend/README.md) for the full setup.
 
 ```bash
 # In a separate terminal:
 cd ../convexo-backend
+npm install
+npm run db:migrate
 npm run dev
 # → API at http://localhost:3001, Swagger at http://localhost:3001/docs
+```
+
+Ensure your frontend `.env` includes:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 ### 4. Start the dev server
@@ -469,3 +596,8 @@ NEXT_PUBLIC_PINATA_GATEWAY
 | Rate shows "unavailable" | Admin must set the rate via `POST /admin/rates` |
 | Credit score form won't submit | All 3 files and all 9 numeric fields are required |
 | Build error `.next` stale | `rm -rf .next && npm run build` |
+| UserOperation fails with "Add ETH on Base" | Gas Manager policy not applied — verify `NEXT_PUBLIC_ALCHEMY_POLICY_ID` is `f09c26c8-7567-478d-861a-ace75dec3f28` and the write hook uses `sendUserOperation` (ERC-4337), not `sendCalls` (EIP-5792) |
+| First transaction doesn't delegate EOA to MAv2 | Delegation is automatic — no action needed. Account Kit bundles EIP-7702 auth + UO into the first on-chain tx. |
+| `useAccount` returns EOA instead of smart wallet address | Ensure import is `from '@/lib/wagmi/compat'`, not `from 'wagmi'` |
+| TypeScript error on `MultiOwnerModularAccount` | Run `npm install @account-kit/smart-contracts@4.84.1` |
+| Sponsored amount increasing but UO fails | Check policy chain — Base policy `f09c26c8...` only covers Base mainnet; ETH mainnet uses `063c2de8...` |

@@ -9,6 +9,7 @@ import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ecopAbi } from '@/lib/contracts/ecopAbi';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api/client';
 import {
   CurrencyDollarIcon,
   LockClosedIcon,
@@ -27,12 +28,11 @@ export default function MonetizationPage() {
 
   const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
-  // Fetch exchange rate
+  // Fetch exchange rate from backend
   useEffect(() => {
-    fetch('/api/exchange-rate/usdcop')
-      .then(res => res.json())
+    apiFetch<{ pair: string; rate: number }>('/rates/USD-COP')
       .then(data => setExchangeRate(data.rate))
-      .catch(() => setExchangeRate(4200)); // Fallback rate
+      .catch(() => {}); // rate stays null if not configured
   }, []);
 
   const { data: usdcBalance } = useReadContract({

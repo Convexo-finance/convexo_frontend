@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useChainId, useReadContract } from 'wagmi';
+import { useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ContractSignerABI } from '@/lib/contracts/abis';
 import {

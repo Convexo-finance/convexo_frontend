@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useChainId } from '@/lib/wagmi/compat';
-import { useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useChainId, useWaitForTransactionReceipt } from '@/lib/wagmi/compat';
 import { parseUnits } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { VaultFactoryABI } from '@/lib/contracts/abis';

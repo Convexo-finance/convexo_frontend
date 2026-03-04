@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getAddressExplorerLink } from '@/lib/contracts/addresses';
 import Image from 'next/image';
+import { apiFetch, getToken } from '@/lib/api/client';
 import {
   WalletIcon,
   ArrowTopRightOnSquareIcon,
@@ -14,10 +15,11 @@ import {
   UserIcon,
   DevicePhoneMobileIcon,
   EnvelopeIcon,
+  KeyIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
-import { useState, useEffect } from 'react';
-
-const STORAGE_KEY = 'convexo_profile_contact';
+import { useState, useEffect, useCallback } from 'react';
+import { useAddPasskey, useAuthenticate, useSignerStatus } from '@account-kit/react';
 
 interface ContactInfo {
   displayName: string;
@@ -53,35 +55,253 @@ function LinkedInIcon({ className }: { className?: string }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Sign-in Methods card                                                 */
+/* ------------------------------------------------------------------ */
+function SignInMethodsCard() {
+  const { status } = useSignerStatus();
+  const { addPasskey, isAddingPasskey } = useAddPasskey();
+  const { authenticate, isPending: isAuthPending } = useAuthenticate();
+
+  // Email-link flow state
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  // Passkey state
+  const [passkeySuccess, setPasskeySuccess] = useState(false);
+  const [passkeyError, setPasskeyError] = useState('');
+  const prevAddingRef = useState<boolean>(false);
+
+  // Detect when addPasskey finishes (isAddingPasskey: true → false)
+  useEffect(() => {
+    if (prevAddingRef[0] && !isAddingPasskey && !passkeyError) {
+      setPasskeySuccess(true);
+    }
+    prevAddingRef[0] = isAddingPasskey;
+  }, [isAddingPasskey, passkeyError]);
+
+  const handleAddPasskey = useCallback(() => {
+    setPasskeyError('');
+    setPasskeySuccess(false);
+    (async () => {
+      try {
+        await (addPasskey() as unknown as Promise<void>);
+      } catch (e) {
+        setPasskeyError((e as Error)?.message ?? 'Could not add passkey');
+      }
+    })();
+  }, [addPasskey]);
+
+  const handleLinkEmail = useCallback(() => {
+    const trimmed = emailValue.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailError('Enter a valid email address');
+      return;
+    }
+    setEmailError('');
+    authenticate(
+      { type: 'email', email: trimmed },
+      {
+        onSuccess: () => { setEmailSent(true); setShowEmailInput(false); },
+        onError: (e) => setEmailError(e.message ?? 'Could not send code'),
+      },
+    );
+  }, [emailValue, authenticate]);
+
+  const isConnected = status === 'CONNECTED';
+
+  return (
+    <div className="card">
+      <div className="flex items-center gap-2 mb-5">
+        <ShieldCheckIcon className="w-5 h-5 text-purple-400" />
+        <h2 className="text-lg font-semibold text-white">Sign-in Methods</h2>
+      </div>
+
+      <div className="space-y-3">
+        {/* ── Passkey ── */}
+        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-700 flex items-center justify-center">
+              <KeyIcon className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Passkey</p>
+              <p className="text-xs text-gray-500">Biometric or device PIN — no password needed</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            {passkeySuccess ? (
+              <span className="text-xs text-emerald-400 flex items-center gap-1">
+                <CheckIcon className="w-3.5 h-3.5" /> Added!
+              </span>
+            ) : (
+              <button
+                onClick={handleAddPasskey}
+                disabled={isAddingPasskey || !isConnected}
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+              >
+                {isAddingPasskey ? 'Adding…' : 'Add Passkey'}
+              </button>
+            )}
+            {passkeyError && <p className="text-xs text-red-400 max-w-[180px] text-right">{passkeyError}</p>}
+          </div>
+        </div>
+
+        {/* ── Email OTP ── */}
+        <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gray-700 flex items-center justify-center">
+                <EnvelopeIcon className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Email</p>
+                <p className="text-xs text-gray-500">Sign in with a one-time code</p>
+              </div>
+            </div>
+            {!showEmailInput && !emailSent && (
+              <button
+                onClick={() => setShowEmailInput(true)}
+                disabled={!isConnected}
+                className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+              >
+                Link Email
+              </button>
+            )}
+            {emailSent && (
+              <span className="text-xs text-emerald-400 flex items-center gap-1">
+                <CheckIcon className="w-3.5 h-3.5" /> Linked!
+              </span>
+            )}
+          </div>
+
+          {showEmailInput && (
+            <div className="mt-3 flex gap-2">
+              <div className="relative flex-1">
+                <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="email"
+                  value={emailValue}
+                  onChange={(e) => setEmailValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLinkEmail()}
+                  placeholder="your@email.com"
+                  className="w-full pl-9 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:border-blue-500 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={handleLinkEmail}
+                disabled={isAuthPending}
+                className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+              >
+                {isAuthPending ? '…' : 'Send'}
+              </button>
+              <button
+                onClick={() => { setShowEmailInput(false); setEmailError(''); }}
+                className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {emailError && <p className="mt-2 text-xs text-red-400">{emailError}</p>}
+        </div>
+
+        {/* ── Google ── */}
+        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-700 flex items-center justify-center">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Google</p>
+              <p className="text-xs text-gray-500">Sign in with your Google account</p>
+            </div>
+          </div>
+          <button
+            onClick={() =>
+              authenticate({ type: 'oauth', authProviderId: 'google', mode: 'popup' })
+            }
+            disabled={isAuthPending || !isConnected}
+            className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors border border-gray-600"
+          >
+            {isAuthPending ? 'Connecting…' : 'Link Google'}
+          </button>
+        </div>
+      </div>
+
+      <p className="mt-4 text-xs text-gray-600">Adding a method lets you sign in multiple ways. Your wallet address stays the same.</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
 export default function ProfilePage() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, isReconnecting } = useAccount();
   const chainId = useChainId();
   const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasEcreditscoringNFT, hasActivePassport, userTier } = useNFTBalance();
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState<ContactInfo>(defaultContact);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ContactInfo>(defaultContact);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Load saved contact info
+  // Load profile from backend
+  // Uses JWT (getToken) rather than requiring an address so the profile renders
+  // correctly when the Account Kit signer session is expired but the JWT is valid.
   useEffect(() => {
-    if (!address) return;
-    const key = `${STORAGE_KEY}_${address}`;
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setContact(parsed);
-        setDraft(parsed);
+    if (!getToken()) return;
+    (async () => {
+      try {
+        const data = await apiFetch<Record<string, unknown>>('/profile');
+        const info: ContactInfo = {
+          displayName: (data.displayName as string) || '',
+          email: (data.email as string) || '',
+          phone: (data.phone as string) || '',
+          telegram: (data.telegram as string) || '',
+          twitter: (data.twitter as string) || '',
+          linkedin: (data.linkedin as string) || '',
+        };
+        setContact(info);
+        setDraft(info);
+      } catch {
+        // Profile may not exist yet — silently fallback to defaults
       }
-    } catch {}
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
 
-  const saveContact = () => {
-    if (!address) return;
-    const key = `${STORAGE_KEY}_${address}`;
-    localStorage.setItem(key, JSON.stringify(draft));
-    setContact(draft);
-    setEditing(false);
+  const saveContact = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await apiFetch('/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          displayName: draft.displayName || undefined,
+          email: draft.email || undefined,
+          phone: draft.phone || undefined,
+          telegram: draft.telegram || undefined,
+          twitter: draft.twitter || undefined,
+          linkedin: draft.linkedin || undefined,
+        }),
+      });
+      setContact(draft);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const cancelEdit = () => {
@@ -104,6 +324,16 @@ export default function ProfilePage() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  if (isReconnecting) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full min-h-[80vh]">
+          <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!isConnected) {
     return (
@@ -181,10 +411,18 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex gap-3">
                   <button onClick={cancelEdit} className="text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-                  <button onClick={saveContact} className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors">Save</button>
+                  <button onClick={saveContact} disabled={saving} className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors disabled:opacity-50">
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
                 </div>
               )}
             </div>
+
+            {saveError && (
+              <div className="mb-4 text-sm text-red-400 bg-red-900/20 border border-red-700/30 rounded-lg px-3 py-2">
+                {saveError}
+              </div>
+            )}
 
             {editing ? (
               <div className="space-y-4">
@@ -368,6 +606,9 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Sign-in Methods */}
+          <SignInMethodsCard />
 
           {/* NFT Holdings */}
           <div className="card">

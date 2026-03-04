@@ -25,8 +25,10 @@ interface Contact {
 }
 
 interface ContactsResponse {
-  contacts: Contact[];
+  items: Contact[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 const TYPE_LABELS: Record<ContactType, string> = {
@@ -65,7 +67,7 @@ export default function ContactsPage() {
     try {
       const qs = search ? `?search=${encodeURIComponent(search)}` : '';
       const data = await apiFetch<ContactsResponse>(`/contacts${qs}`);
-      setContacts(data.contacts);
+      setContacts(data.items);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode !== 401) {
         setApiError(err.message);

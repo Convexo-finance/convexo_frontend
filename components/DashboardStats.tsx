@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount, useBalance, useContractRead, useChainId } from '@/lib/wagmi/compat';
+import { useAccount, useBalance, useReadContract, useChainId } from '@/lib/wagmi/compat';
 import { formatUnits } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { erc20Abi } from 'viem';
@@ -48,7 +48,7 @@ export function DashboardStats() {
   });
 
   // USDC Balance
-  const { data: usdcBalance, isLoading: isLoadingUSDC } = useContractRead({
+  const { data: usdcBalance, isLoading: isLoadingUSDC } = useReadContract({
     address: address && contracts ? contracts.USDC : undefined,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -58,7 +58,7 @@ export function DashboardStats() {
     },
   });
 
-  const { data: usdcDecimals } = useContractRead({
+  const { data: usdcDecimals } = useReadContract({
     address: contracts?.USDC,
     abi: erc20Abi,
     functionName: 'decimals',
@@ -68,7 +68,7 @@ export function DashboardStats() {
   });
 
   // ECOP Balance
-  const { data: ecopBalance, isLoading: isLoadingECOP } = useContractRead({
+  const { data: ecopBalance, isLoading: isLoadingECOP } = useReadContract({
     address: address && contracts ? contracts.ECOP : undefined,
     abi: ecopAbi,
     functionName: 'balanceOf',
@@ -78,7 +78,7 @@ export function DashboardStats() {
     },
   });
 
-  const { data: ecopDecimals } = useContractRead({
+  const { data: ecopDecimals } = useReadContract({
     address: contracts?.ECOP,
     abi: ecopAbi,
     functionName: 'decimals',
@@ -147,7 +147,7 @@ export function DashboardStats() {
   }, [hasEcreditscoringNFT]);
 
   // Get total counts
-  const { data: vaultCount } = useContractRead({
+  const { data: vaultCount } = useReadContract({
     address: contracts?.VAULT_FACTORY,
     abi: VaultFactoryABI,
     functionName: 'getVaultCount',
@@ -156,7 +156,7 @@ export function DashboardStats() {
     },
   });
 
-  const { data: contractCount } = useContractRead({
+  const { data: contractCount } = useReadContract({
     address: contracts?.CONTRACT_SIGNER,
     abi: ContractSignerABI,
     functionName: 'getContractCount',

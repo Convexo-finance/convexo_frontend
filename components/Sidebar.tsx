@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useAuthModal, useLogout } from '@account-kit/react';
+import { useAuthModal, useLogout, useAlchemyAccountContext, useSignerStatus } from '@account-kit/react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
+import { useDisconnect } from '@/lib/wagmi/compat';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { useRouter } from 'next/navigation';
 import {
@@ -39,6 +40,9 @@ import {
 function UserFooter() {
   const { openAuthModal } = useAuthModal();
   const { logout } = useLogout();
+  const { isConnected: isSignerConnected } = useSignerStatus();
+  const { config: akConfig } = useAlchemyAccountContext();
+  const { disconnect: disconnectEoa } = useDisconnect({ config: akConfig._internal.wagmiConfig });
   const { address } = useAccount();
   const { isAuthenticated, signOut, user } = useAuth();
   const router = useRouter();
@@ -47,8 +51,9 @@ function UserFooter() {
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
-      await signOut();
-      logout();
+      await signOut();           // JWT + backend + cookie cleanup
+      if (isSignerConnected) logout();  // Alchemy signer disconnect
+      disconnectEoa();           // wagmi EOA disconnect
     } catch {
       // ignore — still redirect
     } finally {
@@ -108,6 +113,7 @@ interface NavItem {
   badge?: string;
   requiredTier?: number;
   adminOnly?: boolean;
+  businessOnly?: boolean;
   subItems?: NavSubItem[];
 }
 
@@ -157,10 +163,11 @@ const navItems: NavItem[] = [
     name: 'Funding',
     href: '/funding',
     icon: BanknotesIcon,
-    requiredTier: 1,
+    requiredTier: 3,
+    businessOnly: true,
     subItems: [
       { name: 'E-Loans', href: '/funding/e-loans', icon: BanknotesIcon, description: 'Create loan vaults', requiredTier: 3 },
-      { name: 'E-Contracts', href: '/funding/e-contracts', icon: DocumentTextIcon, description: 'Sign & view contracts', requiredTier: 1 },
+      { name: 'E-Contracts', href: '/funding/e-contracts', icon: DocumentTextIcon, description: 'Sign & view contracts', requiredTier: 3 },
     ],
   },
   {
@@ -191,6 +198,8 @@ interface SidebarProps {
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { userTier, isAdmin } = useNavigation();
+  const { user } = useAuth();
+  const isBusinessAccount = user?.accountType === 'BUSINESS';
 
   // Track expanded items
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
@@ -234,14 +243,18 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   const canAccessItem = (item: NavItem | NavSubItem) => {
     if ('adminOnly' in item && item.adminOnly) return isAdmin;
+    if ('businessOnly' in item && item.businessOnly && !isBusinessAccount) return false;
     if (item.requiredTier !== undefined) return userTier >= item.requiredTier;
     return true;
   };
 
   const visibleItems = useMemo(() => navItems.filter(item => {
     if (item.adminOnly) return isAdmin;
+    // Business-only items (e.g. Funding) are hidden entirely for Individual accounts.
+    // We only show them once the user's accountType is confirmed as BUSINESS.
+    if (item.businessOnly && !isBusinessAccount) return false;
     return true;
-  }), [isAdmin]);
+  }), [isAdmin, isBusinessAccount]);
 
   return (
     <div className="w-64 flex flex-col h-full bg-[#0f1219] border-r border-gray-800/50">

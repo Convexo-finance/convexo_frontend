@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount, useChainId } from '@/lib/wagmi/compat';
+import { apiFetch } from '@/lib/api/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import {
@@ -50,11 +51,10 @@ export default function OTCPage() {
   const fetchUSDCOPRate = async () => {
     setIsLoadingRate(true);
     try {
-      const response = await fetch('/api/exchange-rate/usdcop');
-      const data = await response.json();
-      setUsdcopRate({ rate: data.rate, timestamp: data.timestamp });
+      const data = await apiFetch<{ pair: string; rate: number; updatedAt: string }>('/rates/USD-COP');
+      setUsdcopRate({ rate: data.rate, timestamp: new Date(data.updatedAt).getTime() });
     } catch {
-      setUsdcopRate({ rate: 4350.50, timestamp: Date.now() });
+      // rate stays null — UI will show loading state
     } finally {
       setIsLoadingRate(false);
     }

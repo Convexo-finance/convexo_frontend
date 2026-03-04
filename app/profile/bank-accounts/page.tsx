@@ -25,11 +25,18 @@ interface BankAccount {
   isVerified: boolean;
 }
 
-const emptyForm = {
+const emptyForm: {
+  accountName: string;
+  bankName: string;
+  accountNumber: string;
+  accountType: 'SAVINGS' | 'CHECKING' | 'BUSINESS';
+  currency: string;
+  holderName: string;
+} = {
   accountName: '',
   bankName: '',
   accountNumber: '',
-  accountType: 'SAVINGS' as const,
+  accountType: 'SAVINGS',
   currency: 'COP',
   holderName: '',
 };
@@ -50,8 +57,8 @@ export default function BankAccountsPage() {
     setLoading(true);
     setApiError(null);
     try {
-      const data = await apiFetch<BankAccount[]>('/bank-accounts');
-      setAccounts(data);
+      const data = await apiFetch<{ items: BankAccount[]; total: number }>('/bank-accounts');
+      setAccounts(data.items);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode !== 401) {
         setApiError(err.message);

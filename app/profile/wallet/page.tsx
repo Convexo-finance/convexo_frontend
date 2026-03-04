@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useBalance, useReadContracts } from '@/lib/wagmi/compat';
+import { useAuthModal } from '@account-kit/react';
 import { formatUnits, isAddress, parseUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import { base, mainnet } from 'wagmi/chains';
@@ -26,7 +27,6 @@ import {
 } from '@/lib/config/tokens';
 import { useSendToken } from '@/lib/hooks/useSendToken';
 import { getBlockExplorerUrl } from '@/lib/contracts/addresses';
-import { SmartWalletActivationBanner } from '@/components/SmartWalletActivationBanner';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,7 @@ const FALLBACK_GRADIENT: Record<string, string> = {
   USDC: 'from-blue-400 to-cyan-500',
   USDT: 'from-emerald-400 to-teal-600',
   EURC: 'from-blue-600 to-blue-400',
+  BTC:  'from-orange-400 to-yellow-500',
 };
 
 function TokenLogo({ image, symbol, size = 40 }: { image?: string; symbol: string; size?: number }) {
@@ -238,13 +239,13 @@ function CollapsibleTokenRow({
         <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] space-y-2">
           {(
             [
-              { label: 'Base', color: 'bg-blue-400', balance: baseBalance },
-              { label: 'Ethereum', color: 'bg-indigo-400', balance: ethBalance },
+              { label: 'Base', logo: '/chains/base_logo.svg', balance: baseBalance },
+              { label: 'Ethereum', logo: '/chains/ethereum.png', balance: ethBalance },
             ] as const
-          ).map(({ label, color, balance }) => (
+          ).map(({ label, logo, balance }) => (
             <div key={label} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${color} shrink-0`} />
+                <img src={logo} alt={label} className="w-4 h-4 rounded-full object-contain shrink-0" />
                 <span className="text-gray-400">{label}</span>
               </div>
               <div className="text-right">
@@ -267,10 +268,10 @@ function CollapsibleTokenRow({
 
 // ─── Send modal ───────────────────────────────────────────────────────────────
 
-const SEND_TOKENS: TokenSymbol[] = ['ETH', 'USDC', 'USDT', 'EURC'];
+const SEND_TOKENS: TokenSymbol[] = ['ETH', 'USDC', 'USDT', 'EURC', 'BTC'];
 const SEND_CHAINS = [
-  { id: base.id, label: 'Base', color: 'text-blue-300' },
-  { id: mainnet.id, label: 'Ethereum', color: 'text-indigo-300' },
+  { id: base.id, label: 'Base', logo: '/chains/base_logo.svg', color: 'text-blue-300' },
+  { id: mainnet.id, label: 'Ethereum', logo: '/chains/ethereum.png', color: 'text-indigo-300' },
 ];
 
 interface SendModalProps {
@@ -281,11 +282,41 @@ interface SendModalProps {
     baseUsdc: bigint | undefined;
     baseUsdt: bigint | undefined;
     baseEurc: bigint | undefined;
+    baseBtc: bigint | undefined;
     ethUsdc: bigint | undefined;
     ethUsdt: bigint | undefined;
     ethEurc: bigint | undefined;
+    ethBtc: bigint | undefined;
   };
   marketData: Map<string, CoinGeckoMarketData>;
+}
+
+// ─── Reconnect prompt ─────────────────────────────────────────────────────────
+// Shown when the user has a valid backend JWT but the Account Kit signer session
+// has expired. Guides them to re-open the auth modal so the signer reconnects.
+function WalletReconnectPrompt() {
+  const { openAuthModal } = useAuthModal();
+  return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center h-full min-h-[80vh]">
+        <div className="text-center p-8 max-w-sm">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-purple-900/30 border border-purple-700/40 flex items-center justify-center">
+            <WalletIcon className="w-8 h-8 text-purple-400" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Reconnect your wallet</h2>
+          <p className="text-gray-400 text-sm mb-6">
+            Your wallet session has expired. Sign in again to view your balances.
+          </p>
+          <button
+            onClick={openAuthModal}
+            className="btn-primary w-full"
+          >
+            Sign in
+          </button>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 }
 
 function SendModal({ onClose, balances, marketData }: SendModalProps) {
@@ -306,6 +337,7 @@ function SendModal({ onClose, balances, marketData }: SendModalProps) {
       case 'USDC':  return onBase ? balances.baseUsdc : balances.ethUsdc;
       case 'USDT':  return onBase ? balances.baseUsdt : balances.ethUsdt;
       case 'EURC':  return onBase ? balances.baseEurc : balances.ethEurc;
+      case 'BTC':   return onBase ? balances.baseBtc : balances.ethBtc;
     }
   };
 
@@ -454,7 +486,7 @@ function SendModal({ onClose, balances, marketData }: SendModalProps) {
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wide mb-2 block">Network</label>
               <div className="grid grid-cols-2 gap-2">
-                {SEND_CHAINS.map(({ id, label, color }) => (
+                {SEND_CHAINS.map(({ id, label, logo, color }) => (
                   <button
                     key={id}
                     onClick={() => setSelectedChain(id)}
@@ -464,7 +496,7 @@ function SendModal({ onClose, balances, marketData }: SendModalProps) {
                         : 'border-white/10 bg-white/5 hover:border-white/20'
                     }`}
                   >
-                    <span className={`w-2 h-2 rounded-full ${id === base.id ? 'bg-blue-400' : 'bg-indigo-400'}`} />
+                    <img src={logo} alt={label} className="w-4 h-4 rounded-full object-contain shrink-0" />
                     <span className={`text-sm font-medium ${selectedChain === id ? 'text-white' : color}`}>
                       {label}
                     </span>
@@ -583,10 +615,10 @@ function SendModal({ onClose, balances, marketData }: SendModalProps) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-const TOKEN_LIST: TokenSymbol[] = ['ETH', 'USDC', 'USDT', 'EURC'];
+const TOKEN_LIST: TokenSymbol[] = ['ETH', 'USDC', 'USDT', 'EURC', 'BTC'];
 
 export default function WalletPage() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, isResolvingAddress, authMode, isReconnecting } = useAccount();
 
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
@@ -597,17 +629,19 @@ export default function WalletPage() {
 
   const zeroAddr = '0x0000000000000000000000000000000000000000' as `0x${string}`;
   const userAddr = address ?? zeroAddr;
+  // Suppress balance queries until the embedded signer address is fully resolved
+  const balancesReady = !!address && !isResolvingAddress;
 
   // ── Native ETH balances ────────────────────────────────────────────────────
   const { data: ethBase, isLoading: ethBaseLoading } = useBalance({
     address,
     chainId: base.id,
-    query: { enabled: !!address },
+    query: { enabled: balancesReady },
   });
   const { data: ethEthereum, isLoading: ethEthereumLoading } = useBalance({
     address,
     chainId: mainnet.id,
-    query: { enabled: !!address },
+    query: { enabled: balancesReady },
   });
 
   // ── ERC-20 balances — Base ─────────────────────────────────────────────────
@@ -616,8 +650,9 @@ export default function WalletPage() {
       { address: TOKEN_ADDRESSES.base.USDC, abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: base.id },
       { address: TOKEN_ADDRESSES.base.USDT, abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: base.id },
       { address: TOKEN_ADDRESSES.base.EURC, abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: base.id },
+      { address: TOKEN_ADDRESSES.base.BTC,  abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: base.id },
     ],
-    query: { enabled: !!address },
+    query: { enabled: balancesReady },
   });
 
   // ── ERC-20 balances — Ethereum ─────────────────────────────────────────────
@@ -626,8 +661,9 @@ export default function WalletPage() {
       { address: TOKEN_ADDRESSES.ethereum.USDC, abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: mainnet.id },
       { address: TOKEN_ADDRESSES.ethereum.USDT, abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: mainnet.id },
       { address: TOKEN_ADDRESSES.ethereum.EURC, abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: mainnet.id },
+      { address: TOKEN_ADDRESSES.ethereum.BTC,  abi: erc20Abi, functionName: 'balanceOf', args: [userAddr], chainId: mainnet.id },
     ],
-    query: { enabled: !!address },
+    query: { enabled: balancesReady },
   });
 
   // ── CoinGecko market data ──────────────────────────────────────────────────
@@ -702,10 +738,23 @@ export default function WalletPage() {
       eth: getErc20Big(ethErc20, 2),
       loading: baseErc20Loading || ethErc20Loading,
     },
+    BTC: {
+      base: getErc20Big(baseErc20, 3),
+      eth: getErc20Big(ethErc20, 3),
+      loading: baseErc20Loading || ethErc20Loading,
+    },
   };
 
   // ── Total portfolio ────────────────────────────────────────────────────────
+  // Show skeleton only while balances are loading; show $0.00 once loaded
+  // (even if the wallet is empty — avoids infinite skeleton for new users).
+  const isBalancesLoading =
+    isResolvingAddress ||
+    ethBaseLoading || ethEthereumLoading ||
+    baseErc20Loading || ethErc20Loading;
+
   const totalPortfolio = (() => {
+    if (isBalancesLoading) return null; // skeleton while loading
     let sum = 0;
     for (const sym of TOKEN_LIST) {
       const { base: bBal, eth: eBal } = tokenBalances[sym];
@@ -714,12 +763,21 @@ export default function WalletPage() {
       if (bBal) sum += parseFloat(formatUnits(bBal, dec)) * price;
       if (eBal) sum += parseFloat(formatUnits(eBal, dec)) * price;
     }
-    return sum > 0
-      ? sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : null;
+    // Always return a value once loaded — $0.00 for empty wallets
+    return sum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   })();
 
   // ── Not connected ─────────────────────────────────────────────────────────
+  if (isReconnecting) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full min-h-[80vh]">
+          <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!isConnected) {
     return (
       <DashboardLayout>
@@ -731,6 +789,60 @@ export default function WalletPage() {
           </div>
         </div>
       </DashboardLayout>
+    );
+  }
+
+  // ── Resolving embedded signer address ─────────────────────────────────────
+  // Show a skeleton while the AlchemySigner is resolving the EOA address to
+  // avoid a flash of $0 balances against the wrong address.
+  if (isResolvingAddress) {
+    return (
+      <DashboardLayout>
+        <div className="p-8">
+          <div className="max-w-xl mx-auto space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-8 w-28 bg-white/10 rounded-lg animate-pulse" />
+                <div className="h-3 w-40 bg-white/10 rounded animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 w-24 bg-white/10 rounded-xl animate-pulse" />
+                <div className="h-9 w-20 bg-white/10 rounded-xl animate-pulse" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-6 w-36 bg-white/10 rounded-full animate-pulse" />
+              <div className="h-6 w-24 bg-white/10 rounded-full animate-pulse" />
+            </div>
+            <div className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-5 space-y-2">
+              <div className="h-3 w-24 bg-white/10 rounded animate-pulse" />
+              <div className="h-9 w-44 bg-white/10 rounded animate-pulse" />
+            </div>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-2xl bg-white/[0.04] border border-white/[0.07] p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/10 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-24 bg-white/10 rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+                </div>
+                <div className="space-y-1.5 items-end flex flex-col">
+                  <div className="h-4 w-20 bg-white/10 rounded animate-pulse" />
+                  <div className="h-3 w-14 bg-white/10 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── Address not available (JWT valid but Account Kit session expired) ───────
+  // The user has a backend session but the Account Kit signer needs to re-auth.
+  // Show a prompt rather than an empty $0 wallet.
+  if (!address) {
+    return (
+      <WalletReconnectPrompt />
     );
   }
 
@@ -762,8 +874,54 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {/* Smart Wallet activation status */}
-          <SmartWalletActivationBanner />
+          {/* Account type + address pill */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Auth mode badge */}
+            {authMode === 'embedded' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-900/40 border border-purple-700/30 text-purple-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                Smart Wallet · EIP-7702
+              </span>
+            )}
+            {authMode === 'external' && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-gray-800/60 border border-white/[0.07] text-gray-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                External Wallet
+              </span>
+            )}
+
+            {/* Address pill with loading state */}
+            {isResolvingAddress ? (
+              <div className="h-6 w-36 bg-white/10 rounded-full animate-pulse" />
+            ) : address ? (
+              <button
+                onClick={copyAddress}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/[0.07] text-gray-400 hover:text-white hover:border-white/20 transition-colors"
+                title="Copy address"
+              >
+                {address.slice(0, 6)}…{address.slice(-4)}
+                {copied
+                  ? <CheckIcon className="w-3 h-3 text-emerald-400" />
+                  : <ClipboardDocumentIcon className="w-3 h-3" />}
+              </button>
+            ) : null}
+          </div>
+
+          {/* Smart Wallet status — delegation is automatic on first transaction */}
+          {authMode === 'embedded' && address && (
+            <div className="rounded-2xl border border-emerald-700/30 bg-emerald-900/10 px-4 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-emerald-300">Smart Wallet Active</p>
+                <p className="text-xs text-emerald-600">Gas-free transactions enabled · EIP-7702 · MAv2</p>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 bg-emerald-900/40 px-2 py-0.5 rounded-full shrink-0">Live</span>
+            </div>
+          )}
 
           {/* Total portfolio card */}
           <div className="rounded-2xl bg-gradient-to-br from-purple-900/40 to-blue-900/30 border border-purple-700/30 p-5">
@@ -810,9 +968,11 @@ export default function WalletPage() {
             baseUsdc: tokenBalances.USDC.base,
             baseUsdt: tokenBalances.USDT.base,
             baseEurc: tokenBalances.EURC.base,
+            baseBtc: tokenBalances.BTC.base,
             ethUsdc: tokenBalances.USDC.eth,
             ethUsdt: tokenBalances.USDT.eth,
             ethEurc: tokenBalances.EURC.eth,
+            ethBtc: tokenBalances.BTC.eth,
           }}
           marketData={marketData}
         />

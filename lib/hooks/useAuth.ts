@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAlchemyAccountContext, useSignerStatus, useSigner, useAccount as useAlchemyAccount } from '@account-kit/react'
+import { useAlchemyAccountContext, useSignerStatus, useSigner } from '@account-kit/react'
 import { useAccount as wagmiUseAccount, useSignMessage } from 'wagmi'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
@@ -64,8 +64,6 @@ export function useAuth() {
   const { isConnected: isSignerConnected } = useSignerStatus()
   const { config } = useAlchemyAccountContext()
   const signer = useSigner()
-  // Smart account address (only set for embedded signer users: email/passkey/Google)
-  const { address: smartAccountAddress } = useAlchemyAccount({ type: 'LightAccount' })
 
   // External EOA wallet connected via Account Kit's internal wagmi instance
   const {
@@ -167,22 +165,25 @@ export function useAuth() {
           address: signerAddress,
           chainId: 8453,
           authMethod,
-          // Include smart account address for embedded signer users so backend stores it
-          ...(isSignerConnected && smartAccountAddress
-            ? { smartAccount: smartAccountAddress }
-            : {}),
+          // With EIP-7702, the signer EOA delegates to a smart account at the
+          // same address — no separate smartAccount field needed. The backend
+          // uses signerAddress as the canonical wallet identity.
         }),
       })
 
       setToken(result.accessToken)
       setUser(result.user)
       setIsAuthenticated(true)
+
+      // Fire-and-forget: warm the backend reputation cache after login.
+      // We do NOT await this — it must never block or delay sign-in.
+      apiFetch('/reputation/sync', { method: 'POST' }).catch(() => {})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed')
     } finally {
       setIsSigningIn(false)
     }
-  }, [isSignerConnected, signer, eoaAddress, connector, signMessageAsync, smartAccountAddress])
+  }, [isSignerConnected, signer, eoaAddress, connector, signMessageAsync])
 
   const signOut = useCallback(async () => {
     try {
@@ -193,6 +194,18 @@ export function useAuth() {
       clearToken()
       setIsAuthenticated(false)
       setUser(null)
+
+      // Clear stale Alchemy / wagmi cookies so next visit starts fresh
+      document.cookie.split(';').forEach((c) => {
+        const name = c.split('=')[0].trim()
+        if (
+          name.startsWith('alchemy') ||
+          name.startsWith('aa-') ||
+          name.startsWith('wagmi')
+        ) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+        }
+      })
     }
   }, [])
 

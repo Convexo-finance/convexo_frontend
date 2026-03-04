@@ -1,0 +1,31 @@
+The following tables list the deployed factory and account implementation contract addresses for all account types. Smart Wallet contracts have the same address across all EVM chains. See the list of supported chains here.
+
+
+Modular Account V2
+Version	Contract Name	Address
+Implementation contracts	
+v2.0.0	SemiModularAccount7702	0x69007702764179f14F51cdce752f4f775d74E139
+v2.0.0	SemiModularAccountBytecode	0x000000000000c5A9089039570Dd36455b5C07383
+v2.0.0	SemiModularAccountStorageOnly	0x0000000000006E2f9d80CaEc0Da6500f005EB25A
+v2.0.0	ExecutionInstallDelegate	0x0000000000008e6a39E03C7156e46b238C9E2036
+v2.0.0	ModularAccount	0x00000000000002377B26b1EdA7b0BC371C60DD4f
+Factory contracts	
+v2.0.0	AccountFactory	0x00000000000017c61b5bEe81050EC8eFc9c6fecd
+v2.0.1	WebAuthnFactory	0x55010E571dCf07e254994bfc88b9C1C8FAe31960
+Validation modules	
+v2.0.0	SingleSignerValidationModule	0x00000000000099DE0BF6fA90dEB851E2A2df7d83
+v2.0.0	WebAuthnValidationModule	0x0000000000001D9d34E07D9834274dF9ae575217
+Hook permission modules	
+v2.0.1	AllowlistModule	0x00000000003e826473a313e600b5b9b791f5a59a
+v2.0.0	NativeTokenLimitModule	0x00000000000001e541f0D090868FBe24b59Fbe06
+v2.0.0	PaymasterGuardModule	0x0000000000001aA7A7F7E29abe0be06c72FD42A1
+v2.0.0	TimeRangeModule	0x00000000000082B8e2012be914dFA4f62A0573eA
+Source
+
+
+LightAccount V2
+Version	Contract Name	Address
+v2.0.0	LightAccount (implementation)	0x8E8e658E22B12ada97B402fF0b044D6A325013C7
+v2.0.0	LightAccountFactory	0x0000000000400CdFef5E2714E63d8040b700BC24
+v2.0.0	MultiOwnerLightAccount (implementation)	0xd2c27F9eE8E4355f71915ffD5568cB3433b6823D
+v2.0.0	MultiOwnerLightAccountFactory	0x000000000019d2Ee9F2729A65AfE20bb0020AefC

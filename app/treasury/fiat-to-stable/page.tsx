@@ -1,13 +1,13 @@
 'use client';
 
-import { useAccount } from '@/lib/wagmi/compat';
+import { useAccount, useChainId, useReadContract } from '@/lib/wagmi/compat';
 import { useState } from 'react';
-import { useContractRead } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
-import { CONTRACTS } from '@/lib/contracts/addresses';
+import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ecopAbi } from '@/lib/contracts/ecopAbi';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
+import { apiFetch } from '@/lib/api/client';
 
 export default function FundingPage() {
   const { address, isConnected } = useAccount();
@@ -91,49 +91,38 @@ function MintECOP() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmitRequest = async () => {
     if (!fiatAmount || !address) {
-      alert('Please enter an amount');
+      setSubmitError('Please enter an amount');
       return;
     }
 
     if (!email && !telegram) {
-      alert('Please provide either email or Telegram contact');
+      setSubmitError('Please provide either email or Telegram contact');
       return;
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
-      // Submit request to API
-      const response = await fetch('/api/funding-request', {
+      const data = await apiFetch<{ id: string; requestId?: string }>('/funding/fiat-to-ecop', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           type: 'MINT',
-          amount: fiatAmount,
-          ecopAmount: ecopAmount,
-          address: address,
-          email: email || null,
-          telegram: telegram || null,
-          bankAccount: null,
+          fiatAmount: parseFloat(fiatAmount),
+          ecopAmount: parseFloat(ecopAmount),
+          walletAddress: address,
+          email: email || undefined,
+          telegram: telegram || undefined,
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit request');
-      }
-
-      const data = await response.json();
-      setRequestId(data.requestId);
+      setRequestId(data.id ?? data.requestId ?? null);
       setRequestSubmitted(true);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to submit request. Please try again.');
-      console.error('Request submission error:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -151,9 +140,11 @@ function MintECOP() {
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             Request Submitted Successfully!
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Request ID: <span className="font-mono text-sm">{requestId}</span>
-          </p>
+          {requestId && (
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Request ID: <span className="font-mono text-sm">{requestId}</span>
+            </p>
+          )}
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-left">
             <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
               <strong>What happens next?</strong>
@@ -173,6 +164,7 @@ function MintECOP() {
               setEmail('');
               setTelegram('');
               setRequestId(null);
+              setSubmitError(null);
             }}
             className="mt-4 text-blue-600 dark:text-blue-400 hover:underline text-sm"
           >
@@ -191,6 +183,12 @@ function MintECOP() {
       <p className="text-gray-600 dark:text-gray-400 mb-6">
         Submit a request to exchange fiat (COP) for ECOP stablecoins. An agent will contact you to complete the transaction.
       </p>
+
+      {submitError && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-300">{submitError}</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -274,6 +272,8 @@ function MintECOP() {
 
 function RedeemECOP() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
   const [ecopAmount, setEcopAmount] = useState('');
   const [fiatAmount, setFiatAmount] = useState('');
   const [email, setEmail] = useState('');
@@ -282,31 +282,32 @@ function RedeemECOP() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Check ECOP balance
-  const { data: balance } = useContractRead({
-    address: address ? CONTRACTS[84532].ECOP : undefined,
+  const { data: balance } = useReadContract({
+    address: contracts?.ECOP,
     abi: ecopAbi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address,
+      enabled: !!address && !!contracts && contracts.ECOP !== '0x0000000000000000000000000000000000000000',
     },
   });
 
   const handleSubmitRequest = async () => {
     if (!ecopAmount || !address) {
-      alert('Please enter an amount');
+      setSubmitError('Please enter an amount');
       return;
     }
 
     if (!email && !telegram) {
-      alert('Please provide either email or Telegram contact');
+      setSubmitError('Please provide either email or Telegram contact');
       return;
     }
 
     if (!bankAccount) {
-      alert('Please provide bank account details for fiat transfer');
+      setSubmitError('Please provide bank account details for fiat transfer');
       return;
     }
 
@@ -314,41 +315,30 @@ function RedeemECOP() {
 
     // Check if user has enough balance
     if (balance && balance < amount) {
-      alert('Insufficient ECOP balance');
+      setSubmitError('Insufficient ECOP balance');
       return;
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
-      // Submit request to API
-      const response = await fetch('/api/funding-request', {
+      const data = await apiFetch<{ id: string; requestId?: string }>('/funding/ecop-to-fiat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           type: 'REDEEM',
-          amount: fiatAmount,
-          ecopAmount: ecopAmount,
-          address: address,
-          email: email || null,
-          telegram: telegram || null,
-          bankAccount: bankAccount || null,
+          fiatAmount: parseFloat(fiatAmount),
+          ecopAmount: parseFloat(ecopAmount),
+          walletAddress: address,
+          email: email || undefined,
+          telegram: telegram || undefined,
+          bankAccount: bankAccount || undefined,
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit request');
-      }
-
-      const data = await response.json();
-      setRequestId(data.requestId);
+      setRequestId(data.id ?? data.requestId ?? null);
       setRequestSubmitted(true);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to submit request. Please try again.');
-      console.error('Request submission error:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -366,9 +356,11 @@ function RedeemECOP() {
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             Redemption Request Submitted!
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Request ID: <span className="font-mono text-sm">{requestId}</span>
-          </p>
+          {requestId && (
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Request ID: <span className="font-mono text-sm">{requestId}</span>
+            </p>
+          )}
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-left">
             <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
               <strong>What happens next?</strong>
@@ -389,6 +381,7 @@ function RedeemECOP() {
               setTelegram('');
               setBankAccount('');
               setRequestId(null);
+              setSubmitError(null);
             }}
             className="mt-4 text-blue-600 dark:text-blue-400 hover:underline text-sm"
           >
@@ -407,6 +400,12 @@ function RedeemECOP() {
       <p className="text-gray-600 dark:text-gray-400 mb-6">
         Submit a request to redeem ECOP stablecoins for fiat (COP). An agent will contact you to complete the transaction.
       </p>
+
+      {submitError && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-300">{submitError}</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -511,27 +510,32 @@ function RedeemECOP() {
 
 function ECOPBalance() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const contracts = getContractsForChain(chainId);
+  const ecopEnabled = !!address && !!contracts && contracts.ECOP !== '0x0000000000000000000000000000000000000000';
 
-  const { data: balance, isLoading } = useContractRead({
-    address: address ? CONTRACTS[84532].ECOP : undefined,
+  const { data: balance, isLoading } = useReadContract({
+    address: contracts?.ECOP,
     abi: ecopAbi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address,
+      enabled: ecopEnabled,
     },
   });
 
-  const { data: symbol } = useContractRead({
-    address: CONTRACTS[84532].ECOP,
+  const { data: symbol } = useReadContract({
+    address: contracts?.ECOP,
     abi: ecopAbi,
     functionName: 'symbol',
+    query: { enabled: !!contracts && contracts.ECOP !== '0x0000000000000000000000000000000000000000' },
   });
 
-  const { data: decimals } = useContractRead({
-    address: CONTRACTS[84532].ECOP,
+  const { data: decimals } = useReadContract({
+    address: contracts?.ECOP,
     abi: ecopAbi,
     functionName: 'decimals',
+    query: { enabled: !!contracts && contracts.ECOP !== '0x0000000000000000000000000000000000000000' },
   });
 
   if (isLoading) {
