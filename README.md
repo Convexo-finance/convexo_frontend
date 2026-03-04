@@ -1,304 +1,471 @@
-# Convexo Protocol Frontend
+# Convexo Frontend
 
-A Next.js frontend application for the Convexo Protocol - Reducing the funding gap for SMEs in Latin America using stablecoins, NFT-permissioned liquidity pools, and vaults.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.2-green)](./CHANGELOG_V2.2.md)
-[![Deployed](https://img.shields.io/badge/Deployed-3%20Testnets-blue)](https://sepolia.basescan.org)
+Next.js 16 frontend for the Convexo Protocol — reducing the funding gap for SMEs in Latin America using stablecoins, NFT-permissioned liquidity pools, and DeFi vaults.
 
 ---
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ and npm
-- WalletConnect Project ID ([Get one here](https://cloud.walletconnect.com/))
-- Pinata JWT Token ([Get one here](https://app.pinata.cloud/))
-
-### Installation
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Set up environment variables:**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Edit `.env.local`:
-   ```bash
-   NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
-   PINATA_JWT=your_pinata_jwt_token
-   NEXT_PUBLIC_PINATA_GATEWAY=lime-famous-condor-7.mypinata.cloud  # Optional
-   ```
-
-3. **Start development server:**
-   ```bash
-   npm run dev
-   ```
-
-4. **Open [http://localhost:3000](http://localhost:3000)** and connect your wallet to Base Sepolia
-
----
-
-## 🎉 What's New in v2.2
-
-### 🔐 Protocol Fee Protection
-- **Fixed:** Investors can no longer withdraw protocol fees
-- **Security:** Protocol fees are now reserved and protected
-- **Transparency:** New `getAvailableForInvestors()` function shows exact withdrawable amount
-
-### ⏱️ Timestamp Tracking
-- **Accurate Due Dates:** Calculated from withdrawal time, not creation
-- **Complete Timeline:** Track vault creation, funding, contract attachment, and withdrawal
-- **New Functions:** `getVaultCreatedAt()`, `getVaultFundedAt()`, `getActualDueDate()`, and more
-
-### 🎯 Improved Completion Logic
-- Vault only marked as `Completed` when all parties have withdrawn their funds
-- Better state tracking for transparency
-
-**[See Full Changelog →](./CHANGELOG_V2.2.md)**
-
----
-
-## ✨ Features
-
-### User Views
-
-#### 🏢 Loans Dashboard (`/loans`)
-- **Vaults** (`/loans/vaults`): Create tokenized bond vaults (Tier 2 required)
-- **Invoices** (`/loans/invoices`): Create invoice factoring agreements (Tier 1 required)
-- **Credits** (`/loans/credits`): Create tokenized bond credits (Tier 2 required)
-
-#### 💰 Investments Dashboard (`/investments`)
-- Browse available vaults with real-time metrics
-- View TVL, APY, and maturity dates
-- Invest USDC in tokenized bond vaults
-- Track investment returns
-
-#### 🏦 Treasury
-- **Funding** (`/funding`): Request ECOP minting or redemption (agent-assisted)
-- **Conversion** (`/conversion`): Swap ECOP/USDC via Uniswap V4
-
-#### 📄 Contracts (`/contracts`)
-- Upload PDF contracts to Pinata IPFS
-- Create on-chain contract agreements
-- Support for 3 product types:
-  - Tokenized Bond Vaults (Type 0)
-  - Invoice Factoring (Type 1)
-  - Tokenized Bond Credits (Type 2)
-
-#### 👨‍💼 Admin Dashboard (`/admin`)
-- Mint Convexo_LPs NFTs (Tier 1 - Compliance)
-- Mint Convexo_Vaults NFTs (Tier 2 - Credit Scoring)
-- Restricted to admin address: `0x156d3C1648ef2f50A8de590a426360Cf6a89C6f8`
-
-### Technical Features
-
-- ✅ **RainbowKit Wallet Connection** - MetaMask, WalletConnect, Coinbase Wallet
-- ✅ **Real-time Contract Interactions** - Direct interaction with deployed smart contracts
-- ✅ **NFT-based Access Control** - Tier-based permissions system
-- ✅ **IPFS Integration** - PDF upload to Pinata for contract storage
-- ✅ **Request-based Funding** - Agent-assisted ECOP minting and redemption
-- ✅ **Responsive Design** - Works on desktop and mobile
-- ✅ **Dark Mode Support** - Automatic theme switching
-
----
-
-## 📁 Project Structure
+## Architecture Overview
 
 ```
-frontendconvexo/
-├── app/                          # Next.js App Router
-│   ├── admin/                    # Admin dashboard
-│   ├── contracts/               # Contract management
-│   ├── conversion/              # ECOP/USDC conversion
-│   ├── funding/                 # ECOP minting/burning
-│   ├── investments/             # Investor dashboard
-│   ├── loans/                    # Loans dashboard
-│   │   ├── vaults/              # Vault creation
-│   │   ├── invoices/            # Invoice factoring
-│   │   └── credits/             # Bond credits
-│   ├── treasury/                # Treasury landing
-│   ├── api/                      # API routes
-│   │   ├── upload-pinata/       # Pinata IPFS upload
-│   │   ├── list-documents/      # List uploaded docs
-│   │   └── funding-request/     # Funding requests
-│   └── page.tsx                 # Dashboard home
+┌──────────────────────────────────────────────────────────────────┐
+│                        Convexo Frontend                          │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                  Next.js 16  App Router                  │    │
+│  └──────────┬──────────────────┬──────────────────┬────────┘    │
+│             │                  │                  │              │
+│  ┌──────────▼──────┐  ┌────────▼──────┐  ┌───────▼──────────┐  │
+│  │  Account Kit v4 │  │   wagmi v2    │  │   REST API       │  │
+│  │   (Alchemy)     │  │  (EOA wallets)│  │  (convexo-backend│  │
+│  │                 │  │               │  │   + JWT auth)    │  │
+│  │ Email / Passkey │  │ MetaMask      │  │                  │  │
+│  │ Google OAuth    │  │ WalletConnect │  │  apiFetch() +    │  │
+│  │ Smart Account   │  │ Coinbase      │  │  useAuth() SIWE  │  │
+│  └─────────────────┘  └───────────────┘  └──────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │            On-Chain Reads  (viem + wagmi)                 │   │
+│  │  NFT balances · Contract reads · Reputation tier sync    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Authentication Flow
+
+```
+User connects wallet
+        │
+        ├── Email / Passkey / Google ──▶ Alchemy AlchemySigner (embedded EOA)
+        │
+        └── MetaMask / WalletConnect / Coinbase ──▶ External EOA
+                        │
+                        ▼
+        GET /auth/nonce?address=<signer_address>
+                        │
+                        ▼
+        Build EIP-4361 SIWE message (viem/siwe)
+                        │
+                        ▼
+        Sign with wallet (AlchemySigner or wagmi signMessage)
+                        │
+                        ▼
+        POST /auth/verify { message, signature, address, chainId, authMethod }
+                        │
+                        ▼
+        Store accessToken in localStorage('convexo_jwt')
+                        │
+                        ▼
+        All API calls ── Authorization: Bearer <accessToken>
+```
+
+---
+
+## Tech Stack
+
+| Layer           | Technology                              |
+|-----------------|-----------------------------------------|
+| Framework       | Next.js 16 (App Router) + TypeScript 5  |
+| Wallet (social) | Account Kit v4 (`@account-kit/react`)   |
+| Wallet (EOA)    | wagmi v2 + viem v2                      |
+| Smart Account   | Alchemy LightAccount (Base mainnet)     |
+| Auth            | SIWE (EIP-4361) + JWT Bearer            |
+| State / Cache   | @tanstack/react-query v5                |
+| Styling         | Tailwind CSS v3                         |
+| ZK Identity     | @zkpassport/sdk                         |
+| Bundler         | webpack (via Next.js)                   |
+
+---
+
+## Project Structure
+
+```
+convexo_frontend/
+├── app/                              # Next.js App Router pages
+│   ├── layout.tsx                    # Root layout + Account Kit SSR cookie
+│   ├── providers.tsx                 # AlchemyProvider + WagmiProvider + QueryClient
+│   ├── page.tsx                      # Landing / home
+│   │
+│   ├── admin/page.tsx                # Admin panel (requires admin role)
+│   │
+│   ├── digital-id/                   # Identity & verification hub
+│   │   ├── page.tsx
+│   │   ├── credit-score/
+│   │   │   ├── page.tsx
+│   │   │   └── verify/page.tsx       # ← AI credit scoring (3 docs + financials)
+│   │   ├── humanity/
+│   │   │   ├── page.tsx
+│   │   │   └── verify/page.tsx       # ZKPassport flow
+│   │   ├── limited-partner-individuals/page.tsx  # Veriff KYC
+│   │   └── limited-partner-business/page.tsx     # Sumsub KYB
+│   │
+│   ├── funding/
+│   │   ├── page.tsx                  # Funding overview
+│   │   ├── e-contracts/page.tsx
+│   │   └── e-loans/page.tsx
+│   │
+│   ├── investments/
+│   │   ├── page.tsx
+│   │   ├── vaults/page.tsx           # Tokenized bond vaults
+│   │   ├── c-bonds/page.tsx
+│   │   └── market-lps/page.tsx
+│   │
+│   ├── profile/
+│   │   ├── page.tsx
+│   │   ├── bank-accounts/page.tsx    # ← Full CRUD, encrypted, API-backed
+│   │   ├── contacts/page.tsx         # ← Wallet address book, API-backed
+│   │   └── wallet/page.tsx
+│   │
+│   └── treasury/
+│       ├── page.tsx
+│       ├── swaps/page.tsx            # ← Rate from GET /rates/USDC-ECOP
+│       ├── convert-fast/page.tsx     # ← Rate from GET /rates/ECOP-USDC
+│       ├── financial-accounts/page.tsx  # Links to /profile/bank-accounts
+│       ├── fiat-to-stable/page.tsx
+│       ├── otc/page.tsx              # OTC orders
+│       └── monetization/page.tsx
 │
-├── components/                    # React components
-│   ├── Sidebar.tsx              # Left navigation
-│   ├── DashboardLayout.tsx      # Layout wrapper
-│   ├── CreateVaultForm.tsx      # Vault creation
-│   ├── InvoiceFactoringForm.tsx # Invoice creation
-│   ├── PinataUpload.tsx         # PDF upload
-│   ├── ContractsTable.tsx      # Contract listing
-│   └── DashboardStats.tsx      # Dashboard stats
-│
-├── lib/                          # Library code
+├── lib/
+│   ├── api/
+│   │   └── client.ts                 # apiFetch(), getToken/setToken/clearToken, ApiError
+│   ├── alchemy/
+│   │   └── config.ts                 # Account Kit config (chains, connectors, OAuth)
+│   ├── config/
+│   │   ├── tokens.ts                 # Token symbol/address/decimals definitions
+│   │   └── pinata.ts                 # Pinata IPFS gateway
+│   ├── contexts/
+│   │   └── NavigationContext.tsx
 │   ├── contracts/
-│   │   ├── addresses.ts         # Contract addresses
-│   │   ├── abis.ts             # Contract ABIs
-│   │   └── ecopAbi.ts          # ECOP token ABI
+│   │   ├── addresses.ts              # Contract addresses by chainId
+│   │   ├── abis.ts                   # All ABI definitions
+│   │   └── ecopAbi.ts                # ECOP token ABI
 │   ├── hooks/
-│   │   ├── useNFTBalance.ts    # NFT ownership
-│   │   └── useUserReputation.ts # Reputation tier
+│   │   ├── index.ts                  # Re-exports all hooks
+│   │   ├── useAuth.ts                # SIWE sign-in/out + JWT storage
+│   │   ├── useWalletAccount.ts       # Unified: AlchemySigner + external EOA
+│   │   ├── useNFTBalance.ts          # NFT tier balances for access gating
+│   │   ├── useSmartWalletActivation.ts
+│   │   ├── useConvexoContracts.ts
+│   │   ├── useTokenizedBondVault.ts
+│   │   ├── useTreasury.ts
+│   │   ├── useVerification.ts
+│   │   ├── useContractSigner.ts
+│   │   ├── useConvexoWrite.ts
+│   │   ├── useSendToken.ts
+│   │   ├── useUserReputation.ts
+│   │   └── useVaults.ts
 │   └── wagmi/
-│       └── config.ts           # Wagmi configuration
+│       ├── config.ts                 # wagmi createConfig (Base, Mainnet, Unichain)
+│       └── compat.ts                 # v2-compatible hook wrappers
 │
-└── public/                      # Static assets
-    └── logo_convexo.png         # Favicon
+├── components/
+│   └── DashboardLayout.tsx           # Sidebar + page wrapper
+│
+├── public/
+│   └── logo_convexo.png
+│
+├── .env.local.example
+├── next.config.ts
+├── tailwind.config.ts
+└── tsconfig.json
 ```
 
 ---
 
-## 🔗 Contract Addresses (Base Sepolia)
+## Quick Start
 
-| Contract | Address | Explorer |
-|----------|---------|----------|
-| **Convexo_LPs** (NFT) | `0x4ACB3B523889f437D9FfEe9F2A50BBBa9580198d` | [View](https://sepolia.basescan.org/address/0x4ACB3B523889f437D9FfEe9F2A50BBBa9580198d) |
-| **Convexo_Vaults** (NFT) | `0xc056c0Ddf959b8b63fb6Bc73b5E79e85a6bFB9b5` | [View](https://sepolia.basescan.org/address/0xc056c0Ddf959b8b63fb6Bc73b5E79e85a6bFB9b5) |
-| **VaultFactory** | `0xDe8daB3182426234ACf68E4197A1eDF5172450dD` | [View](https://sepolia.basescan.org/address/0xDe8daB3182426234ACf68E4197A1eDF5172450dD) |
-| **InvoiceFactoring** | `0xbc4023284D789D7EB8512c1EDe245C77591a5D96` | [View](https://sepolia.basescan.org/address/0xbc4023284D789D7EB8512c1EDe245C77591a5D96) |
-| **TokenizedBondCredits** | `0xC058588A8D82B2E2129119B209c80af8bF3d4961` | [View](https://sepolia.basescan.org/address/0xC058588A8D82B2E2129119B209c80af8bF3d4961) |
-| **ContractSigner** | `0x87af0C8203C84192dBf07f4B6D934fD00eB3F723` | [View](https://sepolia.basescan.org/address/0x87af0C8203C84192dBf07f4B6D934fD00eB3F723) |
-| **ReputationManager** | `0x99612857Bb85b1de04d06385E44Fa53DC2aF79E1` | [View](https://sepolia.basescan.org/address/0x99612857Bb85b1de04d06385E44Fa53DC2aF79E1) |
-
-
-
-
-
-| **USDC** | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | [View](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) |
-| **ECOP** | `0xb934dcb57fb0673b7bc0fca590c5508f1cde955d` | [View](https://sepolia.basescan.org/address/0xb934dcb57fb0673b7bc0fca590c5508f1cde955d) |
-
-**IPFS Metadata:**
-- Convexo_LPs: `ipfs://bafkreib7mkjzpdm3id6st6d5vsxpn7v5h6sxeiswejjmrbcb5yoagaf4em`
-- Convexo_Vaults: `ipfs://bafkreignxas6gqi7it5ng6muoykujxlgxxc4g7rr6sqvwgdfwveqf2zw3e`
-
----
-
-## 🛠️ Development
-
-### Available Scripts
+### 1. Install dependencies
 
 ```bash
-npm run dev      # Development server
-npm run build    # Production build
-npm start        # Start production server
-npm run lint     # Lint code
+cd convexo_frontend
+npm install
 ```
 
-### Network Configuration
-
-The app is configured for **Base Sepolia** testnet (Chain ID: 84532).
-
-To change networks, update `lib/wagmi/config.ts`.
-
----
-
-## 🔐 Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | ✅ Yes | WalletConnect Project ID |
-| `PINATA_JWT` | ✅ Yes | Pinata JWT token for IPFS uploads |
-| `PINATA_GATEWAY` | ⚠️ Optional | Pinata gateway subdomain (server-side) |
-| `NEXT_PUBLIC_PINATA_GATEWAY` | ⚠️ Optional | Pinata gateway subdomain (client-side) |
-
-**Get API Keys:**
-- **WalletConnect**: [https://cloud.walletconnect.com](https://cloud.walletconnect.com) → Create project → Copy Project ID
-- **Pinata JWT**: [https://app.pinata.cloud](https://app.pinata.cloud) → API Keys → Create key → Copy JWT token
-- **Pinata Gateway**: [https://app.pinata.cloud](https://app.pinata.cloud) → Gateways → Copy subdomain
-
----
-
-## 🐛 Troubleshooting
-
-### Wallet Connection Issues
-- ✅ Ensure you're on **Base Sepolia** network
-- ✅ Check `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is set in `.env.local`
-- ✅ Try disconnecting and reconnecting wallet
-- ✅ Clear browser cache and hard refresh
-
-### Transaction Failures
-- ✅ Check ETH balance for gas fees
-- ✅ Verify you have required NFTs for restricted functions
-- ✅ Ensure contract addresses are correct
-- ✅ Check transaction on [BaseScan](https://sepolia.basescan.org)
-
-### Upload Failures
-- ✅ Verify `PINATA_JWT` is set correctly
-- ✅ Check file is PDF format and under 10MB
-- ✅ Verify Pinata API key has upload permissions
-- ✅ Check Pinata dashboard for API rate limits
-
-### Build Errors
-- ✅ Run `npm install` to ensure dependencies are installed
-- ✅ Clear `.next` folder: `rm -rf .next`
-- ✅ Check TypeScript errors: `npm run build`
-
----
-
-## 🚢 Deployment
-
-### Build for Production
+### 2. Configure environment
 
 ```bash
+cp .env.local.example .env.local
+# Edit .env.local — see Environment Variables below
+```
+
+### 3. Start the backend
+
+The frontend calls `convexo-backend` for auth and all data operations. See `../convexo-backend/README.md`.
+
+```bash
+# In a separate terminal:
+cd ../convexo-backend
+npm run dev
+# → API at http://localhost:3001, Swagger at http://localhost:3001/docs
+```
+
+### 4. Start the dev server
+
+```bash
+npm run dev
+# → http://localhost:3000
+```
+
+---
+
+## NPM Scripts
+
+| Script         | Description                |
+|----------------|----------------------------|
+| `npm run dev`  | Dev server (webpack mode)  |
+| `npm run build`| Production build           |
+| `npm run start`| Start production server    |
+| `npm run lint` | ESLint                     |
+
+---
+
+## Environment Variables
+
+```env
+# Backend
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# Alchemy Account Kit
+NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
+NEXT_PUBLIC_ALCHEMY_POLICY_ID=your_gas_manager_policy_id
+
+# WalletConnect
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
+
+# RPC endpoints (optional — defaults to public endpoints)
+NEXT_PUBLIC_BASE_MAINNET_RPC_URL=https://mainnet.base.org
+NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=https://eth.llamarpc.com
+NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=https://mainnet.unichain.org
+
+# Pinata (used by Next.js API routes for client-side uploads)
+PINATA_JWT=your_pinata_jwt
+NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
+```
+
+| Variable                                | Required | Description                                     |
+|-----------------------------------------|----------|-------------------------------------------------|
+| `NEXT_PUBLIC_API_URL`                   | ✅       | Backend API base URL                            |
+| `NEXT_PUBLIC_ALCHEMY_API_KEY`           | ✅       | Alchemy API key for Account Kit                 |
+| `NEXT_PUBLIC_ALCHEMY_POLICY_ID`         | ✅       | Gas Manager policy (sponsored transactions)     |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`  | ✅       | WalletConnect v2 project ID                     |
+| `NEXT_PUBLIC_BASE_MAINNET_RPC_URL`      |          | Base mainnet RPC (fallback to public)           |
+| `NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL`  |          | Ethereum mainnet RPC                            |
+| `NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL`  |          | Unichain mainnet RPC                            |
+| `PINATA_JWT`                            |          | Pinata JWT for server-side uploads              |
+| `NEXT_PUBLIC_PINATA_GATEWAY`            |          | Pinata gateway subdomain for IPFS links         |
+
+---
+
+## API Client
+
+All backend requests use `lib/api/client.ts`:
+
+```typescript
+import { apiFetch, ApiError } from '@/lib/api/client'
+
+// Authenticated GET
+const accounts = await apiFetch<BankAccount[]>('/bank-accounts')
+
+// Authenticated POST with JSON
+const contact = await apiFetch<Contact>('/contacts', {
+  method: 'POST',
+  body: JSON.stringify({ name, address, type }),
+})
+
+// File upload — pass FormData; Content-Type is set automatically by the browser
+const form = new FormData()
+form.append('income_statement', file1)
+form.append('balance_sheet', file2)
+form.append('cash_flow', file3)
+form.append('annualRevenue', '500000')
+// ... other fields
+const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/verification/credit-score/submit`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${getToken()}` },
+  body: form,
+})
+```
+
+`ApiError` has `.statusCode` and `.code`. A **401 response** automatically clears the stored JWT and throws `ApiError(401, 'Session expired')`.
+
+---
+
+## Authentication
+
+```typescript
+import { useAuth } from '@/lib/hooks/useAuth'
+
+const { isAuthenticated, isConnected, isSigningIn, user, signIn, signOut } = useAuth()
+
+// isAuthenticated  JWT is stored in localStorage('convexo_jwt')
+// isConnected      Wallet is connected (Account Kit OR external EOA)
+// user             { id, walletAddress, accountType, onboardingStep, isAdmin }
+```
+
+**Flow:** `signIn()` → fetch nonce → build EIP-4361 message (`viem/siwe`) → sign → POST `/auth/verify` → store `accessToken`.
+
+Both connection modes are handled:
+- **Account Kit (email/passkey/Google):** sign with `AlchemySigner.signMessage()` using the underlying embedded EOA
+- **External EOA (MetaMask etc.):** sign with wagmi `signMessageAsync` via Account Kit's internal wagmi instance
+
+---
+
+## Wallet Account
+
+```typescript
+import { useAccount } from '@/lib/hooks/useWalletAccount'
+
+const { address, isConnected } = useAccount()
+// Works for both Account Kit (smart account address) and external EOA wallets
+```
+
+For EOA-only reads or writes, use `@/lib/wagmi/compat`:
+
+```typescript
+import { useAccount, useReadContract, useWriteContract } from '@/lib/wagmi/compat'
+```
+
+---
+
+## NFT Tier Access Control
+
+| Tier | Contract           | Unlocks                               |
+|------|--------------------|---------------------------------------|
+| 0    | —                  | Basic access, onboarding              |
+| 1    | ConvexoPassport    | Treasury, Investments, Contacts       |
+| 2    | LP Individuals     | LP pools (individual path)            |
+| 2    | LP Business        | LP pools (business path)              |
+| 3    | Ecreditscoring     | Vault creation, Funding requests      |
+
+```typescript
+import { useNFTBalance } from '@/lib/hooks/useNFTBalance'
+
+const { hasPassportNFT, hasAnyLPNFT, hasEcreditscoringNFT, tier } = useNFTBalance()
+```
+
+Tier is read from live on-chain `balanceOf` calls. Use `POST /reputation/sync` to update the backend cache.
+
+---
+
+## Key Pages
+
+| Route                               | Description                                                         |
+|-------------------------------------|---------------------------------------------------------------------|
+| `/`                                 | Landing page                                                        |
+| `/profile/bank-accounts`            | Bank account management — full CRUD, API-backed, AES-256 at rest   |
+| `/profile/contacts`                 | Wallet address book — API-backed with server-side search            |
+| `/treasury/swaps`                   | Token swap — live rate from `GET /rates/USDC-ECOP`                  |
+| `/treasury/convert-fast`            | ECOP ↔ USDC conversion — live rate from `GET /rates/ECOP-USDC`      |
+| `/treasury/otc`                     | OTC order submission                                                |
+| `/digital-id/humanity/verify`       | ZKPassport proof-of-humanity flow                                   |
+| `/digital-id/limited-partner-individuals` | Veriff KYC (Individual onboarding)                          |
+| `/digital-id/limited-partner-business`    | Sumsub KYB (Business onboarding)                            |
+| `/digital-id/credit-score/verify`   | AI credit scoring — 3 financial docs + 9 business fields            |
+| `/investments/vaults`               | Tokenized bond vaults (Tier 2 required)                             |
+| `/funding`                          | Funding requests for businesses (Tier 3 required)                   |
+| `/admin`                            | Admin panel (requires admin role from backend)                      |
+
+---
+
+## Credit Score Submission
+
+The page at `/digital-id/credit-score/verify` submits:
+
+```
+POST /verification/credit-score/submit
+Content-Type: multipart/form-data
+Authorization: Bearer <JWT>
+
+Required files (PDF/XLSX/JPG/PNG, max 20 MB each):
+  income_statement, balance_sheet, cash_flow
+
+Required fields:
+  period            — e.g. "2024" or "Q3-2024"
+  annualRevenue     — number as string
+  netProfit         — number as string
+  totalAssets       — number as string
+  totalLiabilities  — number as string
+  employeeCount     — integer
+  yearsOperating    — integer
+  existingDebt      — number as string
+  monthlyExpenses   — number as string
+
+Optional:
+  additionalContext — max 2000 chars
+```
+
+Files are pinned to IPFS by the backend. n8n processes the analysis and calls back `/webhooks/n8n/credit-score` asynchronously.
+
+---
+
+## Supported Chains
+
+| Chain            | Chain ID | Used For                         |
+|------------------|----------|----------------------------------|
+| Base Mainnet     | 8453     | Smart accounts, NFTs, default    |
+| Ethereum Mainnet | 1        | On-chain reads                   |
+| Unichain Mainnet | 130      | Additional on-chain reads        |
+
+---
+
+## Contract Addresses (Base Mainnet)
+
+| Contract            | Address                                      |
+|---------------------|----------------------------------------------|
+| ConvexoPassport NFT | `0x2AD6aA7652C5167881b60C5bEa8713A0F0520cDD` |
+| LP Individuals NFT  | `0xF4aA32C029CfFa6050107E65FFF6e25AA2E58554` |
+| LP Business NFT     | `0x147070275646d9Cab76Ae26e5Eb632f5A6e8024C` |
+| Ecreditscoring NFT  | `0x20Be7F2D32Ddaa7c056CC6C39415275401cdF9E7` |
+
+---
+
+## Design System
+
+Global Tailwind utility classes (defined in `app/globals.css`):
+
+| Class          | Description                          |
+|----------------|--------------------------------------|
+| `.card`        | Dark card with border and padding    |
+| `.btn-primary` | Blue filled button                   |
+| `.btn-secondary`| Gray outlined button                |
+| `.btn-ghost`   | Transparent text button              |
+| `.input`       | Styled text input                    |
+
+The app uses a **dark theme**: `gray-900` background, `gray-800` card surfaces, `white` primary text, `gray-400` muted text.
+
+---
+
+## Deployment (Vercel)
+
+```bash
+# Build check locally
 npm run build
+
+# Push to GitHub → import in vercel.com
+# Set environment variables in Vercel dashboard
 ```
 
-### Deploy to Vercel
+**Required in production:**
 
-1. Push code to GitHub
-2. Import project in [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard
-4. Deploy
-
-**Required Environment Variables in Production:**
-- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
-- `PINATA_JWT`
-- `PINATA_GATEWAY` (optional)
-- `NEXT_PUBLIC_PINATA_GATEWAY` (optional)
+```
+NEXT_PUBLIC_API_URL
+NEXT_PUBLIC_ALCHEMY_API_KEY
+NEXT_PUBLIC_ALCHEMY_POLICY_ID
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+PINATA_JWT
+NEXT_PUBLIC_PINATA_GATEWAY
+```
 
 ---
 
-## 📖 Tech Stack
+## Troubleshooting
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Web3**: Wagmi v2, Viem v2, RainbowKit v2
-- **State**: React Query (via Wagmi)
-- **IPFS**: Pinata
-
----
-
-## 🔗 Useful Links
-
-- **Base Sepolia Explorer**: [https://sepolia.basescan.org](https://sepolia.basescan.org)
-- **Base Sepolia Faucet**: [https://www.coinbase.com/faucets/base-ethereum-goerli-faucet](https://www.coinbase.com/faucets/base-ethereum-goerli-faucet)
-- **WalletConnect Cloud**: [https://cloud.walletconnect.com](https://cloud.walletconnect.com)
-- **Pinata Dashboard**: [https://app.pinata.cloud](https://app.pinata.cloud)
-- **Wagmi Docs**: [https://wagmi.sh](https://wagmi.sh)
-- **RainbowKit Docs**: [https://rainbowkit.com](https://rainbowkit.com)
-
----
-
-## 📝 License
-
-MIT License - see LICENSE file for details
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
----
-
-**Built with ❤️ for Latin American SMEs**
+| Problem | Solution |
+|---------|----------|
+| `401 Session expired` on API calls | Sign in again via `useAuth().signIn()` |
+| Wallet not connecting | Check `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is set |
+| Account Kit modal not showing | Verify `NEXT_PUBLIC_ALCHEMY_API_KEY` is valid |
+| Rate shows "unavailable" | Admin must set the rate via `POST /admin/rates` |
+| Credit score form won't submit | All 3 files and all 9 numeric fields are required |
+| Build error `.next` stale | `rm -rf .next && npm run build` |

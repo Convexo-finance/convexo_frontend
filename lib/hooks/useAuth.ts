@@ -1,0 +1,209 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useAlchemyAccountContext, useSignerStatus, useSigner, useAccount as useAlchemyAccount } from '@account-kit/react'
+import { useAccount as wagmiUseAccount, useSignMessage } from 'wagmi'
+import { createSiweMessage } from 'viem/siwe'
+import type { Address } from 'viem'
+import { apiFetch, setToken, getToken, clearToken } from '../api/client'
+
+type AuthMethod =
+  | 'EMAIL'
+  | 'PASSKEY'
+  | 'GOOGLE'
+  | 'WALLET_CONNECT'
+  | 'METAMASK'
+  | 'COINBASE'
+  | 'EXTERNAL_EOA'
+
+export interface AuthUser {
+  id: string
+  walletAddress: string
+  accountType: string | null
+  onboardingStep: string | null
+  isAdmin: boolean
+}
+
+// Raw shape returned by GET /users/me (includes extra nested objects)
+interface UserMeResponse {
+  id: string
+  walletAddress: string
+  accountType: string | null
+  onboardingStep: string | null
+  adminRole: { role: string; grantedBy: string } | null
+  [key: string]: unknown
+}
+
+interface VerifyResponse {
+  accessToken: string
+  refreshToken: string
+  user: AuthUser
+}
+
+function detectEoaAuthMethod(connectorName?: string): AuthMethod {
+  if (!connectorName) return 'EXTERNAL_EOA'
+  const name = connectorName.toLowerCase()
+  if (name.includes('metamask')) return 'METAMASK'
+  if (name.includes('coinbase')) return 'COINBASE'
+  if (name.includes('walletconnect') || name.includes('wallet connect')) return 'WALLET_CONNECT'
+  return 'EXTERNAL_EOA'
+}
+
+async function detectSignerAuthMethod(signer: unknown): Promise<AuthMethod> {
+  try {
+    const details = await (signer as { getAuthDetails?(): Promise<{ type?: string }> }).getAuthDetails?.()
+    if (details?.type === 'passkey') return 'PASSKEY'
+    if (details?.type === 'oauth') return 'GOOGLE'
+  } catch {
+    // ignore — fallback to EMAIL
+  }
+  return 'EMAIL'
+}
+
+export function useAuth() {
+  const { isConnected: isSignerConnected } = useSignerStatus()
+  const { config } = useAlchemyAccountContext()
+  const signer = useSigner()
+  // Smart account address (only set for embedded signer users: email/passkey/Google)
+  const { address: smartAccountAddress } = useAlchemyAccount({ type: 'LightAccount' })
+
+  // External EOA wallet connected via Account Kit's internal wagmi instance
+  const {
+    address: eoaAddress,
+    isConnected: isEoaConnected,
+    connector,
+  } = wagmiUseAccount({ config: config._internal.wagmiConfig })
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const { signMessageAsync } = useSignMessage({ config: config._internal.wagmiConfig })
+
+  // Validate JWT on mount — call /users/me to restore user object
+  useEffect(() => {
+    async function restoreAuth() {
+      const token = getToken()
+      if (!token) {
+        setIsInitializing(false)
+        return
+      }
+      try {
+        const me = await apiFetch<UserMeResponse>('/users/me')
+        setUser({
+          id: me.id,
+          walletAddress: me.walletAddress,
+          accountType: me.accountType,
+          onboardingStep: me.onboardingStep,
+          isAdmin: !!me.adminRole,
+        })
+        setIsAuthenticated(true)
+      } catch {
+        clearToken()
+        setIsAuthenticated(false)
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    restoreAuth()
+  }, [])
+
+  const isConnected = isSignerConnected || isEoaConnected
+
+  const signIn = useCallback(async () => {
+    setIsSigningIn(true)
+    setError(null)
+
+    try {
+      let signerAddress: Address
+      let authMethod: AuthMethod
+
+      if (isSignerConnected && signer) {
+        // AlchemySigner (email / passkey / Google) — sign with embedded EOA
+        signerAddress = (await (signer as { getAddress(): Promise<string> }).getAddress()) as Address
+        authMethod = await detectSignerAuthMethod(signer)
+      } else if (eoaAddress) {
+        // External wallet (MetaMask, WalletConnect, Coinbase, etc.)
+        signerAddress = eoaAddress as Address
+        authMethod = detectEoaAuthMethod(connector?.name)
+      } else {
+        throw new Error('No wallet connected')
+      }
+
+      // 1. Get nonce from backend
+      const { nonce } = await apiFetch<{ nonce: string }>(
+        `/auth/nonce?address=${signerAddress}`,
+      )
+
+      // 2. Build EIP-4361 SIWE message
+      const message = createSiweMessage({
+        domain: window.location.host,
+        address: signerAddress,
+        statement: 'Sign in to Convexo',
+        uri: window.location.origin,
+        version: '1',
+        chainId: 8453, // Base mainnet
+        nonce,
+      })
+
+      // 3. Sign the message
+      let signature: string
+      if (isSignerConnected && signer) {
+        signature = await (signer as { signMessage(msg: string): Promise<string> }).signMessage(
+          message,
+        )
+      } else {
+        signature = await signMessageAsync({ message })
+      }
+
+      // 4. Verify with backend and receive JWT
+      const result = await apiFetch<VerifyResponse>('/auth/verify', {
+        method: 'POST',
+        body: JSON.stringify({
+          message,
+          signature,
+          address: signerAddress,
+          chainId: 8453,
+          authMethod,
+          // Include smart account address for embedded signer users so backend stores it
+          ...(isSignerConnected && smartAccountAddress
+            ? { smartAccount: smartAccountAddress }
+            : {}),
+        }),
+      })
+
+      setToken(result.accessToken)
+      setUser(result.user)
+      setIsAuthenticated(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign-in failed')
+    } finally {
+      setIsSigningIn(false)
+    }
+  }, [isSignerConnected, signer, eoaAddress, connector, signMessageAsync, smartAccountAddress])
+
+  const signOut = useCallback(async () => {
+    try {
+      if (getToken()) {
+        await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
+      }
+    } finally {
+      clearToken()
+      setIsAuthenticated(false)
+      setUser(null)
+    }
+  }, [])
+
+  return {
+    isAuthenticated,
+    isInitializing,
+    isConnected,
+    isSigningIn,
+    user,
+    error,
+    signIn,
+    signOut,
+  }
+}

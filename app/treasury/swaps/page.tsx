@@ -8,7 +8,8 @@ import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ecopAbi } from '@/lib/contracts/ecopAbi';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api/client';
 import {
   ArrowsRightLeftIcon,
   LockClosedIcon,
@@ -30,6 +31,13 @@ export default function SwapsPage() {
   const [toToken, setToToken] = useState(tokens[1]);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
+  const [rateUsdcEcop, setRateUsdcEcop] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ pair: string; rate: number }>('/rates/USDC-ECOP')
+      .then(data => setRateUsdcEcop(data.rate))
+      .catch(() => {}); // rate stays null if not configured
+  }, []);
 
   const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
 
@@ -58,9 +66,8 @@ export default function SwapsPage() {
 
   const handleFromAmountChange = (value: string) => {
     setFromAmount(value);
-    // Mock exchange rate calculation
-    if (value) {
-      const rate = fromToken.symbol === 'USDC' ? 4200 : 1/4200;
+    if (value && rateUsdcEcop) {
+      const rate = fromToken.symbol === 'USDC' ? rateUsdcEcop : 1 / rateUsdcEcop;
       setToAmount((parseFloat(value) * rate).toFixed(toToken.decimals === 6 ? 2 : 0));
     } else {
       setToAmount('');
@@ -197,7 +204,12 @@ export default function SwapsPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">Exchange Rate</span>
                   <span className="text-white">
-                    1 {fromToken.symbol} = {fromToken.symbol === 'USDC' ? '4,200' : '0.000238'} {toToken.symbol}
+                    {rateUsdcEcop
+                      ? `1 ${fromToken.symbol} = ${fromToken.symbol === 'USDC'
+                          ? rateUsdcEcop.toLocaleString()
+                          : (1 / rateUsdcEcop).toFixed(6)
+                        } ${toToken.symbol}`
+                      : 'Rate unavailable'}
                   </span>
                 </div>
               </div>

@@ -99,6 +99,10 @@ export {
   calculateExpiryTimestamp,
 } from './useContractSigner';
 
+// Auth
+export { useAuth } from './useAuth';
+export type { AuthUser } from './useAuth';
+
 // Legacy hooks (for backwards compatibility)
 export { useVaultCount, useVaultAddress } from './useVaults';
 export { useUserReputation } from './useUserReputation';

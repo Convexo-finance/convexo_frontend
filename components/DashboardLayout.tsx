@@ -3,6 +3,7 @@
 import React, { useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { Sidebar } from './Sidebar';
+import AuthGuard from './AuthGuard';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
 interface DashboardLayoutProps {
@@ -46,21 +47,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="relative w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 overflow-hidden flex items-center justify-center">
-              <Image
-                src="/logo_convexo.png"
-                alt="Convexo"
-                width={28}
-                height={28}
-                className="object-contain"
-              />
-            </div>
+            <Image
+              src="/logo_convexo.png"
+              alt="Convexo"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
             <span className="text-white font-bold text-sm">Convexo</span>
           </div>
         </div>
 
         <div className="flex-1 min-h-0">
-          {children}
+          <AuthGuard>{children}</AuthGuard>
         </div>
       </main>
     </div>

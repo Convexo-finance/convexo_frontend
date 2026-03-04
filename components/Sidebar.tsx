@@ -4,9 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuthModal, useLogout } from '@account-kit/react';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
+import { useRouter } from 'next/navigation';
 import {
   UserCircleIcon,
   WalletIcon,
@@ -30,31 +32,70 @@ import {
   LockClosedIcon,
   ArrowTrendingUpIcon,
   XMarkIcon,
+  ArrowRightStartOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
-// Minimal bottom action — connect or disconnect
-function WalletButton() {
+// Bottom user section — shows address + sign out button
+function UserFooter() {
   const { openAuthModal } = useAuthModal();
   const { logout } = useLogout();
-  const { isConnected } = useAccount();
+  const { address } = useAccount();
+  const { isAuthenticated, signOut, user } = useAuth();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
-  return (
-    <div className="p-4 border-t border-gray-800/50">
-      {isConnected ? (
-        <button
-          onClick={() => logout()}
-          className="w-full px-4 py-2.5 rounded-xl text-gray-500 hover:text-white hover:bg-gray-800/60 text-sm transition-colors"
-        >
-          Disconnect
-        </button>
-      ) : (
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      logout();
+    } catch {
+      // ignore — still redirect
+    } finally {
+      setSigningOut(false);
+      router.push('/');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="p-4 border-t border-gray-800/50">
         <button
           onClick={openAuthModal}
           className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm transition-colors"
         >
           Connect Wallet
         </button>
+      </div>
+    );
+  }
+
+  const displayAddress = address ?? user?.walletAddress;
+
+  return (
+    <div className="p-4 border-t border-gray-800/50 space-y-3">
+      {/* Address chip */}
+      {displayAddress && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50">
+          <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+          <span className="text-xs text-gray-400 font-mono truncate flex-1">
+            {displayAddress.slice(0, 6)}…{displayAddress.slice(-4)}
+          </span>
+        </div>
       )}
+      {/* Sign out */}
+      <button
+        onClick={handleSignOut}
+        disabled={signingOut}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-gray-500 hover:text-white hover:bg-gray-800/60 disabled:opacity-40 disabled:cursor-not-allowed text-sm transition-colors"
+      >
+        {signingOut ? (
+          <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        ) : (
+          <ArrowRightStartOnRectangleIcon className="w-4 h-4" />
+        )}
+        {signingOut ? 'Signing out…' : 'Sign out'}
+      </button>
     </div>
   );
 }
@@ -203,20 +244,18 @@ export function Sidebar({ onClose }: SidebarProps) {
   }), [isAdmin]);
 
   return (
-    <div className="w-72 flex flex-col h-full bg-[#0f1219] border-r border-gray-800/50">
+    <div className="w-64 flex flex-col h-full bg-[#0f1219] border-r border-gray-800/50">
       {/* Logo Header */}
-      <div className="p-6 border-b border-gray-800/50">
+      <div className="px-5 py-4 border-b border-gray-800/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center overflow-hidden">
-              <Image
-                src="/logo_convexo.png"
-                alt="Convexo"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-            </div>
+            <Image
+              src="/logo_convexo.png"
+              alt="Convexo"
+              width={40}
+              height={40}
+              className="object-contain"
+            />
             <div>
               <h1 className="text-xl font-bold text-white">Convexo</h1>
               <p className="text-xs text-gray-500">Protocol v2.1</p>
@@ -368,7 +407,7 @@ export function Sidebar({ onClose }: SidebarProps) {
         })}
       </nav>
 
-      <WalletButton />
+      <UserFooter />
     </div>
   );
 }

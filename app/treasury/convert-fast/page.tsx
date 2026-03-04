@@ -27,13 +27,14 @@ export default function ConversionPage() {
   const [outputAmount, setOutputAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
-  // Fetch pool data (mock for now - replace with actual Uniswap V4 API)
+  // Fetch exchange rate from backend (admin-controlled)
   useEffect(() => {
-    // In production, fetch from Uniswap V4 API
-    // For now, we'll use a mock rate
-    const mockRate = 0.00025; // 1 ECOP = 0.00025 USDC (example rate)
-    setExchangeRate(mockRate);
-  }, []);
+    const pair = swapDirection === 'ecop-to-usdc' ? 'ECOP-USDC' : 'USDC-ECOP';
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/rates/${pair}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => data ? setExchangeRate(data.rate) : setExchangeRate(null))
+      .catch(() => setExchangeRate(null));
+  }, [swapDirection]);
 
   // Calculate output amount based on rate
   useEffect(() => {

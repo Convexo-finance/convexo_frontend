@@ -3,6 +3,10 @@
 		"Privy Docs": {
 			"url": "https://docs.privy.io/mcp",
 			"type": "http"
+		},
+		"Sign-In with Ethereum": {
+			"url": "https://docs.login.xyz/~gitbook/mcp",
+			"type": "http"
 		}
 	},
 	"inputs": []

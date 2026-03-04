@@ -1,122 +1,136 @@
 'use client';
 
 import { useAccount } from '@/lib/wagmi/compat';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { apiFetch, ApiError } from '@/lib/api/client';
 import DashboardLayout from '@/components/DashboardLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   UsersIcon,
   PlusIcon,
   MagnifyingGlassIcon,
-  UserCircleIcon,
   ClipboardDocumentIcon,
   XMarkIcon,
-  ArrowUpIcon,
-  CameraIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
+type ContactType = 'PROVIDER' | 'FRIEND' | 'CLIENT' | 'FAMILY' | 'OTHER';
+
 interface Contact {
-  id: number;
+  id: string;
   name: string;
-  address: `0x${string}`;
-  type: 'Provider' | 'Friend' | 'Client' | 'Family' | 'Other';
+  address: string;
+  type: ContactType;
+  notes: string | null;
 }
+
+interface ContactsResponse {
+  contacts: Contact[];
+  total: number;
+}
+
+const TYPE_LABELS: Record<ContactType, string> = {
+  PROVIDER: 'Provider',
+  FRIEND: 'Friend',
+  CLIENT: 'Client',
+  FAMILY: 'Family',
+  OTHER: 'Other',
+};
 
 export default function ContactsPage() {
   const { isConnected } = useAccount();
+  const { isAuthenticated, isSigningIn, signIn } = useAuth();
+
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [newName, setNewName] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newType, setNewType] = useState<ContactType>('OTHER');
+  const [newNotes, setNewNotes] = useState('');
+
+  // Send modal state
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-
-  // Form states for adding contact
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactAddress, setNewContactAddress] = useState('');
-  const [newContactType, setNewContactType] = useState<Contact['type']>('Friend');
-
-  // Send form states
   const [sendAmount, setSendAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState<'ETH' | 'USDC' | 'ECOP'>('USDC');
 
-  // Load contacts from localStorage
-  const [contacts, setContacts] = useState<Contact[]>([]);
-
-  useEffect(() => {
-    const storedContacts = localStorage.getItem('convexo_contacts');
-    if (storedContacts) {
-      setContacts(JSON.parse(storedContacts));
-    } else {
-      // Initialize with default contacts
-      const defaultContacts: Contact[] = [
-        {
-          id: 1,
-          name: 'Treasury Account',
-          address: '0x742d35Cc6634C0532925a3b844Bc9e7595f52bE8',
-          type: 'Provider',
-        },
-        {
-          id: 2,
-          name: 'Business Partner',
-          address: '0x8Ba1f109551bD432803012645Hc136E4024Fe235',
-          type: 'Client',
-        },
-        {
-          id: 3,
-          name: 'Cold Wallet',
-          address: '0xdD2FD4581271e230360230F9337D5c0430Bf44C0',
-          type: 'Other',
-        },
-      ];
-      setContacts(defaultContacts);
-      localStorage.setItem('convexo_contacts', JSON.stringify(defaultContacts));
+  const loadContacts = useCallback(async (search?: string) => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+      const data = await apiFetch<ContactsResponse>(`/contacts${qs}`);
+      setContacts(data.contacts);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode !== 401) {
+        setApiError(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const filteredContacts = contacts.filter(
-    (contact) =>
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.address.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadContacts();
+    }
+  }, [isAuthenticated, loadContacts]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = setTimeout(() => loadContacts(searchTerm || undefined), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, isAuthenticated, loadContacts]);
+
+  const handleAddContact = async () => {
+    if (!newName.trim() || !newAddress.trim()) return;
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      const created = await apiFetch<Contact>('/contacts', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newName.trim(),
+          address: newAddress.trim().toLowerCase(),
+          type: newType,
+          notes: newNotes.trim() || undefined,
+        }),
+      });
+      setContacts(prev => [...prev, created]);
+      setNewName('');
+      setNewAddress('');
+      setNewType('OTHER');
+      setNewNotes('');
+      setShowAddModal(false);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Failed to add contact');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this contact?')) return;
+    try {
+      await apiFetch(`/contacts/${id}`, { method: 'DELETE' });
+      setContacts(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Failed to delete contact');
+    }
+  };
 
   const copyAddress = (address: string) => {
     navigator.clipboard.writeText(address);
   };
 
-  const handleAddContact = () => {
-    if (!newContactName || !newContactAddress) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    const newContact: Contact = {
-      id: Math.max(0, ...contacts.map(c => c.id)) + 1,
-      name: newContactName,
-      address: newContactAddress as `0x${string}`,
-      type: newContactType,
-    };
-
-    const updatedContacts = [...contacts, newContact];
-    setContacts(updatedContacts);
-    localStorage.setItem('convexo_contacts', JSON.stringify(updatedContacts));
-
-    // Reset form
-    setNewContactName('');
-    setNewContactAddress('');
-    setNewContactType('Friend');
-    setShowAddModal(false);
-  };
-
-  const handleSendToContact = (contact: Contact) => {
-    setSelectedContact(contact);
-    setShowSendModal(true);
-  };
-
   const handleSend = () => {
-    if (!selectedContact || !sendAmount) {
-      alert('Please enter an amount');
-      return;
-    }
-
-    // TODO: Implement actual send functionality with smart contract
+    if (!selectedContact || !sendAmount) return;
     alert(`Sending ${sendAmount} ${selectedToken} to ${selectedContact.name} (${selectedContact.address})`);
     setShowSendModal(false);
     setSendAmount('');
@@ -136,6 +150,23 @@ export default function ContactsPage() {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full min-h-[80vh]">
+          <div className="text-center p-8">
+            <UsersIcon className="w-16 h-16 mx-auto mb-4 text-gray-500" />
+            <h2 className="text-2xl font-bold text-white mb-2">Sign In Required</h2>
+            <p className="text-gray-400 mb-6">Sign in to manage your contacts</p>
+            <button onClick={signIn} disabled={isSigningIn} className="btn-primary">
+              {isSigningIn ? 'Signing in…' : 'Sign In'}
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-8">
@@ -146,70 +177,71 @@ export default function ContactsPage() {
               <h1 className="text-3xl font-bold text-white mb-2">Contacts</h1>
               <p className="text-gray-400">Manage your address book for quick transfers</p>
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn-primary flex items-center gap-2"
-            >
+            <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
               <PlusIcon className="w-5 h-5" />
               Add Contact
             </button>
           </div>
+
+          {/* Error */}
+          {apiError && (
+            <div className="card bg-red-900/20 border-red-700/50 text-red-400 text-sm p-4">
+              {apiError}
+            </div>
+          )}
 
           {/* Search */}
           <div className="relative">
             <MagnifyingGlassIcon className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name or address..."
+              placeholder="Search by name or address…"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-12"
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
           {/* Contacts List */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">
-                {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''}
-              </h2>
-            </div>
+            <h2 className="text-lg font-semibold text-white">
+              {contacts.length} Contact{contacts.length !== 1 ? 's' : ''}
+            </h2>
 
-            {filteredContacts.length === 0 ? (
+            {loading ? (
+              <div className="card p-8 text-center text-gray-400">Loading contacts…</div>
+            ) : contacts.length === 0 ? (
               <div className="card p-8 text-center">
                 <UsersIcon className="w-12 h-12 mx-auto mb-4 text-gray-500" />
                 <p className="text-gray-400 mb-4">
-                  {searchTerm ? 'No contacts found matching your search' : 'No contacts yet'}
+                  {searchTerm ? 'No contacts found' : 'No contacts yet'}
                 </p>
                 {!searchTerm && (
-                  <button
-                    onClick={() => setShowAddModal(true)}
-                    className="btn-secondary"
-                  >
+                  <button onClick={() => setShowAddModal(true)} className="btn-secondary">
                     Add Your First Contact
                   </button>
                 )}
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredContacts.map((contact) => (
+                {contacts.map(contact => (
                   <div
                     key={contact.id}
                     className="card p-4 flex items-center justify-between hover:border-purple-500/30 transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
                         {contact.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-white">{contact.name}</p>
                           <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-300">
-                            {contact.type}
+                            {TYPE_LABELS[contact.type]}
                           </span>
                         </div>
                         <p className="text-sm text-gray-400 font-mono">
-                          {contact.address.slice(0, 10)}...{contact.address.slice(-8)}
+                          {contact.address.slice(0, 10)}…{contact.address.slice(-8)}
                         </p>
                       </div>
                     </div>
@@ -222,25 +254,23 @@ export default function ContactsPage() {
                         <ClipboardDocumentIcon className="w-5 h-5 text-gray-400" />
                       </button>
                       <button
-                        onClick={() => handleSendToContact(contact)}
-                        className="btn-secondary text-sm py-2"
+                        onClick={() => { setSelectedContact(contact); setShowSendModal(true); }}
+                        className="btn-secondary text-sm py-1.5 px-3"
                       >
                         Send
+                      </button>
+                      <button
+                        onClick={() => handleDelete(contact.id)}
+                        className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-red-400"
+                        title="Delete"
+                      >
+                        <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Import/Export */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-white mb-4">Manage Contacts</h3>
-            <div className="flex gap-4">
-              <button className="btn-ghost flex-1">Import Contacts</button>
-              <button className="btn-ghost flex-1">Export Contacts</button>
-            </div>
           </div>
         </div>
       </div>
@@ -251,58 +281,64 @@ export default function ContactsPage() {
           <div className="card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Add New Contact</h2>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-
+            {apiError && (
+              <div className="mb-4 text-red-400 text-sm">{apiError}</div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-gray-400 mb-2 block">Name</label>
                 <input
                   type="text"
-                  value={newContactName}
-                  onChange={(e) => setNewContactName(e.target.value)}
-                  placeholder="Enter contact name"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="Contact name"
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 />
               </div>
-
               <div>
                 <label className="text-sm text-gray-400 mb-2 block">Wallet Address</label>
                 <input
                   type="text"
-                  value={newContactAddress}
-                  onChange={(e) => setNewContactAddress(e.target.value)}
-                  placeholder="0x..."
+                  value={newAddress}
+                  onChange={e => setNewAddress(e.target.value)}
+                  placeholder="0x…"
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 />
               </div>
-
               <div>
                 <label className="text-sm text-gray-400 mb-2 block">Type</label>
                 <select
-                  value={newContactType}
-                  onChange={(e) => setNewContactType(e.target.value as Contact['type'])}
+                  value={newType}
+                  onChange={e => setNewType(e.target.value as ContactType)}
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-purple-500 focus:outline-none"
                 >
-                  <option value="Provider">Provider</option>
-                  <option value="Friend">Friend</option>
-                  <option value="Client">Client</option>
-                  <option value="Family">Family</option>
-                  <option value="Other">Other</option>
+                  {(Object.keys(TYPE_LABELS) as ContactType[]).map(t => (
+                    <option key={t} value={t}>{TYPE_LABELS[t]}</option>
+                  ))}
                 </select>
               </div>
-
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">
+                  Notes <span className="text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newNotes}
+                  onChange={e => setNewNotes(e.target.value)}
+                  placeholder="Add a note…"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                />
+              </div>
               <button
                 onClick={handleAddContact}
-                disabled={!newContactName || !newContactAddress}
+                disabled={submitting || !newName.trim() || !newAddress.trim()}
                 className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Contact
+                {submitting ? 'Adding…' : 'Add Contact'}
               </button>
             </div>
           </div>
@@ -315,30 +351,25 @@ export default function ContactsPage() {
           <div className="card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Send to {selectedContact.name}</h2>
-              <button
-                onClick={() => setShowSendModal(false)}
-                className="text-gray-400 hover:text-white"
-              >
+              <button onClick={() => setShowSendModal(false)} className="text-gray-400 hover:text-white">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-
             <div className="space-y-4">
               <div className="p-4 bg-gray-800/50 rounded-lg">
                 <p className="text-sm text-gray-400 mb-1">Sending to</p>
                 <p className="font-medium text-white">{selectedContact.name}</p>
                 <p className="text-sm text-gray-400 font-mono">
-                  {selectedContact.address.slice(0, 10)}...{selectedContact.address.slice(-8)}
+                  {selectedContact.address.slice(0, 10)}…{selectedContact.address.slice(-8)}
                 </p>
               </div>
-
               <div>
                 <label className="text-sm text-gray-400 mb-2 block">Select Token</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {['ETH', 'USDC', 'ECOP'].map((token) => (
+                  {(['ETH', 'USDC', 'ECOP'] as const).map(token => (
                     <button
                       key={token}
-                      onClick={() => setSelectedToken(token as 'ETH' | 'USDC' | 'ECOP')}
+                      onClick={() => setSelectedToken(token)}
                       className={`p-3 rounded-lg border-2 transition-colors ${
                         selectedToken === token
                           ? 'border-purple-500 bg-purple-900/30'
@@ -350,25 +381,17 @@ export default function ContactsPage() {
                   ))}
                 </div>
               </div>
-
               <div>
                 <label className="text-sm text-gray-400 mb-2 block">Amount</label>
                 <input
                   type="number"
                   value={sendAmount}
-                  onChange={(e) => setSendAmount(e.target.value)}
+                  onChange={e => setSendAmount(e.target.value)}
                   placeholder="0.00"
                   step="0.000001"
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 />
               </div>
-
-              <div className="p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
-                <p className="text-sm text-amber-400">
-                  This will open a transaction confirmation. Make sure you have enough balance and gas.
-                </p>
-              </div>
-
               <button
                 onClick={handleSend}
                 disabled={!sendAmount}
@@ -383,5 +406,3 @@ export default function ContactsPage() {
     </DashboardLayout>
   );
 }
-
-

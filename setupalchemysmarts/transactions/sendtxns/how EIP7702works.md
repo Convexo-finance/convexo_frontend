@@ -197,4 +197,4 @@ When you call `wallet_requestAccount` with a signer address, it creates a dedica
 
 Build more:
 
-* [Sponsor gas](/docs/wallets/transactions/sponsor-gas)
+* [Sponsor gas](/docs/wallets/transactions/sponsor-gas)s
