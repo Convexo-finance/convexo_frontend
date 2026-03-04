@@ -113,7 +113,7 @@ function BackendUserPanel() {
     setError('');
     try {
       const params = new URLSearchParams({
-        page: String(page),
+        offset: String((page - 1) * PAGE_LIMIT),
         limit: String(PAGE_LIMIT),
         ...(search ? { search } : {}),
       });

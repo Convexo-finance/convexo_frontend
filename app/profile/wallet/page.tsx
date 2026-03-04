@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAccount, useBalance, useReadContracts } from '@/lib/wagmi/compat';
-import { useAuthModal } from '@account-kit/react';
 import { formatUnits, isAddress, parseUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import { base, mainnet } from 'wagmi/chains';
@@ -291,33 +291,7 @@ interface SendModalProps {
   marketData: Map<string, CoinGeckoMarketData>;
 }
 
-// ─── Reconnect prompt ─────────────────────────────────────────────────────────
-// Shown when the user has a valid backend JWT but the Account Kit signer session
-// has expired. Guides them to re-open the auth modal so the signer reconnects.
-function WalletReconnectPrompt() {
-  const { openAuthModal } = useAuthModal();
-  return (
-    <DashboardLayout>
-      <div className="flex items-center justify-center h-full min-h-[80vh]">
-        <div className="text-center p-8 max-w-sm">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-purple-900/30 border border-purple-700/40 flex items-center justify-center">
-            <WalletIcon className="w-8 h-8 text-purple-400" />
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Reconnect your wallet</h2>
-          <p className="text-gray-400 text-sm mb-6">
-            Your wallet session has expired. Sign in again to view your balances.
-          </p>
-          <button
-            onClick={openAuthModal}
-            className="btn-primary w-full"
-          >
-            Sign in
-          </button>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
-}
+
 
 function SendModal({ onClose, balances, marketData }: SendModalProps) {
   const [selectedToken, setSelectedToken] = useState<TokenSymbol>('USDC');
@@ -618,6 +592,7 @@ function SendModal({ onClose, balances, marketData }: SendModalProps) {
 const TOKEN_LIST: TokenSymbol[] = ['ETH', 'USDC', 'USDT', 'EURC', 'BTC'];
 
 export default function WalletPage() {
+  const router = useRouter();
   const { isConnected, address, isResolvingAddress, authMode, isReconnecting } = useAccount();
 
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -837,14 +812,15 @@ export default function WalletPage() {
     );
   }
 
-  // ── Address not available (JWT valid but Account Kit session expired) ───────
-  // The user has a backend session but the Account Kit signer needs to re-auth.
-  // Show a prompt rather than an empty $0 wallet.
-  if (!address) {
-    return (
-      <WalletReconnectPrompt />
-    );
-  }
+  // ── Address not available — redirect to login ────────────────────────────
+  // Covers both logged-out state and stale connector errors (e.g. getChainId).
+  useEffect(() => {
+    if (!isReconnecting && !isResolvingAddress && !address) {
+      router.push('/');
+    }
+  }, [isReconnecting, isResolvingAddress, address, router]);
+
+  if (!address) return null;
 
   return (
     <DashboardLayout>

@@ -70,7 +70,7 @@ export default function SignInPage() {
   if (!pageReady) {
     return (
       <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center gap-4">
-        <Image src="/logo_convexo.png" alt="Convexo" width={56} height={56} className="object-contain opacity-80" />
+        <Image src="/convexoblanco.png" alt="Convexo" width={200} height={80} className="object-contain opacity-80" />
         <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
       </div>
     );
@@ -84,9 +84,8 @@ export default function SignInPage() {
         {/* Branding */}
         <div className="text-center">
           <div className="flex justify-center mb-5">
-            <Image src="/logo_convexo.png" alt="Convexo" width={80} height={80} className="object-contain" priority />
+            <Image src="/convexoblanco.png" alt="Convexo" width={200} height={80} className="object-contain" priority />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Convexo</h1>
           <p className="text-gray-400 text-sm">Reducing the funding gap for SMEs in Latin America</p>
         </div>
 

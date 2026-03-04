@@ -1,24 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useChainId, useWaitForTransactionReceipt, useReadContract } from '@/lib/wagmi/compat';
 import { getContractsForChain, getBlockExplorerUrl } from '@/lib/contracts/addresses';
 import { VeriffVerifierABI } from '@/lib/contracts/abis';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
+import { apiFetch, ApiError } from '@/lib/api/client';
 import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   MagnifyingGlassIcon,
-  TrashIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
-interface PendingVerification {
-  address: string;
-  sessionId: string;
-  submittedAt: number;
-  type: 'veriff';
-  chainId: number;
+interface BackendVerification {
+  id: string;
+  userId: string;
+  type: string;
+  status: string;
+  provider?: string;
+  sessionId?: string;
+  nftTokenId?: string;
+  processedAt?: string;
+  createdAt: string;
+  user: {
+    walletAddress: string;
+    accountType?: string;
+    individualProfile?: { firstName: string; lastName: string; email?: string } | null;
+  };
+}
+
+interface VerificationsListResponse {
+  items: BackendVerification[];
+  total: number;
 }
 
 export function VeriffVerificationSystem() {
@@ -30,45 +45,45 @@ export function VeriffVerificationSystem() {
   const [rejectReason, setRejectReason] = useState('');
   const [lookupAddress, setLookupAddress] = useState('');
   const [selectedForAction, setSelectedForAction] = useState<string | null>(null);
-  const [pendingVerifications, setPendingVerifications] = useState<PendingVerification[]>([]);
+
+  // Backend pending verifications (replaces localStorage)
+  const [pendingVerifications, setPendingVerifications] = useState<BackendVerification[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [pendingError, setPendingError] = useState('');
 
   const { writeContract, data: hash, isPending, error: writeError } = useConvexoWrite();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  // Load pending verifications from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('pending_verifications_veriff');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const filtered = parsed.filter((v: PendingVerification) => v.chainId === chainId);
-        setPendingVerifications(filtered);
-      } catch (e) {
-        console.error('Failed to parse pending verifications:', e);
+  // Load pending Veriff verifications from backend
+  const loadPending = useCallback(async () => {
+    setLoadingPending(true);
+    setPendingError('');
+    try {
+      const data = await apiFetch<VerificationsListResponse>(
+        '/admin/verifications?type=VERIFF&status=PENDING&limit=50',
+      );
+      setPendingVerifications(data.items ?? []);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode !== 401) {
+        setPendingError(err.message);
       }
+    } finally {
+      setLoadingPending(false);
     }
-  }, [chainId]);
+  }, []);
 
-  // Save pending verifications to localStorage
   useEffect(() => {
-    localStorage.setItem('pending_verifications_veriff', JSON.stringify(pendingVerifications));
-  }, [pendingVerifications]);
+    loadPending();
+  }, [loadPending]);
 
-  // Auto-add submitted verification to pending list
+  // Refresh pending list after successful on-chain action
   useEffect(() => {
-    if (isSuccess && userAddress && sessionId) {
-      const newVerification: PendingVerification = {
-        address: userAddress,
-        sessionId: sessionId,
-        submittedAt: Date.now(),
-        type: 'veriff',
-        chainId: chainId,
-      };
-      setPendingVerifications((prev) => [newVerification, ...prev]);
+    if (isSuccess) {
+      loadPending();
       setUserAddress('');
       setSessionId('');
     }
-  }, [isSuccess, userAddress, sessionId, chainId]);
+  }, [isSuccess, loadPending]);
 
   // Veriff status lookup
   const { data: veriffStatus, refetch: refetchVeriff } = useReadContract({
@@ -153,16 +168,11 @@ export function VeriffVerificationSystem() {
   const statusInfo = currentStatus && Array.isArray(currentStatus) ? getStatusInfo(Number(currentStatus[0])) : null;
   const StatusIcon = statusInfo?.icon;
 
-  const pendingForType = pendingVerifications;
-
-  const handleRemovePending = (address: string) => {
-    setPendingVerifications((prev) => prev.filter((v) => v.address !== address));
-  };
-
-  const handleSelectPending = (verification: PendingVerification) => {
-    setLookupAddress(verification.address);
-    setUserAddress(verification.address);
-    setSessionId(verification.sessionId);
+  const handleSelectPending = (verification: BackendVerification) => {
+    setLookupAddress(verification.user.walletAddress);
+    setUserAddress(verification.user.walletAddress);
+    setSessionId(verification.sessionId ?? '');
+    setSelectedForAction(verification.id);
   };
 
   return (
@@ -178,7 +188,7 @@ export function VeriffVerificationSystem() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Pending List */}
+        {/* Left Column: Pending List from Backend */}
         <div className="lg:col-span-1">
           <div className="card p-6">
             <div className="flex items-center justify-between mb-4">
@@ -186,40 +196,65 @@ export function VeriffVerificationSystem() {
                 <ClockIcon className="w-5 h-5 text-amber-400" />
                 <h3 className="font-semibold text-white">Pending Veriff</h3>
               </div>
-              <span className="text-sm bg-amber-900/40 text-amber-300 px-2 py-1 rounded-full font-medium">
-                {pendingForType.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm bg-amber-900/40 text-amber-300 px-2 py-1 rounded-full font-medium">
+                  {pendingVerifications.length}
+                </span>
+                <button
+                  onClick={loadPending}
+                  disabled={loadingPending}
+                  className="p-1.5 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                  title="Refresh"
+                >
+                  <ArrowPathIcon className={`w-4 h-4 ${loadingPending ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
             </div>
 
-            {pendingForType.length === 0 ? (
+            {pendingError && <p className="text-red-400 text-xs mb-3">{pendingError}</p>}
+
+            {loadingPending ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-14 bg-gray-800 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : pendingVerifications.length === 0 ? (
               <div className="text-center py-6 text-gray-500">
                 <ClockIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No pending submissions</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {pendingForType.map((verification) => (
+                {pendingVerifications.map((verification) => (
                   <div
-                    key={`${verification.address}-${verification.submittedAt}`}
-                    className="flex items-center justify-between gap-2 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg hover:bg-slate-900/70 transition group"
+                    key={verification.id}
+                    className={`flex items-center justify-between gap-2 p-3 border rounded-lg hover:bg-slate-900/70 transition cursor-pointer ${
+                      selectedForAction === verification.id
+                        ? 'border-blue-500 bg-blue-900/10'
+                        : 'bg-slate-900/50 border-slate-700/50'
+                    }`}
+                    onClick={() => handleSelectPending(verification)}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-mono text-gray-300 truncate">{verification.address}</p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {new Date(verification.submittedAt).toLocaleString()}
+                      <p className="text-sm font-mono text-gray-300 truncate">
+                        {verification.user.walletAddress}
+                      </p>
+                      {verification.user.individualProfile && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {verification.user.individualProfile.firstName}{' '}
+                          {verification.user.individualProfile.lastName}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {new Date(verification.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <button
-                      onClick={() => handleSelectPending(verification)}
+                      onClick={(e) => { e.stopPropagation(); handleSelectPending(verification); }}
                       className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition whitespace-nowrap"
                     >
                       Select
-                    </button>
-                    <button
-                      onClick={() => handleRemovePending(verification.address)}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-red-400 rounded transition"
-                    >
-                      <TrashIcon className="w-4 h-4" />
                     </button>
                   </div>
                 ))}

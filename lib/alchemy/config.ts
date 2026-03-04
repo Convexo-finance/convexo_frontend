@@ -1,6 +1,6 @@
 import { createConfig, type AlchemyAccountsUIConfig, cookieStorage } from '@account-kit/react';
 import { alchemy, base, mainnet } from '@account-kit/infra';
-import { metaMask, coinbaseWallet, injected } from 'wagmi/connectors';
+import { metaMask, coinbaseWallet } from 'wagmi/connectors';
 
 const uiConfig: AlchemyAccountsUIConfig = {
   illustrationStyle: 'outline',
@@ -57,12 +57,9 @@ export const alchemyConfig = createConfig(
     enablePopupOauth: true,
     // These connectors are registered in Account Kit's internal wagmi instance.
     // metaMask() + coinbaseWallet() → show as named buttons in the modal.
-    // injected() → auto-detects any EIP-6963 wallet (Rabby, Phantom, etc.)
-    //   so they appear in "More wallets" even if not explicitly listed.
     connectors: [
       metaMask({ enableAnalytics: false }),
       coinbaseWallet({ appName: 'Convexo' }),
-      injected(),
     ],
   },
   uiConfig,

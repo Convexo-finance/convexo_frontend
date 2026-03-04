@@ -49,9 +49,9 @@ export function AdminDashboard() {
       setError('');
       try {
         const [usersRes, verRes, otcRes, ratesRes] = await Promise.all([
-          apiFetch<UsersResponse>('/admin/users?page=1&limit=1'),
-          apiFetch<VerificationsResponse>('/admin/verifications?status=PENDING&limit=1'),
-          apiFetch<OTCOrdersResponse>('/admin/otc/orders?status=PENDING&limit=1'),
+          apiFetch<UsersResponse>('/admin/users?offset=0&limit=1'),
+          apiFetch<VerificationsResponse>('/admin/verifications?status=PENDING&limit=1&offset=0'),
+          apiFetch<OTCOrdersResponse>('/admin/otc/orders?status=PENDING&limit=1&offset=0'),
           apiFetch<Rate[]>('/rates'),
         ]);
 
