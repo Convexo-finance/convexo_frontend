@@ -5,7 +5,7 @@ import { useAlchemyAccountContext, useSignerStatus, useSigner } from '@account-k
 import { useAccount as wagmiUseAccount, useSignMessage } from 'wagmi'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
-import { apiFetch, setToken, getToken, clearToken } from '../api/client'
+import { apiFetch, setToken, setRefreshToken, getToken, clearToken } from '../api/client'
 
 type AuthMethod =
   | 'EMAIL'
@@ -172,6 +172,7 @@ export function useAuth() {
       })
 
       setToken(result.accessToken)
+      setRefreshToken(result.refreshToken)
       setUser(result.user)
       setIsAuthenticated(true)
 

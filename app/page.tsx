@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AuthCard,
@@ -9,15 +9,15 @@ import {
   useAlchemyAccountContext,
 } from '@account-kit/react';
 import { useDisconnect } from '@/lib/wagmi/compat';
-import { useAccount } from '@/lib/wagmi/compat';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { address } = useAccount();
   const { isAuthenticated, isInitializing, isConnected, isSigningIn, error, signIn } = useAuth();
   const { isConnected: isSignerConnected, isInitializing: isSignerInitializing } = useSignerStatus();
+  const { onboardingStep } = useNavigation();
   const { logout } = useLogout();
   const { config: akConfig } = useAlchemyAccountContext();
   const { disconnect: disconnectEoa } = useDisconnect({ config: akConfig._internal.wagmiConfig });
@@ -54,17 +54,34 @@ export default function SignInPage() {
   }, [pageReady, isConnected, isAuthenticated, error, signIn]);
 
   // ── Redirect on auth ────────────────────────────────────────────
+  // This is the SINGLE source of truth for post-login routing.
+  // Uses replace() so the sign-in page is removed from browser history
+  // (prevents back-button bouncing).
   useEffect(() => {
-    if (isAuthenticated) router.push('/profile');
-  }, [isAuthenticated, router]);
+    if (!isAuthenticated) return;
+    // Wait until we know the onboarding step (null = still loading)
+    if (onboardingStep === null) return;
+    if (onboardingStep === 'NOT_STARTED' || onboardingStep === 'TYPE_SELECTED') {
+      router.replace('/onboarding');
+    } else {
+      router.replace('/profile');
+    }
+  }, [isAuthenticated, onboardingStep, router]);
 
-  // ── Disconnect everything → back to AuthCard ────────────────────
-  const handleDifferentAccount = useCallback(() => {
-    hasAutoSigned.current = false;
-    wasConnectedBefore.current = false;
-    if (isSignerConnected) logout();
-    disconnectEoa();
-  }, [isSignerConnected, logout, disconnectEoa]);
+  // ── Auto-reset on error: go back to AuthCard silently ───────────
+  useEffect(() => {
+    if (!error) return;
+    // Give a brief moment so the failure is logged, then reset
+    const t = setTimeout(() => {
+      hasAutoSigned.current = false;
+      wasConnectedBefore.current = false;
+      if (isSignerConnected) logout();
+      disconnectEoa();
+    }, 600);
+    return () => clearTimeout(t);
+  }, [error, isSignerConnected, logout, disconnectEoa]);
+
+
 
   // ── Loading ─────────────────────────────────────────────────────
   if (!pageReady) {
@@ -111,67 +128,9 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Error state */}
-        {isConnected && !isAuthenticated && !isSigningIn && error && (
-          <div className="rounded-2xl bg-[#0f1219] border border-red-800/30 p-6 shadow-2xl shadow-black/40 space-y-4">
-            {address && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50 w-fit mx-auto">
-                <div className="w-2 h-2 rounded-full bg-red-400" />
-                <span className="text-xs text-gray-400 font-mono">
-                  {address.slice(0, 6)}…{address.slice(-4)}
-                </span>
-              </div>
-            )}
-            <p className="text-red-400 text-sm text-center bg-red-500/10 rounded-lg px-3 py-2">
-              {error}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { hasAutoSigned.current = false; signIn(); }}
-                className="flex-1 px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors"
-              >
-                Try again
-              </button>
-              <button
-                onClick={handleDifferentAccount}
-                className="flex-1 px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-sm transition-colors"
-              >
-                Different account
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Error → auto-resets to AuthCard (handled by useEffect above) */}
 
-        {/* Connected, idle — fallback manual sign-in */}
-        {isConnected && !isAuthenticated && !isSigningIn && !error && (
-          <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-6 shadow-2xl shadow-black/40 space-y-4">
-            {address && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800/50 w-fit mx-auto">
-                <div className="w-2 h-2 rounded-full bg-green-400" />
-                <span className="text-xs text-gray-400 font-mono">
-                  {address.slice(0, 6)}…{address.slice(-4)}
-                </span>
-              </div>
-            )}
-            <div className="text-center">
-              <p className="text-white font-medium mb-1">Wallet connected</p>
-              <p className="text-gray-500 text-sm">Continue to verify ownership</p>
-            </div>
-            <button
-              onClick={signIn}
-              disabled={isSigningIn}
-              className="w-full px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
-            >
-              Continue to Convexo
-            </button>
-            <button
-              onClick={handleDifferentAccount}
-              className="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              Use a different account
-            </button>
-          </div>
-        )}
+        {/* Connected, idle — auto-SIWE will kick in */}
 
         <p className="text-center text-xs text-gray-600">
           Protocol v2.1 · Powered by Alchemy Account Kit

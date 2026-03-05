@@ -3,6 +3,7 @@
 import { useAccount } from '@/lib/wagmi/compat';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -18,6 +19,7 @@ import {
 
 export default function DigitalIDPage() {
   const { isConnected } = useAccount();
+  const { accountType } = useNavigation();
   const {
     hasPassportNFT,
     hasLPIndividualsNFT,
@@ -30,8 +32,21 @@ export default function DigitalIDPage() {
   // Calculate user tier - Tier 3 is Ecreditscoring NFTs
   const userTier = hasEcreditscoringNFT ? 3 : (hasLPIndividualsNFT || hasLPBusinessNFT) ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
 
+  // Determine which cards are relevant per accountType
+  // Individual: CONVEXO_PASSPORT + LP_INDIVIDUALS
+  // Business:   CONVEXO_PASSPORT + LP_BUSINESS + ECREDITSCORING
+  // null:       show all (safety fallback)
+  const isRelevant = (cardKey: string): boolean => {
+    if (!accountType) return true; // fallback: show all
+    if (cardKey === 'passport') return true; // always relevant
+    if (accountType === 'INDIVIDUAL') return cardKey === 'lp-individuals';
+    if (accountType === 'BUSINESS') return cardKey === 'lp-business' || cardKey === 'credit-score';
+    return true;
+  };
+
   const nftCards = [
     {
+      key: 'passport',
       name: 'Humanity',
       description: 'Verify your identity via ZK Passport',
       href: '/digital-id/humanity',
@@ -43,6 +58,7 @@ export default function DigitalIDPage() {
       gradient: 'from-emerald-600 to-teal-600',
     },
     {
+      key: 'lp-individuals',
       name: 'Limited Partner - Individuals',
       description: 'Individual KYC verification via Veriff',
       href: '/digital-id/limited-partner-individuals',
@@ -54,6 +70,7 @@ export default function DigitalIDPage() {
       gradient: 'from-blue-600 to-cyan-600',
     },
     {
+      key: 'lp-business',
       name: 'Limited Partner - Business',
       description: 'Business KYB verification via Sumsub',
       href: '/digital-id/limited-partner-business',
@@ -65,6 +82,7 @@ export default function DigitalIDPage() {
       gradient: 'from-purple-600 to-pink-600',
     },
     {
+      key: 'credit-score',
       name: 'Credit Score',
       description: 'AI-powered credit evaluation for vault creators',
       href: '/digital-id/credit-score',
@@ -148,14 +166,18 @@ export default function DigitalIDPage() {
 
           {/* NFT Cards */}
           <div className="space-y-6">
-            {nftCards.map((nft, index) => (
-              <Link key={nft.name} href={nft.href}>
-                <div className={`card p-6 flex items-start gap-6 cursor-pointer transition-all duration-300 hover:border-purple-500/50 ${
-                  nft.owned ? 'border-emerald-700/50 bg-emerald-900/5' : ''
+            {nftCards.map((nft, index) => {
+              const relevant = isRelevant(nft.key);
+
+              const cardContent = (
+                <div className={`card p-6 flex items-start gap-6 transition-all duration-300 ${
+                  !relevant ? 'opacity-40 cursor-default' :
+                  nft.owned ? 'border-emerald-700/50 bg-emerald-900/5 cursor-pointer hover:border-purple-500/50' :
+                  'cursor-pointer hover:border-purple-500/50'
                 }`}>
                   {/* NFT Image */}
                   <div className={`relative flex-shrink-0 w-32 h-32 rounded-2xl overflow-hidden ${
-                    nft.owned ? '' : 'opacity-50 grayscale'
+                    nft.owned && relevant ? '' : 'opacity-50 grayscale'
                   }`}>
                     <Image
                       src={nft.image}
@@ -163,7 +185,7 @@ export default function DigitalIDPage() {
                       fill
                       className="object-cover"
                     />
-                    {nft.owned && (
+                    {nft.owned && relevant && (
                       <div className="absolute -top-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
                         <CheckBadgeIcon className="w-5 h-5 text-white" />
                       </div>
@@ -177,7 +199,7 @@ export default function DigitalIDPage() {
                         <div className="flex items-center gap-3 mb-1">
                           <h3 className="text-xl font-semibold text-white">{nft.name}</h3>
                           <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            nft.owned
+                            nft.owned && relevant
                               ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700/50'
                               : 'bg-gray-800 text-gray-400 border border-gray-700'
                           }`}>
@@ -185,6 +207,9 @@ export default function DigitalIDPage() {
                           </span>
                         </div>
                         <p className="text-gray-400">{nft.description}</p>
+                        {!relevant && (
+                          <p className="text-xs text-amber-400/80 mt-1">Not available for your account type</p>
+                        )}
                       </div>
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${nft.gradient}`}>
                         <nft.icon className="w-6 h-6 text-white" />
@@ -209,7 +234,7 @@ export default function DigitalIDPage() {
                     {/* Status */}
                     <div className="mt-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {nft.owned ? (
+                        {nft.owned && relevant ? (
                           <>
                             <CheckBadgeIcon className="w-5 h-5 text-emerald-400" />
                             <span className="text-emerald-400 font-medium">Verified & Active</span>
@@ -217,19 +242,28 @@ export default function DigitalIDPage() {
                         ) : (
                           <>
                             <XCircleIcon className="w-5 h-5 text-gray-500" />
-                            <span className="text-gray-400">Not Verified</span>
+                            <span className="text-gray-400">{relevant ? 'Not Verified' : 'Not available'}</span>
                           </>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-purple-400 font-medium">
-                        <span>{nft.owned ? 'View Details' : 'Get Verified'}</span>
-                        <ArrowRightIcon className="w-4 h-4" />
-                      </div>
+                      {relevant && (
+                        <div className="flex items-center gap-2 text-purple-400 font-medium">
+                          <span>{nft.owned ? 'View Details' : 'Get Verified'}</span>
+                          <ArrowRightIcon className="w-4 h-4" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </Link>
-            ))}
+              );
+
+              // Relevant cards link to the verification page; irrelevant cards are non-interactive
+              return relevant ? (
+                <Link key={nft.key} href={nft.href}>{cardContent}</Link>
+              ) : (
+                <div key={nft.key}>{cardContent}</div>
+              );
+            })}
           </div>
 
           {/* Tier Progression Info */}

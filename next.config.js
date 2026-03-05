@@ -13,6 +13,21 @@ const nextConfig = {
         hostname: '*.mypinata.cloud',
         pathname: '/ipfs/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'nft-cdn.alchemy.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.alchemyapi.io',
+        pathname: '/**',
+      },
     ],
   },
   // Turbopack powers `next dev` (fast HMR, fast startup).

@@ -95,17 +95,6 @@ export default function ZKVerificationPage() {
     },
   }) as { data: boolean | undefined };
 
-  // Log identifier status for debugging
-  useEffect(() => {
-    if (identifierInput) {
-      console.log('🔍 Identifier Check:', {
-        uniqueIdentifier: identifierInput,
-        isUsed: identifierUsed,
-      });
-    }
-  }, [identifierInput, identifierUsed]);
-
-
   // Get verified identity if passport exists
   const { data: identity } = useReadContract({
     address: contracts?.CONVEXO_PASSPORT as `0x${string}`,
@@ -157,9 +146,6 @@ export default function ZKVerificationPage() {
 
       // Handle verification result
       onResult((callbackParams) => {
-        console.log('🔍 Full ZKPassport callback:', callbackParams);
-        console.log('📋 ZKPassport result structure (detailed):', JSON.stringify(callbackParams, null, 2));
-
         // Extract all possible parameters from the callback
         const { 
           verified, 
@@ -173,19 +159,6 @@ export default function ZKVerificationPage() {
           verificationData,
           zkProof
         } = callbackParams as any;
-
-        console.log('🔬 Analyzing proof data availability:', {
-          hasRawProof: !!rawProof,
-          hasPublicKey: !!cbPublicKey,
-          hasNullifier: !!cbNullifier,
-          hasAttestationId: !!cbAttestationId,
-          hasData: !!data,
-          hasVerificationData: !!verificationData,
-          hasZkProof: !!zkProof,
-          dataKeys: data ? Object.keys(data) : [],
-          verificationDataKeys: verificationData ? Object.keys(verificationData) : [],
-          zkProofKeys: zkProof ? Object.keys(zkProof) : []
-        });
 
         setIsGeneratingProof(false);
         setVerificationUrl(null);
@@ -205,17 +178,8 @@ export default function ZKVerificationPage() {
             result?.['gte_age_18']?.passed ??     // Path 6: concatenated key
             false;
 
-          console.log('Age verification checks:', {
-            'result.age.gte.result': result?.age?.gte?.result,
-            'result.age.gte.passed': result?.age?.gte?.passed,
-            'result.gte.age.passed': result?.gte?.age?.passed,
-            'result.age.passed': result?.age?.passed,
-            'result.gte.passed': result?.gte?.passed,
-            'result[gte_age_18].passed': result?.['gte_age_18']?.passed,
-            'Final isOver18': isOver18
-          });
+          // Try to find proof data in various locations
 
-          // Try to find proof data in various locations (for debugging/audit trail)
           let proofData = null;
           
           // Check multiple possible locations for proof data
@@ -228,22 +192,9 @@ export default function ZKVerificationPage() {
             result?.proof
           ].filter(Boolean);
 
-          console.log('🔍 Searching for proof data in callback:', {
-            possibleProofSources: possibleProofSources.length,
-            sources: possibleProofSources.map((p, i) => ({ 
-              index: i, 
-              hasPublicKey: !!(p?.publicKey || p?.user?.publicKey),
-              hasNullifier: !!(p?.nullifier || p?.user?.nullifier),
-              hasProof: !!(p?.proof || p?.encodedProof || p?.zkProof),
-              hasAttestationId: !!(p?.attestationId || p?.attestationID),
-              keys: p ? Object.keys(p) : []
-            }))
-          });
-
           // Try to extract proof parameters from the first available source
           if (possibleProofSources.length > 0) {
             proofData = possibleProofSources[0];
-            console.log('📦 Using proof source:', proofData);
           }
 
           // Validate required proofs
@@ -260,8 +211,7 @@ export default function ZKVerificationPage() {
           }
 
           if (!isOver18) {
-            console.error('Age verification failed. Result object:', result);
-            setError(`Age verification failed. Must be 18 or older. Debug: Check console for result structure.`);
+            setError('Age verification failed. Must be 18 or older.');
             setStep('idle');
             return;
           }
@@ -273,16 +223,6 @@ export default function ZKVerificationPage() {
             [uid, BigInt(timestamp), true]
           );
           const personhoodProof = keccak256(personhoodProofData);
-          
-          console.log('✅ CONVEXO PASSPORT Verification successful:', { 
-            uniqueIdentifier: uid,
-            personhoodProof,
-            kycVerified: sanctionsPassed,
-            faceMatchPassed: facematchPassed,
-            sanctionsPassed,
-            isOver18,
-            hasProofData: !!proofData
-          });
           
           // Prepare ZK proof parameters if available
           let zkProofParams = undefined;
@@ -301,17 +241,11 @@ export default function ZKVerificationPage() {
                 scope: keccak256(toBytes(APP_SCOPE_STRING)),
                 currentDate: BigInt(timestamp)
               };
-              console.log('🔐 Successfully extracted ZK proof parameters');
             } else {
-              console.warn('⚠️ Partial proof data available but missing required fields:', {
-                hasPublicKey: !!publicKey,
-                hasNullifier: !!nullifier,
-                hasProof: !!proof,
-                hasAttestationId: !!attestationId
-              });
+              // Partial proof data available but missing required fields
             }
           } else {
-            console.warn('⚠️ No proof data found in ZKPassport callback. This may indicate that the SDK is not configured for on-chain verification.');
+            // No proof data found in ZKPassport callback
           }
           
           // Store the passport traits privately
@@ -335,7 +269,6 @@ export default function ZKVerificationPage() {
         }
       });
     } catch (err: any) {
-      console.error('Verification error:', err);
       setError(err.message || 'Failed to start ZKPassport verification.');
       setStep('idle');
       setIsGeneratingProof(false);
@@ -397,13 +330,7 @@ export default function ZKVerificationPage() {
         return;
       }
 
-      console.log('🔐 Minting CONVEXO PASSPORT:', {
-        uniqueIdentifier: identifierInput,
-        identifierUsed,
-      });
-
       // Upload NFT metadata to Pinata IPFS
-      console.log('📤 Uploading NFT metadata to Pinata IPFS...');
       
       const traits: PinataPassportTraits = {
         kycVerified: passportTraits.kycVerified,
@@ -419,9 +346,7 @@ export default function ZKVerificationPage() {
       let ipfsMetadataHash: string;
       try {
         ipfsMetadataHash = await uploadMetadataToPinata(metadata);
-        console.log('✅ Metadata uploaded to IPFS:', ipfsMetadataHash);
       } catch (uploadError) {
-        console.error('Failed to upload metadata to Pinata:', uploadError);
         setError('Failed to upload NFT metadata to IPFS. Please try again.');
         setStep('verified');
         return;
@@ -445,7 +370,6 @@ export default function ZKVerificationPage() {
         ],
       });
     } catch (err: any) {
-      console.error('Mint error:', err);
       setError(`Failed to prepare mint: ${err.message}`);
       setStep('verified');
     }

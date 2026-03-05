@@ -5,6 +5,8 @@ import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { useUserReputation } from '@/lib/hooks/useUserReputation';
+import { useOnboarding, type AccountType, type OnboardingStep } from '@/lib/hooks/useOnboarding';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 /**
  * Tier System per CONTRACTS_REFERENCE.md v3.0
@@ -47,6 +49,11 @@ export interface NavigationState {
   userTier: UserTier;
   isAdmin: boolean;
   
+  // Onboarding / Account Type
+  accountType: AccountType | null;
+  onboardingStep: OnboardingStep | null;
+  isOnboardingComplete: boolean;
+  
   // NFT Status
   nftStatus: NFTStatus;
   
@@ -70,6 +77,19 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
+  const { isAuthenticated } = useAuth();
+
+  // Only fetch onboarding status when authenticated (JWT present).
+  // Passing isAuthenticated ensures the hook re-fetches after sign-in
+  // and resets after sign-out — fixing the race where the hook ran
+  // once on mount (before JWT existed) and never re-fetched.
+  const {
+    step: onboardingStep,
+    accountType,
+    isComplete: isOnboardingComplete,
+    isLoading: isOnboardingLoading,
+    refetch: refetchOnboarding,
+  } = useOnboarding(isAuthenticated);
   
   const {
     // Tier 1
@@ -88,6 +108,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     canAccessLPPools: nftCanAccessLPPools,
     canRequestCreditScore: nftCanRequestCreditScore,
     canCreateVaults: nftCanCreateVaults,
+    isLoading: isNFTLoading,
     refetch: refetchNFT,
   } = useNFTBalance();
   
@@ -131,7 +152,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const refetchAll = useCallback(() => {
     refetchNFT();
     refetchReputation();
-  }, [refetchNFT, refetchReputation]);
+    refetchOnboarding();
+  }, [refetchNFT, refetchReputation, refetchOnboarding]);
 
   const state = useMemo<NavigationState>(() => ({
     isConnected,
@@ -140,11 +162,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     chainName: contracts?.CHAIN_NAME ?? 'Unknown',
     userTier,
     isAdmin,
+    accountType: isAuthenticated ? accountType : null,
+    onboardingStep: isAuthenticated ? onboardingStep : null,
+    isOnboardingComplete: isAuthenticated ? isOnboardingComplete : false,
     nftStatus,
     ...accessControl,
-    isLoading: false,
+    isLoading: isAuthenticated ? (isOnboardingLoading || isNFTLoading) : false,
     refetchAll,
-  }), [isConnected, address, chainId, contracts, userTier, isAdmin, nftStatus, accessControl, refetchAll]);
+  }), [isConnected, address, chainId, contracts, userTier, isAdmin, accountType, onboardingStep, isOnboardingComplete, isAuthenticated, isOnboardingLoading, isNFTLoading, nftStatus, accessControl, refetchAll]);
 
   return (
     <NavigationContext.Provider value={state}>

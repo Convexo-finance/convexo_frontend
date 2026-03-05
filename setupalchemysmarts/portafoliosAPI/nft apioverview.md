@@ -1,0 +1,12 @@
+# NFT API Overview
+
+> Go from zero to hero with the Alchemy NFT API. Learn how to query NFT data, then dive into some fun tutorials!
+
+## [NFT API](/docs/reference/nft-api-quickstart)
+
+Alchemy's [NFT API](/docs/reference/nft-api) allows you to quickly get all the information you need to know about NFTs from the blockchain.
+
+Rather than searching, indexing, and storing data yourself - you can now make one request to fetch specific NFT information for both [ERC-721 and ERC-1155 tokens](https://www.alchemy.com/blog/comparing-erc-721-to-erc-1155), like:
+
+* All NFTs owned by an address
+* Metadata and attributes for a specific NFT token

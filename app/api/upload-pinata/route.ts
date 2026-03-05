@@ -88,7 +88,6 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (groupError) {
-        console.warn('Failed to create/get group, continuing without group:', groupError);
         // Continue without group organization
       }
     }
@@ -134,7 +133,6 @@ export async function POST(request: NextRequest) {
       } catch {
         errorDetails = { message: await pinataResponse.text() };
       }
-      console.error('Pinata error:', errorDetails);
       return NextResponse.json(
         { 
           error: 'Failed to upload to Pinata', 
@@ -146,7 +144,6 @@ export async function POST(request: NextRequest) {
     }
 
     const pinataData = await pinataResponse.json();
-    console.log('Pinata upload response (full):', JSON.stringify(pinataData, null, 2));
     
     // Pinata v3 API response structure can vary
     // Try multiple possible locations for the CID
@@ -170,7 +167,6 @@ export async function POST(request: NextRequest) {
     
     // If CID is not in immediate response, try to fetch it by file ID
     if (!ipfsHash && pinataData.id) {
-      console.log('CID not in immediate response, attempting to fetch by file ID:', pinataData.id);
       try {
         // Wait a brief moment for Pinata to process
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -188,18 +184,14 @@ export async function POST(request: NextRequest) {
         
         if (fileDetailsResponse.ok) {
           const fileDetails = await fileDetailsResponse.json();
-          console.log('File details response:', JSON.stringify(fileDetails, null, 2));
           ipfsHash = fileDetails.cid || fileDetails.IpfsHash || fileDetails.ipfsHash || null;
         }
       } catch (fetchError) {
-        console.warn('Failed to fetch file details by ID:', fetchError);
+        // silently handle
       }
     }
     
     if (!ipfsHash) {
-      console.error('Pinata response missing CID. Full response:', JSON.stringify(pinataData, null, 2));
-      console.error('Response keys:', Object.keys(pinataData));
-      
       // Return a more helpful error with the actual response structure
       return NextResponse.json(
         { 
@@ -215,8 +207,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    
-    console.log('Successfully extracted CID:', ipfsHash);
     
     // Construct gateway URL (use dedicated gateway if provided, otherwise use Convexo gateway)
     const gatewayUrl = pinataGateway.includes('.') 
@@ -238,7 +228,6 @@ export async function POST(request: NextRequest) {
       gateway: pinataGateway,
     });
   } catch (error) {
-    console.error('Upload error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

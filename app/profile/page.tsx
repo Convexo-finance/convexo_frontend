@@ -3,6 +3,7 @@
 import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { getAddressExplorerLink } from '@/lib/contracts/addresses';
 import Image from 'next/image';
 import { apiFetch, getToken } from '@/lib/api/client';
@@ -248,12 +249,16 @@ export default function ProfilePage() {
   const { isConnected, address, isReconnecting } = useAccount();
   const chainId = useChainId();
   const { hasPassportNFT, hasLPIndividualsNFT, hasLPBusinessNFT, hasEcreditscoringNFT, hasActivePassport, userTier } = useNFTBalance();
+  const { accountType } = useNavigation();
   const [copied, setCopied] = useState(false);
   const [contact, setContact] = useState<ContactInfo>(defaultContact);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ContactInfo>(defaultContact);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Identity info from GET /profile (read-only, set during onboarding)
+  const [identity, setIdentity] = useState<Record<string, string | null | undefined>>({});
 
   // Load profile from backend
   // Uses JWT (getToken) rather than requiring an address so the profile renders
@@ -273,6 +278,8 @@ export default function ProfilePage() {
         };
         setContact(info);
         setDraft(info);
+        // Store full profile data for read-only identity section
+        setIdentity(data as Record<string, string | null | undefined>);
       } catch {
         // Profile may not exist yet — silently fallback to defaults
       }
@@ -396,6 +403,133 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* Read-only Identity Section — shows onboarding data */}
+          {accountType === 'INDIVIDUAL' && (identity.firstName || identity.lastName) && (
+            <div className="card">
+              <div className="flex items-center gap-2 mb-5">
+                <UserIcon className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-lg font-semibold text-white">Personal Info</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/30 text-emerald-400 border border-emerald-700/50 ml-auto">Individual</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(identity.firstName || identity.lastName) && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <UserIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Full Name</p>
+                      <p className="text-white text-sm">{String(identity.firstName || '')} {String(identity.lastName || '')}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.dateOfBirth && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">📅</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Date of Birth</p>
+                      <p className="text-white text-sm">{String(identity.dateOfBirth)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.nationality && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">🌍</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Nationality</p>
+                      <p className="text-white text-sm">{String(identity.nationality)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.countryOfResidence && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">📍</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Country of Residence</p>
+                      <p className="text-white text-sm">{String(identity.countryOfResidence)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {accountType === 'BUSINESS' && identity.companyName && (
+            <div className="card">
+              <div className="flex items-center gap-2 mb-5">
+                <UserIcon className="w-5 h-5 text-blue-400" />
+                <h2 className="text-lg font-semibold text-white">Company Info</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-400 border border-blue-700/50 ml-auto">Business</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {identity.companyName && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">🏢</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Company Name</p>
+                      <p className="text-white text-sm">{String(identity.companyName)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.legalName && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">📜</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Legal Name</p>
+                      <p className="text-white text-sm">{String(identity.legalName)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.taxId && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">🔢</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Tax ID</p>
+                      <p className="text-white text-sm">{String(identity.taxId)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.registrationNumber && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">#</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Registration #</p>
+                      <p className="text-white text-sm">{String(identity.registrationNumber)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.industry && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">🏭</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Industry</p>
+                      <p className="text-white text-sm">{String(identity.industry)}</p>
+                    </div>
+                  </div>
+                )}
+                {identity.companySize && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="w-4 h-4 text-gray-500 flex-shrink-0 text-center text-xs">📊</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Size</p>
+                      <p className="text-white text-sm">{String(identity.companySize)}</p>
+                    </div>
+                  </div>
+                )}
+                {(identity.repFirstName || identity.repLastName) && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg sm:col-span-2">
+                    <UserIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-gray-500">Representative</p>
+                      <p className="text-white text-sm">
+                        {String(identity.repFirstName || '')} {String(identity.repLastName || '')}
+                        {identity.repTitle ? ` — ${String(identity.repTitle)}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Contact & Social Media */}
           <div className="card">
