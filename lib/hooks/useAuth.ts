@@ -172,15 +172,31 @@ export function useAuth() {
           'Signing timed out — try reloading the page',
         )
       } else {
-        // EOA: use raw EIP-1193 personal_sign.
+        // EOA: sign via EIP-1193 personal_sign directly.
         //
-        // We do NOT use wagmi's signMessage / getConnectorClient here because
-        // both call connector.getChainId() internally, which is not implemented
-        // on Account Kit's wrapped connectors → "getChainId is not a function".
+        // wagmi's signMessage AND getConnectorClient both call connector.getChainId()
+        // which Account Kit's internal connectors don't implement (plain state objects,
+        // not class instances). connector.getProvider() on the state object also fails.
         //
-        // personal_sign adds the "\x19Ethereum Signed Message:\n" prefix
-        // automatically. viem's verifyMessage on the backend expects exactly this.
-        const provider = await (connector as { getProvider(): Promise<Eip1193Provider> }).getProvider()
+        // Fix: look up the *live* connector instance from Account Kit's wagmi registry
+        // (which retains prototype methods), then fall back to window.ethereum.
+        const akConfig = config._internal.wagmiConfig
+        const uid = akConfig.state.current
+        const connId = uid
+          ? (akConfig.state.connections as Map<string, { connector: { id: string } }>)
+              .get(uid)?.connector?.id
+          : connector?.id
+
+        const live = connId
+          ? (akConfig.connectors as unknown as Array<{ id: string; getProvider?(): Promise<Eip1193Provider> }>)
+              .find((c) => c.id === connId)
+          : undefined
+
+        const provider: Eip1193Provider =
+          (live?.getProvider ? await live.getProvider() : null) ??
+          (typeof window !== 'undefined' ? (window as { ethereum?: Eip1193Provider }).ethereum ?? null : null) ??
+          (() => { throw new Error('No wallet provider — please reconnect your wallet') })()
+
         signature = await withTimeout(
           provider.request({ method: 'personal_sign', params: [toMsgHex(message), signerAddress] })
             .then((s) => s as string),
