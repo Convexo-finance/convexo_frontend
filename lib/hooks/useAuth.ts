@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAlchemyAccountContext, useSignerStatus, useSigner } from '@account-kit/react'
-import { useAccount as wagmiUseAccount, useSignMessage } from 'wagmi'
+import { useAccount as wagmiUseAccount } from 'wagmi'
+import { getConnectorClient } from '@wagmi/core'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
 import { apiFetch, setToken, setRefreshToken, getToken, clearToken } from '../api/client'
@@ -77,8 +78,6 @@ export function useAuth() {
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  const { signMessageAsync } = useSignMessage({ config: config._internal.wagmiConfig })
 
   // Validate JWT on mount — call /users/me to restore user object
   useEffect(() => {
@@ -163,8 +162,14 @@ export function useAuth() {
           'Signing timed out — try reloading the page',
         )
       } else {
+        // Use EIP-1193 personal_sign directly — bypasses wagmi's
+        // connector.getChainId() call that fails on Account Kit connectors.
+        const client = await getConnectorClient(config._internal.wagmiConfig)
+        const msgHex = `0x${Array.from(new TextEncoder().encode(message))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')}` as `0x${string}`
         signature = await withTimeout(
-          signMessageAsync({ message }),
+          client.request({ method: 'personal_sign', params: [msgHex, signerAddress] }) as Promise<string>,
           60_000,
           'Wallet sign request timed out — check your wallet and try again',
         )
@@ -198,7 +203,7 @@ export function useAuth() {
     } finally {
       setIsSigningIn(false)
     }
-  }, [isSignerConnected, signer, eoaAddress, connector, signMessageAsync])
+  }, [isSignerConnected, signer, eoaAddress, connector, config])
 
   const signOut = useCallback(async () => {
     try {
