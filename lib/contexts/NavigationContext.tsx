@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useAccount, useChainId } from '@/lib/wagmi/compat';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
@@ -149,11 +149,16 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     hasEcreditscoring: hasEcreditscoringNFT,
   }), [hasPassportNFT, hasActivePassport, hasLPIndividualsNFT, hasLPBusinessNFT, hasAnyLPNFT, hasEcreditscoringNFT]);
 
+  // Stable ref always holds the latest refetch functions without causing
+  // the state memo to recreate on every refetch cycle.
+  const latestRefetch = useRef({ refetchNFT, refetchReputation, refetchOnboarding });
+  latestRefetch.current = { refetchNFT, refetchReputation, refetchOnboarding };
+
   const refetchAll = useCallback(() => {
-    refetchNFT();
-    refetchReputation();
-    refetchOnboarding();
-  }, [refetchNFT, refetchReputation, refetchOnboarding]);
+    latestRefetch.current.refetchNFT();
+    latestRefetch.current.refetchReputation();
+    latestRefetch.current.refetchOnboarding();
+  }, []); // stable — never changes reference
 
   const state = useMemo<NavigationState>(() => ({
     isConnected,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { useSignerStatus } from '@account-kit/react';
@@ -25,6 +25,7 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
   const { isInitializing: isSignerInit } = useSignerStatus();
   const { onboardingStep } = useNavigation();
   const router = useRouter();
+  const pathname = usePathname();
   const hasRedirected = useRef(false);
 
   const loading = isInitializing || isSignerInit;
@@ -38,16 +39,20 @@ export default function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, loading, router]);
 
-  // Redirect users who haven't completed onboarding (once)
+  // Redirect users who haven't completed onboarding (once).
+  // Skip if already on /onboarding — replacing the same route remounts
+  // the page and resets wizard state, causing an infinite loop.
   useEffect(() => {
     if (loading || hasRedirected.current) return;
     if (!isAuthenticated) return;
     if (onboardingStep === null) return; // still loading
     if (onboardingStep === 'NOT_STARTED' || onboardingStep === 'TYPE_SELECTED') {
-      hasRedirected.current = true;
-      router.replace('/onboarding');
+      if (!pathname.startsWith('/onboarding')) {
+        hasRedirected.current = true;
+        router.replace('/onboarding');
+      }
     }
-  }, [loading, isAuthenticated, onboardingStep, router]);
+  }, [loading, isAuthenticated, onboardingStep, pathname, router]);
 
   // ── Render gates ───────────────────────────────────────────────
 
