@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAlchemyAccountContext, useSignerStatus, useSigner } from '@account-kit/react'
 import { useAccount as wagmiUseAccount } from 'wagmi'
-import { getConnectorClient } from '@wagmi/core'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
 import { apiFetch, setToken, setRefreshToken, getToken, clearToken } from '../api/client'
@@ -25,7 +24,6 @@ export interface AuthUser {
   isAdmin: boolean
 }
 
-// Raw shape returned by GET /users/me (includes extra nested objects)
 interface UserMeResponse {
   id: string
   walletAddress: string
@@ -41,12 +39,17 @@ interface VerifyResponse {
   user: AuthUser
 }
 
+// Raw EIP-1193 provider interface
+type Eip1193Provider = {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>
+}
+
 function detectEoaAuthMethod(connectorName?: string): AuthMethod {
   if (!connectorName) return 'EXTERNAL_EOA'
-  const name = connectorName.toLowerCase()
-  if (name.includes('metamask')) return 'METAMASK'
-  if (name.includes('coinbase')) return 'COINBASE'
-  if (name.includes('walletconnect') || name.includes('wallet connect')) return 'WALLET_CONNECT'
+  const n = connectorName.toLowerCase()
+  if (n.includes('metamask')) return 'METAMASK'
+  if (n.includes('coinbase')) return 'COINBASE'
+  if (n.includes('walletconnect') || n.includes('wallet connect')) return 'WALLET_CONNECT'
   return 'EXTERNAL_EOA'
 }
 
@@ -61,12 +64,27 @@ async function detectSignerAuthMethod(signer: unknown): Promise<AuthMethod> {
   return 'EMAIL'
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, msg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(msg)), ms)),
+  ])
+}
+
+// Encode string to hex bytes for EIP-1193 personal_sign
+function toMsgHex(str: string): `0x${string}` {
+  return `0x${Array.from(new TextEncoder().encode(str))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')}` as `0x${string}`
+}
+
 export function useAuth() {
   const { isConnected: isSignerConnected } = useSignerStatus()
   const { config } = useAlchemyAccountContext()
   const signer = useSigner()
 
-  // External EOA wallet connected via Account Kit's internal wagmi instance
+  // External EOA wallet (MetaMask / WalletConnect / Coinbase) connected via
+  // Account Kit's internal wagmi instance — NOT the app-level WagmiProvider.
   const {
     address: eoaAddress,
     isConnected: isEoaConnected,
@@ -79,7 +97,7 @@ export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Validate JWT on mount — call /users/me to restore user object
+  // Restore session from JWT on mount
   useEffect(() => {
     async function restoreAuth() {
       const token = getToken()
@@ -118,26 +136,19 @@ export function useAuth() {
       let authMethod: AuthMethod
 
       if (isSignerConnected && signer) {
-        // AlchemySigner (email / passkey / Google) — sign with embedded EOA
+        // ── Alchemy embedded signer (email / passkey / Google) ─────────────
         signerAddress = (await (signer as { getAddress(): Promise<string> }).getAddress()) as Address
         authMethod = await detectSignerAuthMethod(signer)
-      } else if (eoaAddress) {
-        // External wallet (MetaMask, WalletConnect, Coinbase, etc.)
+      } else if (eoaAddress && connector) {
+        // ── External EOA (MetaMask / WalletConnect / Coinbase) ─────────────
         signerAddress = eoaAddress as Address
-        // Defensive: connector may be undefined or not have .name
-        let connectorName: string | undefined = undefined;
-        if (connector && typeof connector === 'object' && 'name' in connector) {
-          connectorName = (connector as { name?: string }).name;
-        }
-        authMethod = detectEoaAuthMethod(connectorName);
+        authMethod = detectEoaAuthMethod((connector as { name?: string }).name)
       } else {
         throw new Error('No wallet connected')
       }
 
       // 1. Get nonce from backend
-      const { nonce } = await apiFetch<{ nonce: string }>(
-        `/auth/nonce?address=${signerAddress}`,
-      )
+      const { nonce } = await apiFetch<{ nonce: string }>(`/auth/nonce?address=${signerAddress}`)
 
       // 2. Build EIP-4361 SIWE message
       const message = createSiweMessage({
@@ -151,43 +162,37 @@ export function useAuth() {
       })
 
       // 3. Sign the message
-      const withTimeout = <T,>(promise: Promise<T>, ms: number, msg: string): Promise<T> =>
-        Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(msg)), ms))])
-
       let signature: string
+
       if (isSignerConnected && signer) {
+        // Alchemy AlchemySigner handles the EIP-191 prefix internally
         signature = await withTimeout(
           (signer as { signMessage(msg: string): Promise<string> }).signMessage(message),
           30_000,
           'Signing timed out — try reloading the page',
         )
       } else {
-        // Use EIP-1193 personal_sign directly — bypasses wagmi's
-        // connector.getChainId() call that fails on Account Kit connectors.
-        const client = await getConnectorClient(config._internal.wagmiConfig)
-        const msgHex = `0x${Array.from(new TextEncoder().encode(message))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('')}` as `0x${string}`
+        // EOA: use raw EIP-1193 personal_sign.
+        //
+        // We do NOT use wagmi's signMessage / getConnectorClient here because
+        // both call connector.getChainId() internally, which is not implemented
+        // on Account Kit's wrapped connectors → "getChainId is not a function".
+        //
+        // personal_sign adds the "\x19Ethereum Signed Message:\n" prefix
+        // automatically. viem's verifyMessage on the backend expects exactly this.
+        const provider = await (connector as { getProvider(): Promise<Eip1193Provider> }).getProvider()
         signature = await withTimeout(
-          client.request({ method: 'personal_sign', params: [msgHex, signerAddress] }) as Promise<string>,
+          provider.request({ method: 'personal_sign', params: [toMsgHex(message), signerAddress] })
+            .then((s) => s as string),
           60_000,
           'Wallet sign request timed out — check your wallet and try again',
         )
       }
 
-      // 4. Verify with backend and receive JWT
+      // 4. Verify with backend — receive JWT
       const result = await apiFetch<VerifyResponse>('/auth/verify', {
         method: 'POST',
-        body: JSON.stringify({
-          message,
-          signature,
-          address: signerAddress,
-          chainId: 8453,
-          authMethod,
-          // With EIP-7702, the signer EOA delegates to a smart account at the
-          // same address — no separate smartAccount field needed. The backend
-          // uses signerAddress as the canonical wallet identity.
-        }),
+        body: JSON.stringify({ message, signature, address: signerAddress, chainId: 8453, authMethod }),
       })
 
       setToken(result.accessToken)
@@ -195,34 +200,26 @@ export function useAuth() {
       setUser(result.user)
       setIsAuthenticated(true)
 
-      // Fire-and-forget: warm the backend reputation cache after login.
-      // We do NOT await this — it must never block or delay sign-in.
+      // Fire-and-forget: warm the reputation cache after login
       apiFetch('/reputation/sync', { method: 'POST' }).catch(() => {})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed')
     } finally {
       setIsSigningIn(false)
     }
-  }, [isSignerConnected, signer, eoaAddress, connector, config])
+  }, [isSignerConnected, signer, eoaAddress, connector])
 
   const signOut = useCallback(async () => {
     try {
-      if (getToken()) {
-        await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
-      }
+      if (getToken()) await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
     } finally {
       clearToken()
       setIsAuthenticated(false)
       setUser(null)
-
-      // Clear stale Alchemy / wagmi cookies so next visit starts fresh
+      // Clear stale Alchemy / wagmi cookies
       document.cookie.split(';').forEach((c) => {
         const name = c.split('=')[0].trim()
-        if (
-          name.startsWith('alchemy') ||
-          name.startsWith('aa-') ||
-          name.startsWith('wagmi')
-        ) {
+        if (name.startsWith('alchemy') || name.startsWith('aa-') || name.startsWith('wagmi')) {
           document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
         }
       })
