@@ -38,7 +38,6 @@ interface ConvexoPassportTraits {
   uniqueIdentifier: string;
   personhoodProof: string;
   kycVerified: boolean;
-  faceMatchPassed: boolean;
   sanctionsPassed: boolean;
   isOver18: boolean;
   zkPassportTimestamp: number;
@@ -132,14 +131,12 @@ export default function ZKVerificationPage() {
       });
 
       // Request ONLY what's needed for the NFT traits:
-      // - Face match: Proof of Personhood
       // - Sanctions: KYC Compliance
       // - Age: Over 18 verification
       // NO personal data disclosure (name, nationality, birthdate stay private)
       const { url, onResult } = queryBuilder
         .gte('age', 18)     // Age verification for isOver18
-        .sanctions()        // KYC - Sanctions screening  
-        .facematch('strict') // Proof of Personhood - Biometric verification
+        .sanctions()        // KYC - Sanctions screening
         .done();
 
       setVerificationUrl(url);
@@ -165,7 +162,6 @@ export default function ZKVerificationPage() {
 
         if (verified) {
           // Extract verification results
-          const facematchPassed = result?.facematch?.passed ?? false;
           const sanctionsPassed = result?.sanctions?.passed ?? false;
 
           // Try multiple possible paths for age verification result
@@ -198,12 +194,6 @@ export default function ZKVerificationPage() {
           }
 
           // Validate required proofs
-          if (!facematchPassed) {
-            setError('Proof of Personhood failed. Face verification did not pass.');
-            setStep('idle');
-            return;
-          }
-
           if (!sanctionsPassed) {
             setError('KYC verification failed. Sanctions check did not pass.');
             setStep('idle');
@@ -253,7 +243,6 @@ export default function ZKVerificationPage() {
             uniqueIdentifier: uid,
             personhoodProof: personhoodProof,
             kycVerified: sanctionsPassed,
-            faceMatchPassed: facematchPassed,
             sanctionsPassed: sanctionsPassed,
             isOver18: isOver18,
             zkPassportTimestamp: timestamp,
@@ -301,8 +290,8 @@ export default function ZKVerificationPage() {
       return;
     }
 
-    if (!passportTraits.faceMatchPassed || !passportTraits.sanctionsPassed) {
-      setError('Required proofs not verified. Please complete verification again.');
+    if (!passportTraits.sanctionsPassed) {
+      setError('KYC verification not complete. Please complete verification again.');
       return;
     }
 
@@ -334,7 +323,6 @@ export default function ZKVerificationPage() {
       
       const traits: PinataPassportTraits = {
         kycVerified: passportTraits.kycVerified,
-        faceMatchPassed: passportTraits.faceMatchPassed,
         sanctionsPassed: passportTraits.sanctionsPassed,
         isOver18: passportTraits.isOver18,
       };
@@ -365,7 +353,6 @@ export default function ZKVerificationPage() {
           personhoodProofBytes32,
           passportTraits.sanctionsPassed,
           passportTraits.isOver18,
-          passportTraits.faceMatchPassed,
           ipfsMetadataHash
         ],
       });
@@ -407,7 +394,6 @@ export default function ZKVerificationPage() {
     zkPassportTimestamp: bigint;
     isActive: boolean;
     kycVerified: boolean;
-    faceMatchPassed: boolean;
     sanctionsPassed: boolean;
     isOver18: boolean;
   }
@@ -480,16 +466,6 @@ export default function ZKVerificationPage() {
             </h3>
             
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <FingerPrintIcon className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Proof of Personhood</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {identityData.faceMatchPassed ? '✓ Verified' : '✗ Not Verified'}
-                  </p>
-                </div>
-              </div>
-              
               <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <ShieldCheckIcon className="h-8 w-8 text-emerald-500" />
                 <div>
@@ -717,16 +693,6 @@ export default function ZKVerificationPage() {
             {/* Verification Checklist Before Minting */}
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 space-y-2">
               <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Final Verification Status:</p>
-              <div className="flex items-center gap-2">
-                {passportTraits.faceMatchPassed ? (
-                  <span className="text-emerald-600 dark:text-emerald-400">✓</span>
-                ) : (
-                  <span className="text-red-600 dark:text-red-400">✗</span>
-                )}
-                <span className={passportTraits.faceMatchPassed ? 'text-gray-700 dark:text-gray-300' : 'text-red-600 dark:text-red-400'}>
-                  Proof of Personhood
-                </span>
-              </div>
               <div className="flex items-center gap-2">
                 {passportTraits.sanctionsPassed ? (
                   <span className="text-emerald-600 dark:text-emerald-400">✓</span>

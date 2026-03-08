@@ -88,12 +88,6 @@ export function useUserReputation() {
       {
         address: contracts.REPUTATION_MANAGER,
         abi: ReputationManagerABI,
-        functionName: 'canCreateTreasury',
-        args: [address],
-      },
-      {
-        address: contracts.REPUTATION_MANAGER,
-        abi: ReputationManagerABI,
         functionName: 'canInvestInVaults',
         args: [address],
       },
@@ -152,17 +146,16 @@ export function useUserReputation() {
   // Parse details: [tier, passportBalance, lpIndividualsBalance, lpBusinessBalance, ecreditscoringBalance]
   const parsedDetails = details as [number, bigint, bigint, bigint, bigint] | undefined;
 
-  // Parse access control results
+  // Parse access control results (v3.17: canCreateTreasury removed from contract)
   const canAccessLPPools = accessData?.[0]?.result === true;
-  const canCreateTreasury = accessData?.[1]?.result === true;
-  const canInvestInVaults = accessData?.[2]?.result === true;
-  const canRequestCreditScore = accessData?.[3]?.result === true;
-  const canCreateVaults = accessData?.[4]?.result === true;
-  const holdsPassport = accessData?.[5]?.result === true;
-  const holdsLPIndividuals = accessData?.[6]?.result === true;
-  const holdsLPBusiness = accessData?.[7]?.result === true;
-  const holdsAnyLP = accessData?.[8]?.result === true;
-  const holdsEcreditscoring = accessData?.[9]?.result === true;
+  const canInvestInVaults = accessData?.[1]?.result === true;
+  const canRequestCreditScore = accessData?.[2]?.result === true;
+  const canCreateVaults = accessData?.[3]?.result === true;
+  const holdsPassport = accessData?.[4]?.result === true;
+  const holdsLPIndividuals = accessData?.[5]?.result === true;
+  const holdsLPBusiness = accessData?.[6]?.result === true;
+  const holdsAnyLP = accessData?.[7]?.result === true;
+  const holdsEcreditscoring = accessData?.[8]?.result === true;
 
   // Build reputation object
   const reputation: UserReputation | null = address ? {
@@ -176,8 +169,8 @@ export function useUserReputation() {
     lpIndividualsBalance: parsedDetails?.[2] ?? 0n,
     lpBusinessBalance: parsedDetails?.[3] ?? 0n,
     ecreditscoringBalance: parsedDetails?.[4] ?? 0n,
-    // Access Control
-    canAccessTreasury: canCreateTreasury,
+    // Access Control (v3.17: canCreateTreasury removed — derive from tier)
+    canAccessTreasury: tier >= ReputationTier.Passport,
     canInvestInVaults,
     canAccessLPPools,
     canRequestCreditScore,

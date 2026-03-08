@@ -372,14 +372,6 @@ export function useReputationManager() {
     query: { enabled: !!address && !!contracts },
   });
 
-  const { data: canCreateTreasury } = useReadContract({
-    address: contracts?.REPUTATION_MANAGER,
-    abi: ReputationManagerABI,
-    functionName: 'canCreateTreasury',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address && !!contracts },
-  });
-
   // Read: Check NFT holdings
   const { data: holdsLPIndividuals } = useReadContract({
     address: contracts?.REPUTATION_MANAGER,
@@ -443,7 +435,6 @@ export function useReputationManager() {
     canAccessLPPools: canAccessLPPools === true,
     canCreateVaults: canCreateVaults === true,
     canInvestInVaults: canInvestInVaults === true,
-    canCreateTreasury: canCreateTreasury === true,
     // NFT holdings (new names)
     holdsLPIndividuals: holdsLPIndividuals === true,
     holdsLPBusiness: holdsLPBusiness === true,

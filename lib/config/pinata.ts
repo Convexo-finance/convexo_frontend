@@ -27,7 +27,6 @@ export const buildIPFSUri = (hash: string): string => {
 // NFT Metadata Types
 export interface PassportTraits {
   kycVerified: boolean;
-  faceMatchPassed: boolean;
   sanctionsPassed: boolean;
   isOver18: boolean;
 }
@@ -62,10 +61,6 @@ export const createPassportMetadata = (tokenId: number, traits: PassportTraits):
       {
         trait_type: 'KYC Verified',
         value: traits.kycVerified ? 'Yes' : 'No',
-      },
-      {
-        trait_type: 'Face Match Passed',
-        value: traits.faceMatchPassed ? 'Yes' : 'No',
       },
       {
         trait_type: 'Sanctions Check Passed',

@@ -107,12 +107,6 @@ export default function HumanityPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Face Match</p>
-                        <p className={`font-medium ${verifiedIdentity.faceMatchPassed ? 'text-emerald-400' : 'text-gray-400'}`}>
-                          {verifiedIdentity.faceMatchPassed ? 'Passed' : 'Pending'}
-                        </p>
-                      </div>
-                      <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Sanctions</p>
                         <p className={`font-medium ${verifiedIdentity.sanctionsPassed ? 'text-emerald-400' : 'text-gray-400'}`}>
                           {verifiedIdentity.sanctionsPassed ? 'Clear' : 'Pending'}

@@ -1,4 +1,4 @@
-// Core Convexo Protocol ABIs - Version 3.0
+// Core Convexo Protocol ABIs - Version 3.17
 // All ABIs are direct arrays from deployment artifacts
 // Updated with new tier system: Passport (1) → LimitedPartner (2) → VaultCreator (3)
 
@@ -12,6 +12,7 @@ import EcreditscoringABI from '@/abis/Ecreditscoring.json';
 import ReputationManagerABI from '@/abis/ReputationManager.json';
 import VaultFactoryABI from '@/abis/VaultFactory.json';
 import TokenizedBondVaultABI from '@/abis/TokenizedBondVault.json';
+// @deprecated v3.17: TreasuryFactory and TreasuryVault removed — use Gnosis Safe
 import TreasuryFactoryABI from '@/abis/TreasuryFactory.json';
 import TreasuryVaultABI from '@/abis/TreasuryVault.json';
 
@@ -47,6 +48,7 @@ export {
   ReputationManagerABI,
   VaultFactoryABI,
   TokenizedBondVaultABI,
+  // @deprecated v3.17 — TreasuryFactory and TreasuryVault removed from protocol
   TreasuryFactoryABI,
   TreasuryVaultABI,
   
@@ -125,7 +127,6 @@ export interface VerifiedIdentity {
   zkPassportTimestamp: bigint;
   isActive: boolean;
   kycVerified: boolean;
-  faceMatchPassed: boolean;
   sanctionsPassed: boolean;
   isOver18: boolean;
 }

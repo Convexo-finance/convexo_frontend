@@ -183,7 +183,6 @@ export function useNFTBalance() {
       zkPassportTimestamp: bigint;
       isActive: boolean;
       kycVerified: boolean;
-      faceMatchPassed: boolean;
       sanctionsPassed: boolean;
       isOver18: boolean;
     } | undefined,

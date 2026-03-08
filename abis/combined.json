@@ -1,5 +1,5 @@
 {
-  "version": "3.0",
+  "version": "3.17",
   "description": "Convexo Protocol ABIs",
   "contracts": {
     "ContractSigner": [
@@ -1035,11 +1035,6 @@
                 "internalType": "bool"
               },
               {
-                "name": "faceMatchPassed",
-                "type": "bool",
-                "internalType": "bool"
-              },
-              {
                 "name": "sanctionsPassed",
                 "type": "bool",
                 "internalType": "bool"
@@ -1260,11 +1255,6 @@
           },
           {
             "name": "isOver18",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "faceMatchPassed",
             "type": "bool",
             "internalType": "bool"
           },
@@ -1551,12 +1541,6 @@
           },
           {
             "name": "kycVerified",
-            "type": "bool",
-            "indexed": false,
-            "internalType": "bool"
-          },
-          {
-            "name": "faceMatchPassed",
             "type": "bool",
             "indexed": false,
             "internalType": "bool"
@@ -7002,25 +6986,6 @@
       {
         "type": "function",
         "name": "canAccessLPPools",
-        "inputs": [
-          {
-            "name": "user",
-            "type": "address",
-            "internalType": "address"
-          }
-        ],
-        "outputs": [
-          {
-            "name": "",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ],
-        "stateMutability": "view"
-      },
-      {
-        "type": "function",
-        "name": "canCreateTreasury",
         "inputs": [
           {
             "name": "user",

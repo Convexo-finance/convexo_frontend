@@ -1,7 +1,7 @@
 {
   "1301": {
     "name": "Unichain Sepolia",
-    "version": "convexo.v3.16",
+    "version": "convexo.v3.17",
     "external": {
       "usdc": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
       "pool_manager": "0x00B036B58a818B1BC34d502D3fE730Db729e62AC",
@@ -59,17 +59,13 @@
       "vault_factory": {
         "address": "0x5d832F297C0ce5AF001FC0cF26d34D30EA5224f2",
         "explorer": "https://unichain-sepolia.blockscout.com/address/0x5d832F297C0ce5AF001FC0cF26d34D30EA5224f2"
-      },
-      "treasury_factory": {
-        "address": "0x3bCdD141c763f8b8b134B1624f748cF81Ae278E0",
-        "explorer": "https://unichain-sepolia.blockscout.com/address/0x3bCdD141c763f8b8b134B1624f748cF81Ae278E0"
       }
     },
-    "contract_count": "14/14"
+    "contract_count": "12/12"
   },
   "84532": {
     "name": "Base Sepolia",
-    "version": "convexo.v3.16",
+    "version": "convexo.v3.17",
     "external": {
       "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "pool_manager": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
@@ -127,17 +123,13 @@
       "vault_factory": {
         "address": "0x9CA1Ab5C33C37cDA2c15e7756E235F7DAbF50E7d",
         "explorer": "https://sepolia.basescan.org/address/0x9CA1Ab5C33C37cDA2c15e7756E235F7DAbF50E7d"
-      },
-      "treasury_factory": {
-        "address": "0x3ade68Ae89e2B84532b56BFecd6510FEB2F41640",
-        "explorer": "https://sepolia.basescan.org/address/0x3ade68Ae89e2B84532b56BFecd6510FEB2F41640"
       }
     },
-    "contract_count": "14/14"
+    "contract_count": "12/12"
   },
   "11155111": {
     "name": "Ethereum Sepolia",
-    "version": "convexo.v3.16",
+    "version": "convexo.v3.17",
     "external": {
       "usdc": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
       "pool_manager": "0xE03A1074c86CFeDd5C142C4F04F1a1536e203543",
@@ -195,20 +187,16 @@
       "vault_factory": {
         "address": "0xA65Ad8A0c5B70dcE566E090daB963ceD2E2866c8",
         "explorer": "https://sepolia.etherscan.io/address/0xA65Ad8A0c5B70dcE566E090daB963ceD2E2866c8"
-      },
-      "treasury_factory": {
-        "address": "0x7B45DD3Cdc9e0e43216fFEf3836722DDD2BA3A93",
-        "explorer": "https://sepolia.etherscan.io/address/0x7B45DD3Cdc9e0e43216fFEf3836722DDD2BA3A93"
       }
     },
-    "contract_count": "14/14"
+    "contract_count": "12/12"
   },
   "8453": {
     "name": "Base Mainnet",
-    "version": "convexo.v3.16",
+    "version": "convexo.v3.17",
     "external": {
       "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "pool_manager": "0x7Da1D65F8B249183667cdE74C5CBD46dD38AA829",
+      "pool_manager": "0x498581fF718922c3f8e6A244956aF099B2652b2b",
       "zkpassport_verifier": "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8"
     },
     "contracts": {
@@ -263,17 +251,13 @@
       "vault_factory": {
         "address": "0xb57e0366B65B141d92D17f13b7f7076610bf6805",
         "explorer": "https://basescan.org/address/0xb57e0366B65B141d92D17f13b7f7076610bf6805"
-      },
-      "treasury_factory": {
-        "address": "0x521bf04AB091Feccd2d2883411b57aEEeb3B77C3",
-        "explorer": "https://basescan.org/address/0x521bf04AB091Feccd2d2883411b57aEEeb3B77C3"
       }
     },
-    "contract_count": "14/14"
+    "contract_count": "12/12"
   },
   "130": {
     "name": "Unichain Mainnet",
-    "version": "convexo.v3.16",
+    "version": "convexo.v3.17",
     "external": {
       "usdc": "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
       "pool_manager": "0x1F98400000000000000000000000000000000004",
@@ -331,12 +315,32 @@
       "vault_factory": {
         "address": "0xd436D9966E646148e1A9c35ed1C8cF055BF386Ef",
         "explorer": "https://unichain.blockscout.com/address/0xd436D9966E646148e1A9c35ed1C8cF055BF386Ef"
-      },
-      "treasury_factory": {
-        "address": "0x6B4f7b99cfa1bD9d959c48A2bA50bB603780086d",
-        "explorer": "https://unichain.blockscout.com/address/0x6B4f7b99cfa1bD9d959c48A2bA50bB603780086d"
       }
     },
-    "contract_count": "14/14"
+    "contract_count": "12/12"
+  },
+  "421614": {
+    "name": "Arbitrum Sepolia",
+    "version": "convexo.v3.17",
+    "external": {
+      "usdc": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "pool_manager": "0xFB3e0C6F74eB1a21CC1Da29aeC80D2Dfe6C9a317",
+      "zkpassport_verifier": "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8"
+    },
+    "contracts": {},
+    "contract_count": "0/12",
+    "status": "pending_deployment"
+  },
+  "42161": {
+    "name": "Arbitrum One",
+    "version": "convexo.v3.17",
+    "external": {
+      "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      "pool_manager": "0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32",
+      "zkpassport_verifier": "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8"
+    },
+    "contracts": {},
+    "contract_count": "0/12",
+    "status": "pending_deployment"
   }
 }

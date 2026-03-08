@@ -189,11 +189,6 @@
             "internalType": "bool"
           },
           {
-            "name": "faceMatchPassed",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
             "name": "sanctionsPassed",
             "type": "bool",
             "internalType": "bool"
@@ -414,11 +409,6 @@
       },
       {
         "name": "isOver18",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "faceMatchPassed",
         "type": "bool",
         "internalType": "bool"
       },
@@ -705,12 +695,6 @@
       },
       {
         "name": "kycVerified",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "faceMatchPassed",
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
