@@ -8,7 +8,6 @@ import { erc20Abi } from 'viem';
 import { base, mainnet } from 'wagmi/chains';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
-  WalletIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   ClipboardDocumentIcon,
@@ -188,27 +187,15 @@ export default function WalletPage() {
     );
   }
 
-  if (!isConnected) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-full min-h-[80vh]">
-          <div className="text-center p-8">
-            <WalletIcon className="w-16 h-16 mx-auto mb-4 text-gray-500" />
-            <h2 className="text-2xl font-bold text-white mb-2">Connect Your Wallet</h2>
-            <p className="text-gray-400">Connect your wallet to view your balances</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (isResolvingAddress) {
+  if (!isConnected || isResolvingAddress) {
     return (
       <DashboardLayout>
         <WalletSkeleton />
       </DashboardLayout>
     );
   }
+
+
 
   if (!address) return null;
 

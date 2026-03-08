@@ -24,10 +24,15 @@ import {
 interface IndividualProfile {
   firstName: string;
   lastName: string;
+  displayName: string;
+  email: string;
   phone: string;
   dateOfBirth: string;
   nationality: string;
   countryOfResidence: string;
+  telegram: string;
+  twitter: string;
+  linkedin: string;
 }
 
 interface BusinessProfile {
@@ -37,9 +42,17 @@ interface BusinessProfile {
   registrationNumber: string;
   industry: string;
   companySize: string;
+  foundedYear: string;
+  website: string;
+  description: string;
   country: string;
   city: string;
   address: string;
+  postalCode: string;
+  email: string;
+  phone: string;
+  telegram: string;
+  linkedin: string;
   repFirstName: string;
   repLastName: string;
   repTitle: string;
@@ -50,10 +63,15 @@ interface BusinessProfile {
 const defaultIndividual: IndividualProfile = {
   firstName: '',
   lastName: '',
+  displayName: '',
+  email: '',
   phone: '',
   dateOfBirth: '',
   nationality: '',
   countryOfResidence: '',
+  telegram: '',
+  twitter: '',
+  linkedin: '',
 };
 
 const defaultBusiness: BusinessProfile = {
@@ -63,9 +81,17 @@ const defaultBusiness: BusinessProfile = {
   registrationNumber: '',
   industry: '',
   companySize: '',
+  foundedYear: '',
+  website: '',
+  description: '',
   country: '',
   city: '',
   address: '',
+  postalCode: '',
+  email: '',
+  phone: '',
+  telegram: '',
+  linkedin: '',
   repFirstName: '',
   repLastName: '',
   repTitle: '',
@@ -231,9 +257,22 @@ function IndividualForm({
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1.5">Phone</label>
-          <input type="tel" value={data.phone} onChange={(e) => set('phone', e.target.value)}
-            placeholder="+57 300 000 0000" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          <label className="block text-sm text-gray-400 mb-1.5">Display Name</label>
+          <input type="text" value={data.displayName} onChange={(e) => set('displayName', e.target.value)}
+            placeholder="John Doe (shown publicly)" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">Email</label>
+            <input type="email" value={data.email} onChange={(e) => set('email', e.target.value)}
+              placeholder="john@example.com" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">Phone</label>
+            <input type="tel" value={data.phone} onChange={(e) => set('phone', e.target.value)}
+              placeholder="+57 300 000 0000" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
         </div>
 
         <div>
@@ -244,14 +283,27 @@ function IndividualForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Nationality (ISO)</label>
+            <label className="block text-sm text-gray-400 mb-1.5">Nationality (ISO 2)</label>
             <input type="text" value={data.nationality} onChange={(e) => set('nationality', e.target.value.toUpperCase().slice(0, 2))}
               placeholder="CO" maxLength={2} className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Country of Residence (ISO)</label>
+            <label className="block text-sm text-gray-400 mb-1.5">Country of Residence (ISO 2)</label>
             <input type="text" value={data.countryOfResidence} onChange={(e) => set('countryOfResidence', e.target.value.toUpperCase().slice(0, 2))}
               placeholder="CO" maxLength={2} className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
+        </div>
+
+        {/* Social links */}
+        <div className="border-t border-gray-700 pt-5">
+          <p className="text-sm font-medium text-gray-300 mb-4">Social Links <span className="text-gray-500 font-normal">(optional)</span></p>
+          <div className="space-y-3">
+            <input type="text" value={data.telegram} onChange={(e) => set('telegram', e.target.value)}
+              placeholder="Telegram @username" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+            <input type="text" value={data.twitter} onChange={(e) => set('twitter', e.target.value)}
+              placeholder="X / Twitter @handle" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+            <input type="text" value={data.linkedin} onChange={(e) => set('linkedin', e.target.value)}
+              placeholder="LinkedIn profile URL" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
           </div>
         </div>
       </div>
@@ -332,7 +384,7 @@ function BusinessForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="block text-sm text-gray-400 mb-1.5">Industry</label>
             <input type="text" value={data.industry} onChange={(e) => set('industry', e.target.value)}
@@ -349,11 +401,42 @@ function BusinessForm({
               <option value="LARGE">Large (250+)</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">Founded Year</label>
+            <input type="number" value={data.foundedYear} onChange={(e) => set('foundedYear', e.target.value)}
+              placeholder="2020" min={1800} max={new Date().getFullYear()} className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-1.5">Website</label>
+          <input type="url" value={data.website} onChange={(e) => set('website', e.target.value)}
+            placeholder="https://company.com" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1.5">Description</label>
+          <textarea value={data.description} onChange={(e) => set('description', e.target.value)}
+            placeholder="Brief description of your company..." rows={3}
+            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none resize-none" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Country (ISO)</label>
+            <label className="block text-sm text-gray-400 mb-1.5">Company Email</label>
+            <input type="email" value={data.email} onChange={(e) => set('email', e.target.value)}
+              placeholder="contact@company.com" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">Company Phone</label>
+            <input type="tel" value={data.phone} onChange={(e) => set('phone', e.target.value)}
+              placeholder="+57 1 234 5678" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-3">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">Country (ISO 2)</label>
             <input type="text" value={data.country} onChange={(e) => set('country', e.target.value.toUpperCase().slice(0, 2))}
               placeholder="CO" maxLength={2} className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
           </div>
@@ -367,6 +450,23 @@ function BusinessForm({
             <input type="text" value={data.address} onChange={(e) => set('address', e.target.value)}
               placeholder="Cra 7 #123" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
           </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">Postal Code</label>
+            <input type="text" value={data.postalCode} onChange={(e) => set('postalCode', e.target.value)}
+              placeholder="110111" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+          </div>
+        </div>
+
+        {/* Social links */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1.5">Telegram</label>
+          <input type="text" value={data.telegram} onChange={(e) => set('telegram', e.target.value)}
+            placeholder="@company" className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1.5">LinkedIn</label>
+          <input type="text" value={data.linkedin} onChange={(e) => set('linkedin', e.target.value)}
+            placeholder="https://linkedin.com/company/..." className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none" />
         </div>
 
         {/* Representative */}
@@ -569,12 +669,24 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
     setFormError(null);
     try {
-      const raw = selectedType === 'INDIVIDUAL' ? { ...individualData } : { ...businessData };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw: Record<string, any> = selectedType === 'INDIVIDUAL' ? { ...individualData } : { ...businessData };
 
       // Convert date input (YYYY-MM-DD) to ISO datetime for Zod .datetime()
-      if ('dateOfBirth' in raw && raw.dateOfBirth && !raw.dateOfBirth.includes('T')) {
+      if (raw.dateOfBirth && !raw.dateOfBirth.includes('T')) {
         raw.dateOfBirth = `${raw.dateOfBirth}T00:00:00.000Z`;
       }
+
+      // Convert foundedYear string to number (backend expects z.number())
+      if (raw.foundedYear) {
+        const y = parseInt(raw.foundedYear, 10);
+        raw.foundedYear = isNaN(y) ? undefined : y;
+      }
+
+      // Strip empty optional strings so backend doesn't try to validate them
+      Object.keys(raw).forEach((k) => {
+        if (raw[k] === '') delete raw[k];
+      });
 
       await apiFetch('/onboarding/profile', {
         method: 'POST',

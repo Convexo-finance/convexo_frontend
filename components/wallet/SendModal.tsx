@@ -26,6 +26,24 @@ function fmtBalance(balance: bigint | undefined, decimals: number, maxFrac = 6) 
   });
 }
 
+// ─── Error message helpers ────────────────────────────────────────────────────
+
+function parseSendError(raw: string): string {
+  const r = raw.toLowerCase();
+  if (r.includes('transfer amount exceeds balance') || r.includes('insufficient balance'))
+    return 'Insufficient balance — reduce the amount and try again';
+  if (r.includes('user rejected') || r.includes('user denied'))
+    return 'Transaction rejected by wallet';
+  if (r.includes('insufficient funds for gas') || r.includes('insufficient funds'))
+    return 'Not enough ETH for gas fees';
+  if (r.includes('nonce too low') || r.includes('replacement transaction'))
+    return 'Transaction conflict — please try again';
+  if (r.includes('timed out'))
+    return 'Transaction timed out — please try again';
+  // Truncate long RPC error blobs to keep UI clean
+  return raw.length > 120 ? raw.slice(0, 120) + '…' : raw;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SEND_TOKENS: TokenSymbol[] = ['ETH', 'USDC', 'USDT', 'EURC', 'BTC'];
@@ -123,17 +141,20 @@ export function SendModal({ onClose, balances, marketData }: SendModalProps) {
     }
     if (!amount || parseFloat(amount) <= 0) return;
 
-    if (availableBal) {
-      try {
-        const requested = parseUnits(amount, meta.decimals);
-        if (requested > availableBal) {
-          setAddrErr('Amount exceeds available balance');
-          return;
-        }
-      } catch {
-        setAddrErr('Invalid amount');
+    // Always validate balance — 0n is falsy so we check !== undefined explicitly
+    if (availableBal === undefined) {
+      setAddrErr('Balance not loaded yet — please wait a moment');
+      return;
+    }
+    try {
+      const requested = parseUnits(amount, meta.decimals);
+      if (requested > availableBal) {
+        setAddrErr(`Insufficient ${selectedToken} balance`);
         return;
       }
+    } catch {
+      setAddrErr('Invalid amount');
+      return;
     }
 
     setAddrErr(null);
@@ -314,7 +335,7 @@ export function SendModal({ onClose, balances, marketData }: SendModalProps) {
             {/* ── Error from hook ── */}
             {sendError && (
               <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-xl text-xs text-red-400 break-words">
-                {sendError}
+                {parseSendError(sendError)}
               </div>
             )}
 
