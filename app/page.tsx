@@ -85,8 +85,11 @@ export default function SignInPage() {
 
 
 
-  // ── Loading ─────────────────────────────────────────────────────
-  if (!pageReady) {
+  // ── Loading / redirecting ────────────────────────────────────────
+  // Show spinner while initializing OR while authenticated user waits
+  // for the redirect to /profile or /onboarding. Never show the AuthCard
+  // to an authenticated user — it would flash before the redirect fires.
+  if (!pageReady || isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center gap-4">
         <Image src="/convexoblanco.png" alt="Convexo" width={200} height={80} className="object-contain opacity-80" />
@@ -95,7 +98,7 @@ export default function SignInPage() {
     );
   }
 
-  // ── Main ────────────────────────────────────────────────────────
+  // ── Sign-in UI — only shown when NOT authenticated ───────────────
   return (
     <div className="min-h-screen bg-[#0a0d14] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -108,7 +111,7 @@ export default function SignInPage() {
           <p className="text-gray-400 text-sm">Reducing the funding gap for SMEs in Latin America</p>
         </div>
 
-        {/* AuthCard — visible when not connected */}
+        {/* AuthCard — Alchemy's connect UI. Shown when wallet not yet connected. */}
         {!isConnected && (
           <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
             <AuthCard />
@@ -116,7 +119,7 @@ export default function SignInPage() {
         )}
 
         {/* Signing in progress */}
-        {isConnected && !isAuthenticated && isSigningIn && (
+        {isConnected && isSigningIn && (
           <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-6 shadow-2xl shadow-black/40">
             <div className="flex flex-col items-center gap-3">
               <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
@@ -130,8 +133,8 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* SIWE error — visible for ~3 s then auto-resets to AuthCard */}
-        {!isAuthenticated && error && (
+        {/* SIWE error — visible for 3 s then auto-resets to AuthCard */}
+        {error && (
           <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40">
             <div className="flex flex-col items-center gap-2 text-center">
               <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
@@ -140,8 +143,8 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Connected — waiting for auto-SIWE to fire, or manual retry */}
-        {isConnected && !isAuthenticated && !isSigningIn && !error && (
+        {/* Connected but not yet signing — waiting for auto-SIWE or manual retry */}
+        {isConnected && !isSigningIn && !error && (
           <div className="flex flex-col items-center gap-3 py-4">
             <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin" />
             <button
