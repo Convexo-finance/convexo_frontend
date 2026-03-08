@@ -7,7 +7,25 @@
 		"Sign-In with Ethereum": {
 			"url": "https://docs.login.xyz/~gitbook/mcp",
 			"type": "http"
+		},
+		"Alchemy": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"@alchemy/mcp-server"
+			],
+			"env": {
+				"ALCHEMY_API_KEY": "${input:alchemyApiKey}"
+			}
 		}
 	},
-	"inputs": []
+	"inputs": [
+		{
+			"id": "alchemyApiKey",
+			"type": "promptString",
+			"description": "Alchemy API Key",
+			"password": true
+		}
+	]
 }

@@ -15,7 +15,7 @@ import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { isAuthenticated, isInitializing, isConnected, isSigningIn, error, signIn } = useAuth();
+  const { isAuthenticated, isInitializing, isConnected, isSigningIn, error, clearError, signIn } = useAuth();
   const { isConnected: isSignerConnected, isInitializing: isSignerInitializing } = useSignerStatus();
   const { onboardingStep } = useNavigation();
   const { logout } = useLogout();
@@ -68,18 +68,20 @@ export default function SignInPage() {
     }
   }, [isAuthenticated, onboardingStep, router]);
 
-  // ── Auto-reset on error: go back to AuthCard silently ───────────
+  // ── Auto-reset on error: show message, then clear and go back to AuthCard ──
   useEffect(() => {
     if (!error) return;
-    // Give a brief moment so the failure is logged, then reset
+    // Show the error card for 3 s so the user can read it, then clean up.
+    // clearError() must be called first — it removes the `if (error) return`
+    // guard in the auto-sign effect so reconnecting after this works correctly.
     const t = setTimeout(() => {
+      clearError();
       hasAutoSigned.current = false;
-      wasConnectedBefore.current = false;
       if (isSignerConnected) logout();
       disconnectEoa();
-    }, 600);
+    }, 3_000);
     return () => clearTimeout(t);
-  }, [error, isSignerConnected, logout, disconnectEoa]);
+  }, [error, clearError, isSignerConnected, logout, disconnectEoa]);
 
 
 
@@ -113,9 +115,9 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Auto-signing state */}
+        {/* Signing in progress */}
         {isConnected && !isAuthenticated && isSigningIn && (
-          <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-6 shadow-2xl shadow-black/40 space-y-4">
+          <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-6 shadow-2xl shadow-black/40">
             <div className="flex flex-col items-center gap-3">
               <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
               <p className="text-white font-medium text-sm">Verifying wallet ownership…</p>
@@ -128,9 +130,28 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Error → auto-resets to AuthCard (handled by useEffect above) */}
+        {/* SIWE error — visible for ~3 s then auto-resets to AuthCard */}
+        {!isAuthenticated && error && (
+          <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
+              <p className="text-gray-500 text-xs">{error}</p>
+            </div>
+          </div>
+        )}
 
-        {/* Connected, idle — auto-SIWE will kick in */}
+        {/* Connected — waiting for auto-SIWE to fire, or manual retry */}
+        {isConnected && !isAuthenticated && !isSigningIn && !error && (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin" />
+            <button
+              onClick={() => { hasAutoSigned.current = false; signIn(); }}
+              className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+            >
+              Try again
+            </button>
+          </div>
+        )}
 
         <p className="text-center text-xs text-gray-600">
           Protocol v2.1 · Powered by Alchemy Account Kit

@@ -125,7 +125,12 @@ export function useAuth() {
       } else if (eoaAddress) {
         // External wallet (MetaMask, WalletConnect, Coinbase, etc.)
         signerAddress = eoaAddress as Address
-        authMethod = detectEoaAuthMethod(connector?.name)
+        // Defensive: connector may be undefined or not have .name
+        let connectorName: string | undefined = undefined;
+        if (connector && typeof connector === 'object' && 'name' in connector) {
+          connectorName = (connector as { name?: string }).name;
+        }
+        authMethod = detectEoaAuthMethod(connectorName);
       } else {
         throw new Error('No wallet connected')
       }
@@ -147,13 +152,22 @@ export function useAuth() {
       })
 
       // 3. Sign the message
+      const withTimeout = <T,>(promise: Promise<T>, ms: number, msg: string): Promise<T> =>
+        Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(msg)), ms))])
+
       let signature: string
       if (isSignerConnected && signer) {
-        signature = await (signer as { signMessage(msg: string): Promise<string> }).signMessage(
-          message,
+        signature = await withTimeout(
+          (signer as { signMessage(msg: string): Promise<string> }).signMessage(message),
+          30_000,
+          'Signing timed out — try reloading the page',
         )
       } else {
-        signature = await signMessageAsync({ message })
+        signature = await withTimeout(
+          signMessageAsync({ message }),
+          60_000,
+          'Wallet sign request timed out — check your wallet and try again',
+        )
       }
 
       // 4. Verify with backend and receive JWT
@@ -217,6 +231,7 @@ export function useAuth() {
     isSigningIn,
     user,
     error,
+    clearError: () => setError(null),
     signIn,
     signOut,
   }

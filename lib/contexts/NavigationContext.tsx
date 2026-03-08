@@ -77,7 +77,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // Only fetch onboarding status when authenticated (JWT present).
   // Passing isAuthenticated ensures the hook re-fetches after sign-in
@@ -122,11 +122,11 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     return nftUserTier as UserTier;
   }, [nftUserTier]);
 
-  // Check admin status
+  // Admin status comes from the backend JWT (adminRole) — more reliable
+  // than a hardcoded on-chain address comparison.
   const isAdmin = useMemo(() => {
-    if (!address || !contracts) return false;
-    return address.toLowerCase() === contracts.ADMIN_ADDRESS.toLowerCase();
-  }, [address, contracts]);
+    return isAuthenticated && !!user?.isAdmin;
+  }, [isAuthenticated, user?.isAdmin]);
 
   // Access control - use values from useNFTBalance or fallback to tier calculation
   const accessControl = useMemo(() => ({
