@@ -1,6 +1,7 @@
 import { createConfig, type AlchemyAccountsUIConfig, cookieStorage } from '@account-kit/react';
-import { alchemy, base, mainnet } from '@account-kit/infra';
+import { alchemy, base, baseSepolia, mainnet } from '@account-kit/infra';
 import { metaMask, coinbaseWallet } from 'wagmi/connectors';
+import { IS_MAINNET } from '@/lib/config/network';
 
 const uiConfig: AlchemyAccountsUIConfig = {
   illustrationStyle: 'outline',
@@ -17,7 +18,7 @@ const uiConfig: AlchemyAccountsUIConfig = {
           walletConnect: { projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '' },
           wallets: ['wallet_connect', 'metamask', 'coinbase wallet'],
           chainType: ['evm'],
-          numFeaturedWallets: 1,   // WalletConnect shown up front; rest in "More wallets"
+          numFeaturedWallets: 1,
           hideMoreButton: false,
           moreButtonText: 'More wallets',
         },
@@ -29,34 +30,33 @@ const uiConfig: AlchemyAccountsUIConfig = {
   supportUrl: 'support@convexo.xyz',
 };
 
+// Primary chain for Account Kit — follows NEXT_PUBLIC_NETWORK_MODE
+// Mainnet: Base (8453), Testnet: Base Sepolia (84532)
+const primaryChain = IS_MAINNET ? base : baseSepolia;
+
 export const alchemyConfig = createConfig(
   {
     transport: alchemy({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '' }),
-    chain: base,
+    chain: primaryChain,
     chains: [
       {
         chain: base,
-        // Gas Manager policy for Base mainnet.
-        // Set NEXT_PUBLIC_ALCHEMY_POLICY_ID in .env.
-        // Create additional policies per chain at dashboard.alchemy.com/gas-manager
-        // and add chain-specific env vars (e.g. NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH)
-        // when ready to sponsor on other networks.
-        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID,
+        // Gas Manager policy for Base mainnet — no gas sponsorship on testnet
+        policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID : undefined,
+      },
+      {
+        chain: baseSepolia,
+        // No gas sponsorship on testnet (policyId omitted)
       },
       {
         chain: mainnet,
-        // Gas Manager policy for Ethereum mainnet.
-        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH,
+        policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH : undefined,
       },
     ],
-    // Top-level policyId is the Base mainnet default (used when no chain-specific
-    // override is present). Matches NEXT_PUBLIC_ALCHEMY_POLICY_ID in .env.
-    policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID,
+    policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID : undefined,
     ssr: true,
     storage: cookieStorage,
     enablePopupOauth: true,
-    // These connectors are registered in Account Kit's internal wagmi instance.
-    // metaMask() + coinbaseWallet() → show as named buttons in the modal.
     connectors: [
       metaMask({ enableAnalytics: false }),
       coinbaseWallet({ appName: 'Convexo' }),

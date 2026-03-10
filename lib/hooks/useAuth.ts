@@ -1,11 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAlchemyAccountContext, useSignerStatus, useSigner } from '@account-kit/react'
-import { useAccount as wagmiUseAccount } from 'wagmi'
+import {
+  useAlchemyAccountContext,
+  useSignerStatus,
+  useSigner,
+  useLogout,
+} from '@account-kit/react'
+import { useAccount as wagmiUseAccount, useDisconnect } from 'wagmi'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
 import { apiFetch, setToken, setRefreshToken, getToken, clearToken } from '../api/client'
+import { PRIMARY_CHAIN_ID } from '@/lib/config/network'
 
 type AuthMethod =
   | 'EMAIL'
@@ -83,6 +89,9 @@ export function useAuth() {
   const { config } = useAlchemyAccountContext()
   const signer = useSigner()
 
+  // Account Kit logout — disconnects embedded signer and clears its session cookie
+  const { logout: alchemyLogout } = useLogout()
+
   // External EOA wallet (MetaMask / WalletConnect / Coinbase) connected via
   // Account Kit's internal wagmi instance — NOT the app-level WagmiProvider.
   const {
@@ -90,6 +99,9 @@ export function useAuth() {
     isConnected: isEoaConnected,
     connector,
   } = wagmiUseAccount({ config: config._internal.wagmiConfig })
+
+  // Disconnect wagmi EOA (Account Kit's internal wagmi)
+  const { disconnect: disconnectEoa } = useDisconnect({ config: config._internal.wagmiConfig })
 
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
@@ -157,7 +169,7 @@ export function useAuth() {
         statement: 'Sign in to Convexo',
         uri: window.location.origin,
         version: '1',
-        chainId: 8453, // Base mainnet
+        chainId: PRIMARY_CHAIN_ID,
         nonce,
       })
 
@@ -208,7 +220,7 @@ export function useAuth() {
       // 4. Verify with backend — receive JWT
       const result = await apiFetch<VerifyResponse>('/auth/verify', {
         method: 'POST',
-        body: JSON.stringify({ message, signature, address: signerAddress, chainId: 8453, authMethod }),
+        body: JSON.stringify({ message, signature, address: signerAddress, chainId: PRIMARY_CHAIN_ID, authMethod }),
       })
 
       setToken(result.accessToken)
@@ -223,16 +235,27 @@ export function useAuth() {
     } finally {
       setIsSigningIn(false)
     }
-  }, [isSignerConnected, signer, eoaAddress, connector])
+  }, [isSignerConnected, signer, eoaAddress, connector, config])
 
+  /**
+   * Complete sign-out — clears JWT, calls backend, disconnects ALL wallet types.
+   * This is the single source of truth for logout. Callers only need to navigate.
+   */
   const signOut = useCallback(async () => {
-    try {
-      if (getToken()) await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
-    } finally {
-      clearToken()
-      setIsAuthenticated(false)
-      setUser(null)
-      // Clear stale Alchemy / wagmi cookies
+    // 1. Backend logout (best-effort — don't block on failure)
+    if (getToken()) {
+      await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
+    }
+
+    // 2. Clear JWT tokens immediately so all subsequent requests are unauthenticated
+    clearToken()
+
+    // 3. Reset React state
+    setIsAuthenticated(false)
+    setUser(null)
+
+    // 4. Clear stale Alchemy / wagmi session cookies
+    if (typeof document !== 'undefined') {
       document.cookie.split(';').forEach((c) => {
         const name = c.split('=')[0].trim()
         if (name.startsWith('alchemy') || name.startsWith('aa-') || name.startsWith('wagmi')) {
@@ -240,7 +263,11 @@ export function useAuth() {
         }
       })
     }
-  }, [])
+
+    // 5. Disconnect wallet connections (fire-and-forget — UI is already reset above)
+    if (isSignerConnected) alchemyLogout()
+    disconnectEoa()
+  }, [isSignerConnected, alchemyLogout, disconnectEoa])
 
   return {
     isAuthenticated,

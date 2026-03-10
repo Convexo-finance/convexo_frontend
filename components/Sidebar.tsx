@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useAuthModal, useLogout, useAlchemyAccountContext, useSignerStatus } from '@account-kit/react';
+import { useAuthModal } from '@account-kit/react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
-import { useDisconnect } from '@/lib/wagmi/compat';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { useRouter } from 'next/navigation';
 import {
@@ -39,10 +38,6 @@ import {
 // Bottom user section — shows address + sign out button
 function UserFooter() {
   const { openAuthModal } = useAuthModal();
-  const { logout } = useLogout();
-  const { isConnected: isSignerConnected } = useSignerStatus();
-  const { config: akConfig } = useAlchemyAccountContext();
-  const { disconnect: disconnectEoa } = useDisconnect({ config: akConfig._internal.wagmiConfig });
   const { address } = useAccount();
   const { isAuthenticated, signOut, user } = useAuth();
   const router = useRouter();
@@ -51,11 +46,9 @@ function UserFooter() {
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
-      await signOut();           // JWT + backend + cookie cleanup
-      if (isSignerConnected) logout();  // Alchemy signer disconnect
-      disconnectEoa();           // wagmi EOA disconnect
-    } catch {
-      // ignore — still redirect
+      // signOut() handles everything: backend logout, JWT clear,
+      // cookie cleanup, Alchemy signer disconnect, wagmi EOA disconnect.
+      await signOut();
     } finally {
       setSigningOut(false);
       router.push('/');

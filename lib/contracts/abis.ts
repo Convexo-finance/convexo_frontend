@@ -12,9 +12,9 @@ import EcreditscoringABI from '@/abis/Ecreditscoring.json';
 import ReputationManagerABI from '@/abis/ReputationManager.json';
 import VaultFactoryABI from '@/abis/VaultFactory.json';
 import TokenizedBondVaultABI from '@/abis/TokenizedBondVault.json';
-// @deprecated v3.17: TreasuryFactory and TreasuryVault removed — use Gnosis Safe
-import TreasuryFactoryABI from '@/abis/TreasuryFactory.json';
-import TreasuryVaultABI from '@/abis/TreasuryVault.json';
+// @deprecated v3.18: TreasuryFactory and TreasuryVault removed — JSON artifacts deleted
+const TreasuryFactoryABI: never[] = [];
+const TreasuryVaultABI: never[] = [];
 
 // Verification & Compliance
 import VeriffVerifierABI from '@/abis/VeriffVerifier.json';

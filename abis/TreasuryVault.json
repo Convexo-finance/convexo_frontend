@@ -1,6 +1,0 @@
-{
-  "_deprecated": true,
-  "_reason": "TreasuryVault removed in v3.17 — Treasury contracts discontinued",
-  "_version": "v3.17",
-  "abi": []
-}

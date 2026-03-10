@@ -1,32 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { 
-  useAccount, 
-  useChainId, 
+import { useState, useEffect, useRef } from 'react';
+import {
+  useAccount,
+  useChainId,
   useReadContract,
   useWaitForTransactionReceipt
 } from '@/lib/wagmi/compat';
-import { keccak256, encodePacked, toBytes } from 'viem';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 import { ConvexoPassportABI } from '@/lib/contracts/abis';
-import { 
-  createPassportMetadata, 
+import { IS_MAINNET } from '@/lib/config/network';
+import {
+  createPassportMetadata,
   uploadMetadataToPinata,
   type PassportTraits as PinataPassportTraits
 } from '@/lib/config/pinata';
-import { 
-  ShieldCheckIcon, 
-  FingerPrintIcon, 
+import {
+  ShieldCheckIcon,
+  FingerPrintIcon,
   CheckBadgeIcon,
   LockClosedIcon,
-  ClipboardDocumentIcon, 
-  ClipboardDocumentCheckIcon 
+  ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
-import { ZKPassport } from '@zkpassport/sdk';
+import { ZKPassport, type SolidityVerifierParameters } from '@zkpassport/sdk';
 import { QRCodeSVG } from 'qrcode.react';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
@@ -36,21 +37,14 @@ const APP_SCOPE_STRING = 'convexo-passport-identity';
 // Interface for the verified traits stored privately
 interface ConvexoPassportTraits {
   uniqueIdentifier: string;
-  personhoodProof: string;
   kycVerified: boolean;
   sanctionsPassed: boolean;
   isOver18: boolean;
+  nationalityCompliant: boolean;
   zkPassportTimestamp: number;
-  zkPassportResult: any; // Raw ZK Passport verification result for audit trail
-  // ZK Proof parameters for minting
-  zkProofParams?: {
-    publicKey: `0x${string}`;
-    nullifier: `0x${string}`;
-    proof: `0x${string}`;
-    attestationId: bigint;
-    scope: `0x${string}`;
-    currentDate: bigint;
-  };
+  zkPassportResult: any;
+  // Solidity-compatible ZK proof params for on-chain verification
+  solidityParams: SolidityVerifierParameters | null;
 }
 
 export default function ZKVerificationPage() {
@@ -66,7 +60,11 @@ export default function ZKVerificationPage() {
   const [step, setStep] = useState<'idle' | 'verifying' | 'verified' | 'minting' | 'success'>('idle');
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  
+  const [urlCopied, setUrlCopied] = useState(false);
+
+  // Collect the last proof from onProofGenerated — needed for getSolidityVerifierParameters
+  const collectedProofRef = useRef<any>(null);
+
   // Get domain from environment or use default
   const domain = typeof window !== 'undefined' ? window.location.hostname : 'convexo.io';
   const [zkPassport] = useState(() => new ZKPassport(domain));
@@ -83,14 +81,14 @@ export default function ZKVerificationPage() {
   }) as { data: boolean | undefined; isLoading: boolean; refetch: () => void };
 
   // Check if identifier has already been used (sybil resistance)
-  // Contract accepts string directly and hashes internally
+  // identifierInput is the nullifier bytes32 hex string from ZKPassport
   const { data: identifierUsed } = useReadContract({
     address: contracts?.CONVEXO_PASSPORT as `0x${string}`,
     abi: ConvexoPassportABI,
     functionName: 'isIdentifierUsed',
-    args: identifierInput ? [identifierInput] : undefined,
+    args: identifierInput ? [identifierInput as `0x${string}`] : undefined,
     query: {
-      enabled: !!identifierInput && !!contracts?.CONVEXO_PASSPORT,
+      enabled: !!identifierInput && identifierInput.startsWith('0x') && !!contracts?.CONVEXO_PASSPORT,
     },
   }) as { data: boolean | undefined };
 
@@ -122,136 +120,78 @@ export default function ZKVerificationPage() {
       setError(null);
       setStep('verifying');
 
-      // Create verification request - focused on CONVEXO PASSPORT requirements
+      collectedProofRef.current = null;
+
+      // Create verification request — compressed-evm mode generates a single
+      // Groth16 proof that can be verified on-chain by the ZKPassport verifier contract.
       const queryBuilder = await zkPassport.request({
         name: 'CONVEXO PASSPORT Verification',
         logo: typeof window !== 'undefined' ? `${window.location.origin}/logo_convexo.png` : '',
         purpose: 'Verify identity for CONVEXO PASSPORT - Proof of Personhood & KYC Status',
         scope: APP_SCOPE_STRING,
+        mode: 'compressed-evm',
+        devMode: !IS_MAINNET, // allow mock proofs on testnet
       });
 
-      // Request ONLY what's needed for the NFT traits:
-      // - Sanctions: KYC Compliance
-      // - Age: Over 18 verification
-      // NO personal data disclosure (name, nationality, birthdate stay private)
-      const { url, onResult } = queryBuilder
-        .gte('age', 18)     // Age verification for isOver18
-        .sanctions()        // KYC - Sanctions screening
+      // Request only what's needed for the NFT traits
+      const { url, onProofGenerated, onResult } = queryBuilder
+        .gte('age', 18)
+        .sanctions()
         .done();
 
       setVerificationUrl(url);
 
-      // Handle verification result
-      onResult((callbackParams) => {
-        // Extract all possible parameters from the callback
-        const { 
-          verified, 
-          result, 
-          uniqueIdentifier: uid,
-          proof: rawProof,
-          publicKey: cbPublicKey,
-          nullifier: cbNullifier,
-          attestationId: cbAttestationId,
-          data,
-          verificationData,
-          zkProof
-        } = callbackParams as any;
+      // Collect the EVM-compatible aggregated proof (fires once in compressed-evm mode)
+      onProofGenerated((proof) => {
+        collectedProofRef.current = proof;
+      });
 
+      // Handle verification result
+      onResult(({ uniqueIdentifier: uid, verified, result }) => {
         setIsGeneratingProof(false);
         setVerificationUrl(null);
 
         if (verified) {
-          // Extract verification results
           const sanctionsPassed = result?.sanctions?.passed ?? false;
+          const isOver18 = result?.age?.gte?.result ?? false;
 
-          // Try multiple possible paths for age verification result
-          const isOver18 =
-            result?.age?.gte?.result ??           // Path 1: result.age.gte.result (CORRECT PATH)
-            result?.age?.gte?.passed ??           // Path 2: result.age.gte.passed (fallback)
-            result?.gte?.age?.passed ??           // Path 3: result.gte.age.passed
-            result?.age?.passed ??                // Path 4: result.age.passed
-            result?.gte?.passed ??                // Path 5: result.gte.passed (if age field is implicit)
-            result?.['gte_age_18']?.passed ??     // Path 6: concatenated key
-            false;
-
-          // Try to find proof data in various locations
-
-          let proofData = null;
-          
-          // Check multiple possible locations for proof data
-          const possibleProofSources = [
-            rawProof,
-            data?.proof,
-            verificationData?.proof,
-            zkProof,
-            (callbackParams as any).proof,
-            result?.proof
-          ].filter(Boolean);
-
-          // Try to extract proof parameters from the first available source
-          if (possibleProofSources.length > 0) {
-            proofData = possibleProofSources[0];
-          }
-
-          // Validate required proofs
           if (!sanctionsPassed) {
             setError('KYC verification failed. Sanctions check did not pass.');
             setStep('idle');
             return;
           }
-
           if (!isOver18) {
             setError('Age verification failed. Must be 18 or older.');
             setStep('idle');
             return;
           }
-          
-          // Generate personhood proof hash from unique identifier + timestamp
-          const timestamp = Math.floor(Date.now() / 1000);
-          const personhoodProofData = encodePacked(
-            ['string', 'uint256', 'bool'],
-            [uid, BigInt(timestamp), true]
-          );
-          const personhoodProof = keccak256(personhoodProofData);
-          
-          // Prepare ZK proof parameters if available
-          let zkProofParams = undefined;
-          if (proofData) {
-            const publicKey = proofData?.publicKey || proofData?.user?.publicKey || cbPublicKey;
-            const nullifier = proofData?.nullifier || proofData?.user?.nullifier || cbNullifier;
-            const proof = proofData?.proof || proofData?.encodedProof || proofData?.zkProof;
-            const attestationId = proofData?.attestationId || proofData?.attestationID || cbAttestationId;
 
-            if (publicKey && nullifier && proof && attestationId) {
-              zkProofParams = {
-                publicKey: publicKey as `0x${string}`,
-                nullifier: nullifier as `0x${string}`,
-                proof: proof as `0x${string}`,
-                attestationId: BigInt(attestationId),
-                scope: keccak256(toBytes(APP_SCOPE_STRING)),
-                currentDate: BigInt(timestamp)
-              };
-            } else {
-              // Partial proof data available but missing required fields
+          // Build Solidity-compatible proof params from the collected proof
+          let solidityParams: SolidityVerifierParameters | null = null;
+          try {
+            if (collectedProofRef.current) {
+              solidityParams = zkPassport.getSolidityVerifierParameters({
+                proof: collectedProofRef.current,
+                scope: APP_SCOPE_STRING,
+              });
             }
-          } else {
-            // No proof data found in ZKPassport callback
+          } catch (e) {
+            // Proof may not be available in devMode — minting will fail gracefully
           }
-          
-          // Store the passport traits privately
+
+          const timestamp = Math.floor(Date.now() / 1000);
           setPassportTraits({
-            uniqueIdentifier: uid,
-            personhoodProof: personhoodProof,
+            uniqueIdentifier: uid ?? '',
             kycVerified: sanctionsPassed,
-            sanctionsPassed: sanctionsPassed,
-            isOver18: isOver18,
+            sanctionsPassed,
+            isOver18,
+            nationalityCompliant: result?.nationality?.out?.result ?? true,
             zkPassportTimestamp: timestamp,
-            zkPassportResult: result, // Store exact ZK Passport verification result
-            zkProofParams: zkProofParams
+            zkPassportResult: result,
+            solidityParams,
           });
-          setIdentifierInput(uid);
+          setIdentifierInput(uid ?? '');
           setStep('verified');
-          
         } else {
           setError('Verification failed. Please try again.');
           setStep('idle');
@@ -319,42 +259,55 @@ export default function ZKVerificationPage() {
         return;
       }
 
+      if (!passportTraits.solidityParams) {
+        setError('Missing ZK proof data. Please complete verification again.');
+        setStep('verified');
+        return;
+      }
+
       // Upload NFT metadata to Pinata IPFS
-      
       const traits: PinataPassportTraits = {
         kycVerified: passportTraits.kycVerified,
         sanctionsPassed: passportTraits.sanctionsPassed,
         isOver18: passportTraits.isOver18,
+        nationalityCompliant: passportTraits.nationalityCompliant,
       };
-      
-      // Generate a temporary token ID (will be assigned by contract)
+
       const tempTokenId = Math.floor(Date.now() / 1000);
       const metadata = createPassportMetadata(tempTokenId, traits);
-      
+
       let ipfsMetadataHash: string;
       try {
         ipfsMetadataHash = await uploadMetadataToPinata(metadata);
-      } catch (uploadError) {
+      } catch {
         setError('Failed to upload NFT metadata to IPFS. Please try again.');
         setStep('verified');
         return;
       }
-      
-      const personhoodProofBytes32 = passportTraits.personhoodProof as `0x${string}`;
 
-      // Call safeMintWithVerification - pass uniqueIdentifier as string directly
-      // Contract hashes it internally with keccak256 for storage
+      // Build the ProofVerificationParams struct expected by claimPassport
+      const sp = passportTraits.solidityParams;
+      const zkParams = {
+        version: sp.version as `0x${string}`,
+        proofVerificationData: {
+          vkeyHash: sp.proofVerificationData.vkeyHash as `0x${string}`,
+          proof: sp.proofVerificationData.proof as `0x${string}`,
+          publicInputs: sp.proofVerificationData.publicInputs as `0x${string}`[],
+        },
+        committedInputs: sp.committedInputs as `0x${string}`,
+        serviceConfig: {
+          validityPeriodInSeconds: BigInt(sp.serviceConfig.validityPeriodInSeconds),
+          domain: sp.serviceConfig.domain,
+          scope: sp.serviceConfig.scope,
+          devMode: sp.serviceConfig.devMode,
+        },
+      };
+
       mintPassport({
         address: contracts.CONVEXO_PASSPORT,
         abi: ConvexoPassportABI,
-        functionName: 'safeMintWithVerification',
-        args: [
-          identifierInput,  // String from ZKPassport SDK - passed directly!
-          personhoodProofBytes32,
-          passportTraits.sanctionsPassed,
-          passportTraits.isOver18,
-          ipfsMetadataHash
-        ],
+        functionName: 'claimPassport',
+        args: [zkParams, false, ipfsMetadataHash], // false = passport (not ID card)
       });
     } catch (err: any) {
       setError(`Failed to prepare mint: ${err.message}`);
@@ -382,6 +335,14 @@ export default function ZKVerificationPage() {
       navigator.clipboard.writeText(passportTraits.uniqueIdentifier);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCopyUrl = () => {
+    if (verificationUrl) {
+      navigator.clipboard.writeText(verificationUrl);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 2000);
     }
   };
 
@@ -601,14 +562,41 @@ export default function ZKVerificationPage() {
                 <FingerPrintIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Scan with ZKPassport</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Open ZKPassport app and scan this QR code</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Open the ZKPassport app and scan this QR code</p>
             </div>
-            
+
             <div className="bg-white p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 inline-block shadow-inner">
               <QRCodeSVG value={verificationUrl} size={280} level="H" includeMargin />
             </div>
-            
-            <div className="mt-6 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 max-w-md mx-auto">
+
+            {/* Mobile / no-camera option */}
+            <div className="mt-5 max-w-md mx-auto space-y-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400">On your phone? Open the link directly instead:</p>
+              <div className="flex items-center gap-2">
+                <a
+                  href={verificationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                >
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  Open ZKPassport
+                </a>
+                <button
+                  onClick={handleCopyUrl}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors"
+                >
+                  {urlCopied ? (
+                    <ClipboardDocumentCheckIcon className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <ClipboardDocumentIcon className="h-4 w-4" />
+                  )}
+                  {urlCopied ? 'Copied!' : 'Copy link'}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 max-w-md mx-auto">
               <div className="flex items-center justify-center space-x-2 mb-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
                 <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Waiting for verification...</p>
@@ -690,6 +678,13 @@ export default function ZKVerificationPage() {
               )}
             </div>
 
+            {/* Missing proof warning */}
+            {!passportTraits.solidityParams && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300">
+                ZK proof not captured. Please verify again with a real passport scan.
+              </div>
+            )}
+
             {/* Verification Checklist Before Minting */}
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 space-y-2">
               <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Final Verification Status:</p>
@@ -717,7 +712,7 @@ export default function ZKVerificationPage() {
 
             <button
               onClick={handleMint}
-              disabled={isLoading || !identifierInput || identifierUsed || !passportTraits.isOver18}
+              disabled={isLoading || !identifierInput || identifierUsed || !passportTraits.isOver18 || !passportTraits.solidityParams}
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
             >
               {isMinting || isWaiting ? (

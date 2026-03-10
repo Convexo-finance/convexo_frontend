@@ -24,7 +24,10 @@ export default function SignInPage() {
 
   // ── Refs ─────────────────────────────────────────────────────────
   const hasAutoSigned = useRef(false);
-  const wasConnectedBefore = useRef(false);
+  // null = first render, not yet observed. Prevents auto-SIWE triggering
+  // on a stale wallet connection left over from a previous logout.
+  // Auto-SIWE only fires on a false→true transition observed AFTER mount.
+  const prevConnected = useRef<boolean | null>(null);
 
   // ── Page ready ──────────────────────────────────────────────────
   // Wait for both useAuth (JWT check) and Alchemy SDK to finish init.
@@ -46,11 +49,20 @@ export default function SignInPage() {
     if (isAuthenticated) return;
     if (error) return;
 
-    if (!wasConnectedBefore.current && isConnected) {
+    // First observation: record baseline and skip — do NOT auto-SIWE.
+    // This handles the case where the user arrives after logout with a
+    // wallet still briefly connected (disconnection is async). We wait
+    // for a genuine false → true transition before triggering SIWE.
+    if (prevConnected.current === null) {
+      prevConnected.current = isConnected;
+      return;
+    }
+
+    if (!prevConnected.current && isConnected) {
       hasAutoSigned.current = true;
       signIn();
     }
-    wasConnectedBefore.current = isConnected;
+    prevConnected.current = isConnected;
   }, [pageReady, isConnected, isAuthenticated, error, signIn]);
 
   // ── Redirect on auth ────────────────────────────────────────────
@@ -72,11 +84,12 @@ export default function SignInPage() {
   useEffect(() => {
     if (!error) return;
     // Show the error card for 3 s so the user can read it, then clean up.
-    // clearError() must be called first — it removes the `if (error) return`
-    // guard in the auto-sign effect so reconnecting after this works correctly.
     const t = setTimeout(() => {
       clearError();
       hasAutoSigned.current = false;
+      // Set baseline to false so the NEXT connection attempt triggers SIWE
+      prevConnected.current = false;
+      // Disconnect any stale wallet so the user sees a fresh AuthCard
       if (isSignerConnected) logout();
       disconnectEoa();
     }, 3_000);

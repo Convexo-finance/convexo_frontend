@@ -29,6 +29,7 @@ export interface PassportTraits {
   kycVerified: boolean;
   sanctionsPassed: boolean;
   isOver18: boolean;
+  nationalityCompliant: boolean;
 }
 
 export interface PassportMetadata {
@@ -71,6 +72,14 @@ export const createPassportMetadata = (tokenId: number, traits: PassportTraits):
         value: traits.isOver18 ? '18+' : 'Under 18',
       },
       {
+        trait_type: 'Nationality Compliant',
+        value: traits.nationalityCompliant ? 'Yes' : 'No',
+      },
+      {
+        trait_type: 'Document Valid',
+        value: 'Yes',
+      },
+      {
         trait_type: 'Soulbound',
         value: 'True',
       },
@@ -80,7 +89,7 @@ export const createPassportMetadata = (tokenId: number, traits: PassportTraits):
       },
       {
         trait_type: 'Verification Method',
-        value: 'ZKPassport',
+        value: 'ZKPassport On-Chain',
       },
     ],
   };

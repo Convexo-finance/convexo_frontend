@@ -7,6 +7,15 @@ import { PriceChange } from './PriceChange';
 import type { TokenSymbol, CoinGeckoMarketData } from '@/lib/config/tokens';
 import { TOKEN_METADATA } from '@/lib/config/tokens';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ChainBalanceEntry {
+  chainId: number;
+  label: string;
+  logo: string;
+  balance: bigint | undefined;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtBalance(balance: bigint | undefined, decimals: number, maxFrac = 6) {
@@ -27,18 +36,18 @@ function toUsd(balance: bigint | undefined, decimals: number, price: number): st
 
 interface CollapsibleTokenRowProps {
   symbol: TokenSymbol;
-  baseBalance: bigint | undefined;
-  ethBalance: bigint | undefined;
+  chainBalances: ChainBalanceEntry[];
   isLoading: boolean;
   marketData: Map<string, CoinGeckoMarketData>;
   isExpanded: boolean;
   onToggle: () => void;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function CollapsibleTokenRow({
   symbol,
-  baseBalance,
-  ethBalance,
+  chainBalances,
   isLoading,
   marketData,
   isExpanded,
@@ -49,7 +58,7 @@ export function CollapsibleTokenRow({
   const price = coin?.current_price ?? 0;
   const decimals = meta.decimals;
 
-  const totalBig = (baseBalance ?? 0n) + (ethBalance ?? 0n);
+  const totalBig = chainBalances.reduce<bigint>((acc, c) => acc + (c.balance ?? 0n), 0n);
   const totalFmt = fmtBalance(totalBig, decimals);
   const totalUsd = toUsd(totalBig, decimals, price);
 
@@ -97,15 +106,26 @@ export function CollapsibleTokenRow({
       {/* Expanded per-chain breakdown */}
       {isExpanded && (
         <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] space-y-2">
-          {(
-            [
-              { label: 'Base', logo: '/chains/base_logo.svg', balance: baseBalance },
-              { label: 'Ethereum', logo: '/chains/ethereum.png', balance: ethBalance },
-            ] as const
-          ).map(({ label, logo, balance }) => (
-            <div key={label} className="flex items-center justify-between text-sm">
+          {chainBalances.map(({ chainId, label, logo, balance }) => (
+            <div key={chainId} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <img src={logo} alt={label} className="w-4 h-4 rounded-full object-contain shrink-0" />
+                <img
+                  src={logo}
+                  alt={label}
+                  className="w-4 h-4 rounded-full object-contain shrink-0"
+                  onError={(e) => {
+                    const t = e.currentTarget;
+                    t.style.display = 'none';
+                    const sibling = t.nextElementSibling as HTMLElement | null;
+                    if (sibling) sibling.style.display = 'flex';
+                  }}
+                />
+                <span
+                  className="w-4 h-4 rounded-full bg-gray-700 items-center justify-center text-[8px] font-bold text-gray-300 shrink-0"
+                  style={{ display: 'none' }}
+                >
+                  {label[0]}
+                </span>
                 <span className="text-gray-400">{label}</span>
               </div>
               <div className="text-right">
