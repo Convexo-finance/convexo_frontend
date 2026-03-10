@@ -1,7 +1,8 @@
-import { createConfig, injected } from 'wagmi';
+import { createConfig } from 'wagmi';
 import { arbitrum, arbitrumSepolia, base, baseSepolia, mainnet, sepolia } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { http } from 'wagmi';
+import { IS_MAINNET } from '@/lib/config/network';
 
 // ─── Custom chain definitions ─────────────────────────────────────────────────
 
@@ -55,20 +56,26 @@ const ethSepoliaRpc = alchemyKey
   ? `https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`
   : 'https://rpc.sepolia.org';
 
-// ─── Wagmi config — all chains registered so balance reads work across networks ─
+// ─── Wagmi config ────────────────────────────────────────────────────────────
+//
+// This config is READ-ONLY — it exists only to provide multi-chain RPC
+// transports for balance reads and contract reads.
+//
+// All wallet connections (sign-in, send tx, gas sponsorship) are handled
+// exclusively by Account Kit's internal wagmi config (lib/alchemy/config.ts).
+//
+// IMPORTANT: No connectors + no ssr = no reconnect-on-mount = no
+// "connector.getChainId is not a function" error from stale stored sessions.
+//
+// All 8 chains are registered so the wallet page can read balances across
+// networks. useChainId() is overridden in compat.ts to always return
+// PRIMARY_CHAIN_ID regardless of what wagmi thinks the active chain is.
 
 export const config = createConfig({
-  chains: [
-    base,           // 8453
-    unichainMainnet,// 130
-    arbitrum,       // 42161
-    mainnet,        // 1
-    baseSepolia,    // 84532
-    sepolia,        // 11155111
-    unichainSepolia,// 1301
-    arbitrumSepolia,// 421614
-  ],
-  connectors: [injected()],
+  // Primary chain first — both modes include all chains for balance reads
+  chains: IS_MAINNET
+    ? [base, unichainMainnet, arbitrum, mainnet, baseSepolia, sepolia, unichainSepolia, arbitrumSepolia]
+    : [baseSepolia, sepolia, unichainSepolia, arbitrumSepolia, base, unichainMainnet, arbitrum, mainnet],
   transports: {
     [base.id]:            http(baseRpc),
     [unichainMainnet.id]: http(process.env.NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL || 'https://mainnet.unichain.org'),
@@ -79,5 +86,4 @@ export const config = createConfig({
     [unichainSepolia.id]: http(process.env.NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL || 'https://sepolia.unichain.org'),
     [arbitrumSepolia.id]: http(process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc'),
   },
-  ssr: true,
 });
