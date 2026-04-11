@@ -45,7 +45,7 @@ export class ApiError extends Error {
 
 let refreshPromise: Promise<boolean> | null = null
 
-async function attemptTokenRefresh(): Promise<boolean> {
+export async function attemptTokenRefresh(): Promise<boolean> {
   // Deduplicate concurrent refresh requests (e.g., parallel 401s)
   if (refreshPromise) return refreshPromise
 

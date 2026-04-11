@@ -1,5 +1,5 @@
 import { createConfig, type AlchemyAccountsUIConfig, cookieStorage } from '@account-kit/react';
-import { alchemy, base, baseSepolia, mainnet } from '@account-kit/infra';
+import { alchemy, base, baseSepolia, sepolia, mainnet } from '@account-kit/infra';
 import { metaMask, coinbaseWallet } from 'wagmi/connectors';
 import { IS_MAINNET } from '@/lib/config/network';
 
@@ -31,8 +31,9 @@ const uiConfig: AlchemyAccountsUIConfig = {
 };
 
 // Primary chain for Account Kit — follows NEXT_PUBLIC_NETWORK_MODE
-// Mainnet: Base (8453), Testnet: Base Sepolia (84532)
-const primaryChain = IS_MAINNET ? base : baseSepolia;
+// Mainnet: Base (8453), Testnet: Ethereum Sepolia (11155111)
+// ETH Sepolia is required because ZKPassport verifier is not deployed on Base Sepolia.
+const primaryChain = IS_MAINNET ? base : sepolia;
 
 export const alchemyConfig = createConfig(
   {
@@ -45,8 +46,12 @@ export const alchemyConfig = createConfig(
         policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID : undefined,
       },
       {
-        chain: baseSepolia,
+        chain: sepolia,
         // No gas sponsorship on testnet (policyId omitted)
+      },
+      {
+        chain: baseSepolia,
+        // Kept for balance reads on Base Sepolia (wallet page)
       },
       {
         chain: mainnet,

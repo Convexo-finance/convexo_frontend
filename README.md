@@ -5,7 +5,8 @@ Next.js 16 App Router frontend for the Convexo Protocol — connecting internati
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org)
 [![Account Kit](https://img.shields.io/badge/Alchemy%20Account%20Kit-4.84.1-purple)](https://accountkit.alchemy.com)
-[![Build](https://img.shields.io/badge/Build-28%20routes%20passing-brightgreen)](#quick-start)
+[![Build](https://img.shields.io/badge/Build-passing-brightgreen)](#quick-start)
+[![Network](https://img.shields.io/badge/Testnet-ETH%20Sepolia-blue)](#environment-variables)
 
 > ⚠️ **Critical — always use webpack:** `npm run dev` is aliased to `next dev --webpack`. Never use bare `npx next dev` — Turbopack breaks with the `thread-stream` dependency pulled in by pino/Alchemy.  
 > If you see chunk errors after many file changes: `rm -rf .next && npm run dev`
@@ -311,6 +312,10 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
 ## Environment Variables
 
 ```env
+# Network mode — controls primary chain (build-time)
+# 'mainnet' → Base (8453) | 'testnet' → ETH Sepolia (11155111, default)
+NEXT_PUBLIC_NETWORK_MODE=testnet
+
 # Backend API
 NEXT_PUBLIC_API_URL=http://localhost:3001
 
@@ -326,6 +331,7 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
 NEXT_PUBLIC_BASE_MAINNET_RPC_URL=https://mainnet.base.org
 NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=https://eth.llamarpc.com
 NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=https://mainnet.unichain.org
+NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL=https://rpc.sepolia.org
 
 # Pinata IPFS
 PINATA_JWT=your_pinata_jwt
@@ -334,6 +340,7 @@ NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
 
 | Variable | Required | Description |
 |---|---|---|
+| `NEXT_PUBLIC_NETWORK_MODE` | | `mainnet` or `testnet` (default: testnet = ETH Sepolia) |
 | `NEXT_PUBLIC_API_URL` | ✅ | Backend API base URL |
 | `NEXT_PUBLIC_ALCHEMY_API_KEY` | ✅ | Alchemy key — Account Kit + NFT + Portfolio APIs |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | ✅ | Gas Manager policy for Base mainnet |
@@ -412,6 +419,9 @@ const { hasPassportNFT, hasAnyLPNFT, hasEcreditscoringNFT, tier } = useNFTBalanc
 | `useSendToken` | Unified ETH/ERC-20 transfer with chain switching |
 | `useUserReputation` | Cached tier from backend + manual sync trigger |
 | `useVaults` | Tokenized bond vault reads |
+| `useV4Quote` | Off-chain quote via Uniswap V4 Quoter — debounced 500ms |
+| `useV4Swap` | Full V4 swap: ERC-20 approve → Permit2 approve → Universal Router execute |
+| `useContracts` | Returns contract addresses for the current chain (`getContractsForChain`) |
 
 ### `usePortfolioBalances` (Alchemy Portfolio API)
 
@@ -471,7 +481,7 @@ The `components/wallet/` directory contains the full wallet page UI:
 | `/digital-id/limited-partner-individuals` | Veriff KYC | — |
 | `/digital-id/limited-partner-business` | Sumsub KYB | — |
 | `/digital-id/credit-score/verify` | AI credit score (3 PDFs + 9 fields) | 2 |
-| `/treasury/swaps` | Token swap — live rate from `GET /rates/USDC-ECOP` | 2 |
+| `/treasury/swaps` | USDC ↔ ECOP swap — on-chain V4 Quoter + Universal Router | 1 |
 | `/treasury/convert-fast` | ECOP ↔ USDC — live rate from `GET /rates/ECOP-USDC` | 2 |
 | `/treasury/otc` | OTC orders | 2 |
 | `/treasury/monetization` | Yield tools | 2 |
@@ -532,17 +542,19 @@ See [DEPLOY.md](./DEPLOY.md) for the full production checklist.
 | Check | Status | Notes |
 |---|---|---|
 | TypeScript errors | ✅ 0 | `npx tsc --noEmit` clean |
-| Production build | ✅ 28 routes | `npm run build --webpack` passes |
+| Production build | ✅ passing | `npm run build --webpack` |
+| Primary testnet | ✅ ETH Sepolia (11155111) | ZKPassport verifier + pool LIVE — `NEXT_PUBLIC_NETWORK_MODE=testnet` |
+| V4 swap wired (v3.18) | ✅ | `useV4Swap` + `useV4Quote` — Universal Router allowed on ETH Sepolia hook |
+| V4 addresses (v3.18) | ✅ | UNIVERSAL_ROUTER, POSITION_MANAGER, QUOTER, PERMIT2 all chains |
+| Vault investments | ✅ | `GET /vaults` backend + on-chain `useReadContract` for live state |
+| ZKPassport flow | ✅ | Age ≥18, sanctions (20 ISO alpha-3), nationality, expiry — `devMode` OFF for prod |
+| Auth (JWT decode) | ✅ | Instant session restore from JWT payload — no network call on mount |
 | Account type | ✅ `MultiOwnerModularAccount` everywhere | `useWalletAccount`, `useConvexoWrite`, `useSendToken` |
 | EIP-7702 delegation | ✅ Automatic | Account Kit bundles auth + UO on first tx — no activation step |
-| Deprecated `useContractRead` | ✅ Removed | All replaced with `useReadContract` (wagmi v2) |
 | Raw `from 'wagmi'` imports | ✅ Removed | All use `from '@/lib/wagmi/compat'` |
-| `useSmartWalletActivation` | ✅ Removed | Activation is automatic via SDK |
 | Auth race condition | ✅ Fixed | `AuthGuard` waits for JWT init + Account Kit signer reconnection |
-| Profile page flash | ✅ Fixed | Shows spinner during `isReconnecting` |
 | Silent refresh | ✅ Active | `POST /auth/refresh` on 401 in `lib/api/client.ts` |
-| console.log statements | ✅ Purged | 30+ removed across pages |
-| Error boundaries | ✅ Added | Root `error.tsx` + 20+ `loading.tsx` / `error.tsx` files |
+| Error boundaries | ✅ Added | Root `error.tsx` + `loading.tsx` files throughout |
 | Page transitions | ✅ Active | Framer Motion `AnimatePresence` in `DashboardLayout` |
 | Gas Manager — Base | ✅ Active | Policy `f09c26c8-7567-478d-861a-ace75dec3f28` |
 | Gas Manager — Ethereum | ✅ Active | Policy `063c2de8-1e92-4e84-b1ee-0444523e27c1` |

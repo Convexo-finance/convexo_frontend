@@ -1,4 +1,4 @@
-// Core Convexo Protocol ABIs - Version 3.17
+// Core Convexo Protocol ABIs - Version 3.18
 // All ABIs are direct arrays from deployment artifacts
 // Updated with new tier system: Passport (1) → LimitedPartner (2) → VaultCreator (3)
 

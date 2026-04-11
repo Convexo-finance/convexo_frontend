@@ -4,10 +4,8 @@ import {
   useAccount as useAlchemyAccount,
   useSignerStatus,
   useAlchemyAccountContext,
-  useSigner,
 } from '@account-kit/react';
 import { useAccount as wagmi_useAccount } from 'wagmi';
-import { useState, useEffect } from 'react';
 import type { Address } from 'viem';
 import { getToken } from '@/lib/api/client';
 
@@ -35,28 +33,15 @@ import { getToken } from '@/lib/api/client';
  */
 export function useAccount() {
   // --- AlchemySigner (embedded: email / passkey / OAuth) ---
-  // MAv2 with EIP-7702: signer EOA address = smart wallet address
+  // MAv2 with EIP-7702: signer EOA address = smart wallet address.
+  // smartAddress is computed from cookie storage on mount — no async getAddress() needed.
   const { address: smartAddress, isLoadingAccount } = useAlchemyAccount({ type: 'MultiOwnerModularAccount' });
-  const signer = useSigner();
   const {
     isConnected: isSignerConnected,
     isDisconnected: isSignerDisconnected,
     isInitializing,
     isAuthenticating,
   } = useSignerStatus();
-
-  // Resolve the signer's EOA address (= the smart wallet address with EIP-7702)
-  const [signerAddress, setSignerAddress] = useState<Address | undefined>();
-  useEffect(() => {
-    if (!isSignerConnected || !signer) {
-      setSignerAddress(undefined);
-      return;
-    }
-    (signer as { getAddress(): Promise<string> })
-      .getAddress()
-      .then((addr) => setSignerAddress(addr as Address))
-      .catch(() => setSignerAddress(undefined));
-  }, [isSignerConnected, signer]);
 
   // --- External EOA wallet ---
   // Account Kit uses its own internal wagmi instance — external wallets
@@ -75,12 +60,12 @@ export function useAccount() {
   const isConnected = isSignerConnected || isEoaConnected || hasJwt;
   const isDisconnected = isSignerDisconnected && !isEoaConnected && !hasJwt;
 
-  // Prefer resolved signer EOA → MAv2 counterfactual → external EOA
-  const address = signerAddress ?? smartAddress ?? eoaAddress;
+  // Prefer MAv2 smart wallet address → external EOA
+  const address = (smartAddress ?? eoaAddress) as Address | undefined;
 
-  // True while the embedded signer is connected but its EOA hasn't resolved yet.
+  // True while Account Kit is still loading the account from stored state.
   // Suppress balance / contract queries during this window to avoid stale data.
-  const isResolvingAddress = isSignerConnected && !signerAddress;
+  const isResolvingAddress = isSignerConnected && isLoadingAccount;
 
   // Tells the UI which mode the user is in
   const authMode: 'embedded' | 'external' | null =

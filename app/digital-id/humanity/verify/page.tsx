@@ -34,6 +34,15 @@ import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 // Your app's unique scope for identity verification
 const APP_SCOPE_STRING = 'convexo-passport-identity';
 
+// Must match Convexo_Passport._getSanctionedCountries() exactly —
+// ISO 3166-1 alpha-3 codes, alphabetically sorted (ZKPassport Merkle requirement).
+// The SDK's SANCTIONED_COUNTRIES uses full country names and is NOT compatible.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CONVEXO_SANCTIONED_COUNTRIES: any[] = [
+  'AFG', 'BLR', 'CAF', 'COD', 'CUB', 'IRN', 'IRQ', 'LBY', 'MLI', 'MMR',
+  'NIC', 'PRK', 'RUS', 'SDN', 'SOM', 'SSD', 'SYR', 'VEN', 'YEM', 'ZWE',
+];
+
 // Interface for the verified traits stored privately
 interface ConvexoPassportTraits {
   uniqueIdentifier: string;
@@ -133,10 +142,14 @@ export default function ZKVerificationPage() {
         devMode: !IS_MAINNET, // allow mock proofs on testnet
       });
 
-      // Request only what's needed for the NFT traits
+      // Request all claims the contract verifies on-chain:
+      // age >= 18, sanctions, nationality not in blocked list, passport not expired.
+      // All four must be committed in the proof or claimPassport() will revert.
       const { url, onProofGenerated, onResult } = queryBuilder
         .gte('age', 18)
         .sanctions()
+        .out('nationality', CONVEXO_SANCTIONED_COUNTRIES)
+        .gte('expiry_date', new Date())
         .done();
 
       setVerificationUrl(url);
@@ -154,14 +167,26 @@ export default function ZKVerificationPage() {
         if (verified) {
           const sanctionsPassed = result?.sanctions?.passed ?? false;
           const isOver18 = result?.age?.gte?.result ?? false;
+          const nationalityCompliant = result?.nationality?.out?.result ?? false;
+          const isNotExpired = result?.expiry_date?.gte?.result ?? false;
 
           if (!sanctionsPassed) {
-            setError('KYC verification failed. Sanctions check did not pass.');
+            setError('Verification failed: sanctions check did not pass.');
             setStep('idle');
             return;
           }
           if (!isOver18) {
-            setError('Age verification failed. Must be 18 or older.');
+            setError('Verification failed: must be 18 or older.');
+            setStep('idle');
+            return;
+          }
+          if (!nationalityCompliant) {
+            setError('Verification failed: your nationality is not permitted.');
+            setStep('idle');
+            return;
+          }
+          if (!isNotExpired) {
+            setError('Verification failed: your passport or ID is expired.');
             setStep('idle');
             return;
           }
@@ -185,7 +210,7 @@ export default function ZKVerificationPage() {
             kycVerified: sanctionsPassed,
             sanctionsPassed,
             isOver18,
-            nationalityCompliant: result?.nationality?.out?.result ?? true,
+            nationalityCompliant,
             zkPassportTimestamp: timestamp,
             zkPassportResult: result,
             solidityParams,

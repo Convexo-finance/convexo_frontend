@@ -10,7 +10,7 @@ import {
 import { useAccount as wagmiUseAccount, useDisconnect } from 'wagmi'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
-import { apiFetch, setToken, setRefreshToken, getToken, clearToken } from '../api/client'
+import { apiFetch, attemptTokenRefresh, setToken, setRefreshToken, getToken, getRefreshToken, clearToken } from '../api/client'
 import { PRIMARY_CHAIN_ID } from '@/lib/config/network'
 
 type AuthMethod =
@@ -28,15 +28,6 @@ export interface AuthUser {
   accountType: string | null
   onboardingStep: string | null
   isAdmin: boolean
-}
-
-interface UserMeResponse {
-  id: string
-  walletAddress: string
-  accountType: string | null
-  onboardingStep: string | null
-  adminRole: { role: string; grantedBy: string } | null
-  [key: string]: unknown
 }
 
 interface VerifyResponse {
@@ -77,6 +68,34 @@ function withTimeout<T>(promise: Promise<T>, ms: number, msg: string): Promise<T
   ])
 }
 
+// Decode JWT payload without verifying the signature.
+// The backend signs all tokens — we just read the claims to restore UI state.
+// Actual token validity is enforced server-side on every API call.
+function decodeJwtPayload(token: string): AuthUser | null {
+  try {
+    const raw = token.split('.')[1]
+    if (!raw) return null
+    // URL-safe base64 → standard base64
+    const json = atob(raw.replace(/-/g, '+').replace(/_/g, '/'))
+    const p = JSON.parse(json) as {
+      sub?: string; address?: string; accountType?: string | null;
+      onboardingStep?: string | null; isAdmin?: boolean; exp?: number;
+    }
+    // Reject expired tokens so we don't restore a session the server will reject
+    if (p.exp && Date.now() / 1000 > p.exp) return null
+    if (!p.sub || !p.address) return null
+    return {
+      id: p.sub,
+      walletAddress: p.address,
+      accountType: p.accountType ?? null,
+      onboardingStep: p.onboardingStep ?? null,
+      isAdmin: !!p.isAdmin,
+    }
+  } catch {
+    return null
+  }
+}
+
 // Encode string to hex bytes for EIP-1193 personal_sign
 function toMsgHex(str: string): `0x${string}` {
   return `0x${Array.from(new TextEncoder().encode(str))
@@ -109,32 +128,46 @@ export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Restore session from JWT on mount
+  // Restore session from JWT on mount — no network request needed.
+  // The JWT payload contains everything required (sub, address, accountType, onboardingStep, isAdmin).
+  // Token validity is enforced server-side on every API call; the 401 interceptor in client.ts
+  // will transparently refresh or log out if the token is rejected at runtime.
   useEffect(() => {
-    async function restoreAuth() {
-      const token = getToken()
-      if (!token) {
-        setIsInitializing(false)
-        return
-      }
-      try {
-        const me = await apiFetch<UserMeResponse>('/users/me')
-        setUser({
-          id: me.id,
-          walletAddress: me.walletAddress,
-          accountType: me.accountType,
-          onboardingStep: me.onboardingStep,
-          isAdmin: !!me.adminRole,
-        })
-        setIsAuthenticated(true)
-      } catch {
-        clearToken()
-        setIsAuthenticated(false)
-      } finally {
-        setIsInitializing(false)
-      }
+    const token = getToken()
+    if (!token) {
+      setIsInitializing(false)
+      return
     }
-    restoreAuth()
+
+    const user = decodeJwtPayload(token)
+    if (user) {
+      // Valid, non-expired token → restore instantly from local payload (zero network latency)
+      setUser(user)
+      setIsAuthenticated(true)
+      setIsInitializing(false)
+      return
+    }
+
+    // Access token expired — try silent refresh before giving up
+    if (getRefreshToken()) {
+      attemptTokenRefresh()
+        .then((ok) => {
+          if (ok) {
+            const newToken = getToken()
+            const refreshedUser = newToken ? decodeJwtPayload(newToken) : null
+            if (refreshedUser) {
+              setUser(refreshedUser)
+              setIsAuthenticated(true)
+              return
+            }
+          }
+          clearToken()
+        })
+        .finally(() => setIsInitializing(false))
+    } else {
+      clearToken()
+      setIsInitializing(false)
+    }
   }, [])
 
   const isConnected = isSignerConnected || isEoaConnected

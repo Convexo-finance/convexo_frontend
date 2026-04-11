@@ -1,7 +1,7 @@
 # Convexo Frontend — Sequence Diagrams
 
 > UI flows, routing, API calls and state management.  
-> Updated: 2026-03-04
+> Updated: 2026-04-10
 
 ---
 
@@ -386,3 +386,106 @@ sequenceDiagram
 
     Note over FE: /profile shows read-only identity card per type
 ```
+
+---
+
+## 11. Treasury — USDC/ECOP Pool Swap (Phase 6 — TO IMPLEMENT)
+
+> **Pool live on Base Sepolia** (2026-04-10):
+> Hook `0xdCfF77e89904e9Bead3f456D04629Ca8Eb7e8a80`, fee=500, tickSpacing=10, rate=3650 COP/USDC.
+> Currently treasury/swaps shows rates but does NOT execute on-chain swaps yet.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant V4Q as V4 Quoter (off-chain)
+    participant UR as Universal Router
+    participant PM as PoolManager
+    participant Hook as PassportGatedHook
+
+    User->>FE: Navigate to /treasury/swaps (requires Tier >= 1)
+    FE->>FE: Read USDC/ECOP balances (useReadContract)
+    FE->>V4Q: Quote swap — quoteExactInputSingle(poolKey, zeroForOne, amountIn)
+    V4Q-->>FE: amountOut estimate
+    FE->>FE: Display rate + estimated output
+
+    User->>FE: Enter amount, confirm swap
+    FE->>FE: Approve USDC/ECOP to UniversalRouter (permit2 path)
+    FE->>UR: exactInputSingle(poolKey, zeroForOne, amountIn, amountOutMin, hookData=abi.encode(userAddress))
+    UR->>PM: swap(poolKey, swapParams, hookData)
+    PM->>Hook: beforeSwap(router, poolKey, params, hookData)
+    Hook->>Hook: Check allowedRouters[router] + ReputationManager.getReputationTier(user)
+    Hook-->>PM: Return selector (approved)
+    PM-->>UR: BalanceDelta (amountOut)
+    UR-->>FE: Transaction receipt
+    FE->>FE: Refresh balances
+```
+
+**Key implementation requirements:**
+1. `allowRouter(universalRouterAddress)` must be called on the hook before any swap works
+2. `hookData` must be `abi.encode(userAddress)` — the router passes who the real user is
+3. Use V4 Quoter (`v4-periphery/src/lens/V4Quoter.sol`) for off-chain quotes
+4. permit2 approve flow same as liquidity (already done in AddLiquidity.s.sol for reference)
+
+**Key files to create/update:**
+- `app/treasury/swaps/page.tsx` — wire `executeSwap()` using `useConvexoWrite`
+- `lib/hooks/useV4Quote.ts` — off-chain quote hook
+- `lib/contracts/addresses.ts` — add `UNIVERSAL_ROUTER` + `V4_QUOTER` per chain
+
+---
+
+## 12. Investments — Vault Flow (ERC-7540 Async Redemption)
+
+> **VaultFactory deployed** (same address all chains, v3.18).
+> TokenizedBondVault: ERC-7540 async redemption, `totalShareSupply` + `minInvestment` model.
+> Currently /investments page exists but vault interaction not wired.
+
+```mermaid
+sequenceDiagram
+    actor Investor
+    actor Borrower
+    participant FE as Frontend
+    participant BE as Backend API
+    participant VF as VaultFactory
+    participant Vault as TokenizedBondVault
+
+    Note over Borrower,VF: Borrower creates vault (Tier >= 3 Business)
+    Borrower->>FE: Navigate to /investments/create
+    Borrower->>VF: createVault(principal, rate, maturity, shares, minInvestment, usdc, signer, repMgr, feeCollector)
+    VF-->>FE: VaultCreated event → vaultAddress
+
+    Note over Investor,Vault: Investor deposits (Tier >= 2)
+    Investor->>FE: Navigate to /investments → list open vaults
+    FE->>FE: Read VaultFactory vaultCount + vault[i] address
+    FE->>Vault: Read vaultInfo (state=Pending, principalAmount, initialSharePrice, totalRaised)
+    Investor->>FE: Enter USDC amount (>= minInvestment)
+    FE->>Vault: deposit(usdcAmount, receiver)
+    Vault-->>FE: Shares minted (ERC-20 transfer)
+
+    Note over Borrower,Vault: Vault activation
+    Vault->>Vault: state=Funded (when totalRaised >= principal)
+    Borrower->>Vault: attachContract(contractHash) via ContractSigner
+    Vault->>Vault: state=Active
+    Borrower->>Vault: withdrawFunds()
+    Vault->>Vault: state=Repaying
+
+    Note over Investor,Vault: ERC-7540 Async Redemption
+    Investor->>FE: Navigate to /investments → "Claim Returns"
+    Investor->>Vault: requestRedeem(shares) → shares locked
+    Note over Vault: Claimable = entitlement × repaidFraction
+    Investor->>Vault: redeem(shares, receiver, controller) → USDC transferred
+    Note over Vault: Multiple partial claims as repayments arrive
+    Vault-->>FE: USDC transferred to investor wallet
+```
+
+**Vault economic model:**
+- `initialSharePrice` = principalAmount / totalShareSupply (e.g. $100k / 1000 shares = $100/share)
+- `expectedFinalPrice` = (principal + interest - fee) / totalShareSupply
+- `minInvestment` = minimum USDC per deposit (e.g. $500 minimum)
+- States: Pending → Funded → Active → Repaying → Completed / Defaulted
+
+**Key files to create/update:**
+- `app/investments/page.tsx` — list vaults from VaultFactory events
+- `app/investments/[vaultId]/page.tsx` — vault detail + deposit + requestRedeem + redeem
+- `lib/hooks/useVault.ts` — vault read/write hooks

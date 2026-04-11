@@ -103,6 +103,12 @@ export {
 export { useAuth } from './useAuth';
 export type { AuthUser } from './useAuth';
 
+// V4 Pool (v3.18)
+export { useV4Swap } from './useV4Swap';
+export type { SwapStep } from './useV4Swap';
+export { useV4Quote } from './useV4Quote';
+export { useContracts } from './useContracts';
+
 // Legacy hooks (for backwards compatibility)
 export { useVaultCount, useVaultAddress } from './useVaults';
 export { useUserReputation } from './useUserReputation';
