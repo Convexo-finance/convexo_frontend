@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { useSignerStatus } from '@account-kit/react';
@@ -18,41 +18,38 @@ import Image from 'next/image';
  *
  * All redirects use `router.replace` so the guarded URL is removed from
  * browser history (prevents back-button bounce loops).
- * A `hasRedirected` ref prevents effects from firing more than once.
+ *
+ * No hasRedirected ref — router.replace is idempotent and AuthGuard
+ * unmounts entirely when navigating to /onboarding (different layout),
+ * so there is no risk of the effect firing in a loop.
  */
 export default function AuthGuard({ children }: { children: ReactNode }) {
   const { isAuthenticated, isInitializing } = useAuth();
   const { isInitializing: isSignerInit } = useSignerStatus();
   const { onboardingStep } = useNavigation();
   const router = useRouter();
-  const pathname = usePathname();
-  const hasRedirected = useRef(false);
 
   const loading = isInitializing || isSignerInit;
 
-  // Redirect unauthenticated users to sign-in (once)
+  // Redirect unauthenticated users to sign-in
   useEffect(() => {
-    if (loading || hasRedirected.current) return;
+    if (loading) return;
     if (!isAuthenticated) {
-      hasRedirected.current = true;
       router.replace('/');
     }
   }, [isAuthenticated, loading, router]);
 
-  // Redirect users who haven't completed onboarding (once).
-  // Skip if already on /onboarding — replacing the same route remounts
-  // the page and resets wizard state, causing an infinite loop.
+  // Redirect users who haven't completed onboarding.
+  // /onboarding uses a standalone layout — AuthGuard is never mounted
+  // there, so there is no risk of this effect causing a loop.
   useEffect(() => {
-    if (loading || hasRedirected.current) return;
+    if (loading) return;
     if (!isAuthenticated) return;
-    if (onboardingStep === null) return; // still loading
+    if (onboardingStep === null) return; // still loading from backend
     if (onboardingStep === 'NOT_STARTED' || onboardingStep === 'TYPE_SELECTED') {
-      if (!pathname.startsWith('/onboarding')) {
-        hasRedirected.current = true;
-        router.replace('/onboarding');
-      }
+      router.replace('/onboarding');
     }
-  }, [loading, isAuthenticated, onboardingStep, pathname, router]);
+  }, [loading, isAuthenticated, onboardingStep, router]);
 
   // ── Render gates ───────────────────────────────────────────────
 

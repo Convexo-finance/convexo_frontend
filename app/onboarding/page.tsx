@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useOnboarding, type AccountType } from '@/lib/hooks/useOnboarding';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { apiFetch } from '@/lib/api/client';
 import { useSignerStatus } from '@account-kit/react';
 import {
@@ -604,6 +605,9 @@ export default function OnboardingPage() {
   const { isAuthenticated, isInitializing } = useAuth();
   const { isInitializing: isSignerInit } = useSignerStatus();
   const { step: onboardingStep, accountType: existingType, refetch } = useOnboarding();
+  // Sync the shared NavigationContext after each step so AuthGuard always
+  // reads fresh onboardingStep when the user navigates away from /onboarding.
+  const { refetchAll } = useNavigation();
 
   // Local wizard state
   const [wizardStep, setWizardStep] = useState(1);
@@ -656,13 +660,14 @@ export default function OnboardingPage() {
         body: JSON.stringify({ accountType: selectedType }),
       });
       await refetch();
+      refetchAll(); // keep NavigationContext in sync so AuthGuard sees updated step
       setWizardStep(2);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to save account type');
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedType, refetch]);
+  }, [selectedType, refetch, refetchAll]);
 
   /* ---- Step 2 → POST /onboarding/profile ---- */
   const handleProfileSubmit = useCallback(async () => {
@@ -693,13 +698,14 @@ export default function OnboardingPage() {
         body: JSON.stringify(raw),
       });
       await refetch();
+      refetchAll(); // keep NavigationContext in sync so AuthGuard sees PROFILE_COMPLETE
       setWizardStep(3);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedType, individualData, businessData, refetch]);
+  }, [selectedType, individualData, businessData, refetch, refetchAll]);
 
   // Loading state
   if (loading || (!isAuthenticated && !loading)) {
