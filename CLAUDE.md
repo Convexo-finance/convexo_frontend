@@ -9,13 +9,18 @@ Read this before touching any file. Update it when you change architecture.
 
 ```
 convexo_frontend/
-├── app/                    — Next.js 14 App Router pages
-│   ├── treasury/swaps/     — USDC↔ECOP swap (Uniswap V4, live)
-│   ├── investments/vaults/ — Tokenized bond vaults (ERC-7540)
-│   ├── digital-id/         — Identity + KYC/KYB/ZKPassport flows
-│   ├── onboarding/         — 3-step account setup wizard
-│   ├── profile/            — Bank accounts, contacts, wallet
-│   └── funding/            — Business-only funding module
+├── app/
+│   ├── page.tsx            — Landing / sign-in (public, no auth)
+│   ├── layout.tsx          — Root layout (providers)
+│   ├── onboarding/         — 3-step account setup wizard (standalone, no DashboardLayout)
+│   └── (dashboard)/        — Route group: ALL authenticated pages share DashboardLayout
+│       ├── layout.tsx      — Provides DashboardLayout + AuthGuard for every child
+│       ├── treasury/swaps/ — USDC↔ECOP swap (Uniswap V4, live)
+│       ├── investments/vaults/ — Tokenized bond vaults (ERC-7540)
+│       ├── digital-id/     — Identity + KYC/KYB/ZKPassport flows
+│       ├── profile/        — Bank accounts, contacts, wallet
+│       ├── funding/        — Business-only funding module (Tier 3)
+│       └── admin/          — In-app admin view (legacy — full admin at convexo-admin/)
 ├── components/             — Shared UI (DashboardLayout, wallet/, ui/)
 ├── lib/
 │   ├── api/client.ts       — apiFetch + JWT + silent refresh
@@ -218,12 +223,12 @@ Key endpoints used by frontend:
 
 ---
 
-## Phase status (as of v3.18, 2026-04-10)
+## Phase status (as of v3.18.2, 2026-04-11)
 
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Auth (SIWE + JWT) | ✅ Complete | Both Account Kit + EOA paths |
-| Onboarding | ✅ Complete | 3-step wizard wired to backend |
+| Onboarding | ✅ Complete | 3-step wizard wired to backend. Fixed infinite-loop 2026-04-11. |
 | ZKPassport (Tier 1) | ✅ Complete | 130 tests, trustless on-chain |
 | Veriff KYC (Tier 2) | ✅ Complete | Webhook → backend → NFT |
 | Sumsub KYB (Tier 2) | ✅ Complete | Webhook → backend → NFT |
@@ -234,6 +239,9 @@ Key endpoints used by frontend:
 | Wallet (portfolio) | ✅ Complete | Alchemy Portfolio API |
 | Vault investments | ✅ Complete | GET /vaults + on-chain USDC approve → deposit. `useReadContract` for live vault state. |
 | Pool swaps | ✅ Complete | `useV4Swap` + `useV4Quote` wired. ETH Sepolia pool LIVE, router allowed ✅ |
-| Funding module | 🔜 Phase 7 | Backend complete, frontend pending |
-| Admin panel | 🔜 Phase 9 | Not started |
-| ConvexoPoolHook (oracle band) | 🔜 Phase 2 contracts | Not deployed |
+| Funding module | ✅ Complete | e-loans + e-contracts wired to real API. Business + Tier 3 gated. |
+| Tier gating (sidebar) | ✅ Complete | `requiredTier` + lock icons in Sidebar. Business-only items hidden for individual accounts. |
+| Route groups | ✅ Complete | All dashboard pages under `app/(dashboard)/`. Shared layout. |
+| Admin panel (in-app) | ✅ Complete | `/admin` — legacy, for convenience. Full admin at `convexo-admin/`. |
+| Admin app (standalone) | ✅ Scaffolded | `convexo-admin/` — EOA SIWE, all tabs, deploy as `admin.convexo.xyz`. |
+| ConvexoPoolHook (oracle band) | 🔜 Phase 2 contracts | Not deployed. Phase 1 hook has no price band. |

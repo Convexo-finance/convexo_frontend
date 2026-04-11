@@ -4,6 +4,36 @@ Format: version → what changed → status.
 
 ---
 
+## v3.18.2 — 2026-04-11 (route groups + admin app + onboarding fix)
+
+### Route groups restructure
+- All dashboard pages moved into `app/(dashboard)/` route group
+- Shared `app/(dashboard)/layout.tsx` provides `DashboardLayout` for every child page
+- `DashboardLayout` import removed from all 26 pages (no duplication)
+- URLs unchanged — route groups have zero impact on routing
+- `onboarding/` stays at root level (uses standalone layout, no sidebar)
+
+### Onboarding infinite-loop fix
+- `AuthGuard`: removed `hasRedirected.current` ref that was blocking recovery after first redirect
+- `app/onboarding/page.tsx`: added `refetchAll()` calls after each step submission to keep `NavigationContext` in sync with backend state
+
+### Funding module stats fix
+- `funding/page.tsx`: replaced `useVaultCount()` (global factory count) with real user data from `GET /funding/requests`
+- "Your Vaults" now shows VAULT_CREATED request count
+- "Total Raised" now shows sum of approved vault amounts
+- "Active Contracts" now shows APPROVED + VAULT_CREATED count
+
+### Admin app scaffold (`convexo-admin/`)
+- Separate Next.js app in the monorepo, intended for `admin.convexo.xyz`
+- EOA-only SIWE auth (MetaMask → `personal_sign` → backend JWT stored as `convexo_admin_jwt`)
+- No Account Kit, no smart accounts
+- All admin components ported from `convexo_frontend/components/admin/` with corrected imports
+- New `FundingManagement` component wired to `GET/PUT /admin/funding/requests`
+- Sidebar navigation with 8 tabs: Dashboard, Users, Verifications, NFT Management, Vaults, Funding, Treasuries, Contracts
+- Runs on port 3002 (`npm run dev`)
+
+---
+
 ## v3.18.1 — 2026-04-10 (V4 swap wired)
 
 ### Uniswap V4 swap integration
