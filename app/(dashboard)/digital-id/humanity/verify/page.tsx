@@ -26,7 +26,17 @@ import {
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
-import { ZKPassport, type SolidityVerifierParameters } from '@zkpassport/sdk';
+import { ZKPassport, type SolidityVerifierParameters, type SupportedChain } from '@zkpassport/sdk';
+
+// Maps viem chain IDs to zkPassport SupportedChain strings
+const ZK_CHAIN_MAP: Record<number, SupportedChain> = {
+  1:         'ethereum',
+  8453:      'base',
+  11155111:  'ethereum_sepolia',
+  84532:     'base_sepolia',
+  42161:     'arbitrum',
+  421614:    'arbitrum_sepolia',
+};
 import { QRCodeSVG } from 'qrcode.react';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
@@ -144,11 +154,17 @@ export default function ZKVerificationPage() {
       // Request all claims the contract verifies on-chain:
       // age >= 18, sanctions, nationality not in blocked list, passport not expired.
       // All four must be committed in the proof or claimPassport() will revert.
+      // Bind proof to the user's wallet address and chain — required by the on-chain verifier.
+      // Without this the committedInputs won't include bind data and claimPassport() reverts.
+      const zkChain = ZK_CHAIN_MAP[chainId] ?? 'ethereum_sepolia';
+
       const { url, onProofGenerated, onResult } = queryBuilder
         .gte('age', 18)
         .sanctions()
         .out('nationality', CONVEXO_SANCTIONED_COUNTRIES)
         .gte('expiry_date', new Date())
+        .bind('user_address', address as `0x${string}`)
+        .bind('chain', zkChain)
         .done();
 
       setVerificationUrl(url);

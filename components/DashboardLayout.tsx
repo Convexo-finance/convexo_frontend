@@ -13,45 +13,33 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0d14]">
-      {/* Mobile backdrop overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar — static on desktop, sliding drawer on mobile */}
+      {/* Sidebar — width-based transition so content always shifts, never overlaps */}
       <aside
         className={`
-          fixed lg:relative inset-y-0 left-0 z-50 flex-shrink-0
-          transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          relative flex-shrink-0 overflow-hidden
+          transition-[width] duration-300 ease-in-out
+          ${sidebarOpen ? 'w-64' : 'w-0'}
         `}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        {/* Fixed-width inner container — stays w-64 while wrapper animates */}
+        <div className="w-64 h-full">
+          <Sidebar onClose={() => setSidebarOpen(false)} />
+        </div>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        {/* Mobile top bar */}
-        <div className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 h-14 bg-[#0f1219] border-b border-gray-800/50">
+        {/* Top bar — toggle visible on all screen sizes */}
+        <div className="sticky top-0 z-30 flex items-center gap-3 px-4 h-14 bg-[#0f1219] border-b border-gray-800/50">
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setSidebarOpen(s => !s)}
             className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 transition-colors"
-            aria-label="Open menu"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           >
             <Bars3Icon className="w-6 h-6" />
           </button>

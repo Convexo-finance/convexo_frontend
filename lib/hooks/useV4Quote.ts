@@ -104,7 +104,12 @@ export function useV4Quote({
       const rawDelta = deltaAmounts[outputIdx];
       setAmountOut(rawDelta < 0n ? -rawDelta : rawDelta);
     } catch (err: unknown) {
-      const msg = (err as { shortMessage?: string })?.shortMessage ?? 'Quote unavailable';
+      const raw = (err as { shortMessage?: string; message?: string });
+      const text = raw?.shortMessage ?? raw?.message ?? '';
+      // 0x6190b2b0 = PoolNotInitialized() — pool doesn't exist on this chain yet
+      const msg = text.includes('0x6190b2b0') || text.includes('PoolNotInitialized')
+        ? 'Pool not available on this network yet'
+        : text || 'Quote unavailable';
       setError(msg);
       setAmountOut(null);
     } finally {
