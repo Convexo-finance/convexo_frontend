@@ -79,6 +79,8 @@ export default function ZKVerificationPage() {
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
+  const [verificationTimedOut, setVerificationTimedOut] = useState(false);
+  const verificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collect the last proof from onProofGenerated — needed for getSolidityVerifierParameters
   const collectedProofRef = useRef<any>(null);
@@ -176,6 +178,11 @@ export default function ZKVerificationPage() {
 
       // Handle verification result
       onResult(({ uniqueIdentifier: uid, verified, result }) => {
+        // Clear timeout — proof arrived
+        if (verificationTimeoutRef.current) {
+          clearTimeout(verificationTimeoutRef.current);
+          verificationTimeoutRef.current = null;
+        }
         setIsGeneratingProof(false);
         setVerificationUrl(null);
 
@@ -369,6 +376,41 @@ export default function ZKVerificationPage() {
       setStep('verified');
     }
   }, [mintError, refetchPassport]);
+
+  // 5-minute timeout: if onResult never fires, show retry option instead of spinning forever
+  useEffect(() => {
+    if (step === 'verifying') {
+      setVerificationTimedOut(false);
+      verificationTimeoutRef.current = setTimeout(() => {
+        setVerificationTimedOut(true);
+      }, 5 * 60 * 1000);
+    } else {
+      if (verificationTimeoutRef.current) {
+        clearTimeout(verificationTimeoutRef.current);
+        verificationTimeoutRef.current = null;
+      }
+      setVerificationTimedOut(false);
+    }
+    return () => {
+      if (verificationTimeoutRef.current) {
+        clearTimeout(verificationTimeoutRef.current);
+        verificationTimeoutRef.current = null;
+      }
+    };
+  }, [step]);
+
+  const handleRetry = () => {
+    if (verificationTimeoutRef.current) {
+      clearTimeout(verificationTimeoutRef.current);
+      verificationTimeoutRef.current = null;
+    }
+    setStep('idle');
+    setVerificationUrl(null);
+    setVerificationTimedOut(false);
+    setError(null);
+    setIsGeneratingProof(false);
+    collectedProofRef.current = null;
+  };
 
   const handleCopy = () => {
     if (passportTraits?.uniqueIdentifier) {
@@ -629,15 +671,38 @@ export default function ZKVerificationPage() {
               </div>
             </div>
 
-            <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 max-w-md mx-auto">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
-                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Waiting for verification...</p>
+            {verificationTimedOut ? (
+              <div className="mt-4 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 max-w-md mx-auto">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">
+                  Verification timed out
+                </p>
+                <p className="text-xs text-red-700 dark:text-red-300 mb-3">
+                  The proof was not received. This can happen if the connection dropped or the app was closed before completing.
+                </p>
+                <button
+                  onClick={handleRetry}
+                  className="w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors"
+                >
+                  Cancel &amp; Try Again
+                </button>
               </div>
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Complete Proof of Personhood & KYC check in ZKPassport
-              </p>
-            </div>
+            ) : (
+              <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 max-w-md mx-auto">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Waiting for verification...</p>
+                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                  Complete Proof of Personhood &amp; KYC check in ZKPassport
+                </p>
+                <button
+                  onClick={handleRetry}
+                  className="w-full py-2 px-4 rounded-lg border border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-200 text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                >
+                  Cancel &amp; Start Over
+                </button>
+              </div>
+            )}
           </div>
         )}
 
