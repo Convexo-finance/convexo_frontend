@@ -6,9 +6,7 @@ import {
   AuthCard,
   useLogout,
   useSignerStatus,
-  useAlchemyAccountContext,
 } from '@account-kit/react';
-import { useDisconnect } from '@/lib/wagmi/compat';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import Image from 'next/image';
@@ -19,8 +17,6 @@ export default function SignInPage() {
   const { isConnected: isSignerConnected, isInitializing: isSignerInitializing } = useSignerStatus();
   const { onboardingStep } = useNavigation();
   const { logout } = useLogout();
-  const { config: akConfig } = useAlchemyAccountContext();
-  const { disconnect: disconnectEoa } = useDisconnect({ config: akConfig._internal.wagmiConfig });
 
   // ── Refs ─────────────────────────────────────────────────────────
   const hasAutoSigned = useRef(false);
@@ -91,10 +87,9 @@ export default function SignInPage() {
       prevConnected.current = false;
       // Disconnect any stale wallet so the user sees a fresh AuthCard
       if (isSignerConnected) logout();
-      disconnectEoa();
     }, 3_000);
     return () => clearTimeout(t);
-  }, [error, clearError, isSignerConnected, logout, disconnectEoa]);
+  }, [error, clearError, isSignerConnected, logout]);
 
 
 

@@ -1,15 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   useSignerStatus,
   useSmartAccountClient,
   useSendUserOperation,
-  useAlchemyAccountContext,
   useChain,
 } from '@account-kit/react';
-import { useAccount as wagmi_useAccount } from 'wagmi';
-import { writeContract, sendTransaction } from '@wagmi/core';
 import { encodeFunctionData, parseUnits } from 'viem';
 import { erc20Abi } from 'viem';
 import { base, mainnet } from 'wagmi/chains';
@@ -36,20 +33,11 @@ function getErc20Address(token: Exclude<TokenSymbol, 'ETH'>, chainId: number): `
 }
 
 /**
- * Unified token-send hook.
- *
- * Smart account (email / passkey / OAuth):
- *   Sends via useSendUserOperation. Uses MultiOwnerModularAccount (MAv2)
- *   with EIP-7702 — signer EOA IS the smart wallet address.
- *   Handles chain switching via useChain() before firing the UO.
- *
- * EOA wallet (MetaMask / WalletConnect / Coinbase):
- *   Uses @wagmi/core writeContract / sendTransaction with Account Kit's
- *   internal wagmi config (the EOA connects there, not the parent WagmiProvider).
- *   No smart wallet features — raw EOA transactions.
+ * Unified token-send hook for embedded smart accounts (email / passkey / OAuth).
+ * Sends via useSendUserOperation using MultiOwnerModularAccount (MAv2 / EIP-7702).
+ * Handles chain switching via useChain() before firing the UserOperation.
  */
 export function useSendToken() {
-  // ── Smart account (MAv2 / EIP-7702) ──────────────────────────────────────
   const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
   const {
     sendUserOperation,
@@ -62,17 +50,6 @@ export function useSendToken() {
   const { chain, setChain } = useChain();
   const pendingRef = useRef<SendParams | null>(null);
 
-  // ── EOA wallet ───────────────────────────────────────────────────────────
-  const { config: alchemyConfig } = useAlchemyAccountContext();
-  const internalConfig = alchemyConfig._internal.wagmiConfig;
-  const { isConnected: isEoaConnected } = wagmi_useAccount({ config: internalConfig });
-
-  // Manual state for EOA path (UO path uses hook-managed state above)
-  const [eoaPending, setEoaPending] = useState(false);
-  const [eoaHash, setEoaHash] = useState<string | null>(null);
-  const [eoaError, setEoaError] = useState<string | null>(null);
-
-  // ── Build & fire a user operation ────────────────────────────────────────
   const executeUO = useCallback(
     (params: SendParams) => {
       const { token, chainId, to, amount } = params;
@@ -106,68 +83,32 @@ export function useSendToken() {
     }
   }, [chain.id, executeUO]);
 
-  // ── Main send entry point ─────────────────────────────────────────────────
   const send = useCallback(
-    async (params: SendParams) => {
-      setEoaHash(null);
-      setEoaError(null);
+    (params: SendParams) => {
+      if (!isSignerConnected) return;
 
-      if (isSignerConnected) {
-        // Smart account path
-        if (chain.id !== params.chainId) {
-          const targetChain = SEND_CHAINS[params.chainId];
-          if (!targetChain) return;
-          pendingRef.current = params;
-          setChain({ chain: targetChain });
-        } else {
-          executeUO(params);
-        }
-      } else if (isEoaConnected) {
-        // EOA path via Account Kit's internal wagmi config
-        setEoaPending(true);
-        try {
-          const { token, chainId, to, amount } = params;
-          let hash: string;
-          if (token === 'ETH') {
-            hash = await sendTransaction(internalConfig, {
-              to,
-              value: parseUnits(amount, 18),
-              chainId,
-            });
-          } else {
-            const addr = getErc20Address(token, chainId);
-            const decimals = TOKEN_METADATA[token].decimals;
-            hash = await writeContract(internalConfig, {
-              address: addr,
-              abi: erc20Abi,
-              functionName: 'transfer',
-              args: [to, parseUnits(amount, decimals)],
-              chainId,
-            });
-          }
-          setEoaHash(hash);
-        } catch (err) {
-          setEoaError(err instanceof Error ? err.message : 'Transaction failed');
-        } finally {
-          setEoaPending(false);
-        }
+      if (chain.id !== params.chainId) {
+        const targetChain = SEND_CHAINS[params.chainId];
+        if (!targetChain) return;
+        pendingRef.current = params;
+        setChain({ chain: targetChain });
+      } else {
+        executeUO(params);
       }
     },
-    [isSignerConnected, isEoaConnected, chain.id, setChain, executeUO, internalConfig],
+    [isSignerConnected, chain.id, setChain, executeUO],
   );
 
   const reset = useCallback(() => {
-    setEoaHash(null);
-    setEoaError(null);
     pendingRef.current = null;
   }, []);
 
   return {
     send,
-    isPending: isSendingUserOperation || eoaPending,
-    isSuccess: !!sendUserOperationResult?.hash || !!eoaHash,
-    txHash: sendUserOperationResult?.hash ?? eoaHash,
-    error: uoError?.message ?? eoaError,
+    isPending: isSendingUserOperation,
+    isSuccess: !!sendUserOperationResult?.hash,
+    txHash: sendUserOperationResult?.hash ?? null,
+    error: uoError?.message ?? null,
     reset,
   };
 }

@@ -47,7 +47,7 @@ function UserFooter() {
     setSigningOut(true);
     try {
       // signOut() handles everything: backend logout, JWT clear,
-      // cookie cleanup, Alchemy signer disconnect, wagmi EOA disconnect.
+      // cookie cleanup, Alchemy signer disconnect.
       await signOut();
     } finally {
       setSigningOut(false);

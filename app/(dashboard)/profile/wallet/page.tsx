@@ -62,7 +62,7 @@ const TOKEN_LIST: TokenSymbol[] = ['ECOP', 'ETH', 'USDC', 'USDT', 'EURC', 'BTC']
 
 export default function WalletPage() {
   const router = useRouter();
-  const { isConnected, address, isResolvingAddress, authMode, isReconnecting } = useAccount();
+  const { isConnected, address, isResolvingAddress, isReconnecting } = useAccount();
 
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
@@ -352,18 +352,10 @@ export default function WalletPage() {
 
           {/* Account type + address pill */}
           <div className="flex items-center gap-2 flex-wrap">
-            {authMode === 'embedded' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-900/40 border border-purple-700/30 text-purple-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                Smart Wallet · EIP-7702
-              </span>
-            )}
-            {authMode === 'external' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-gray-800/60 border border-white/[0.07] text-gray-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                External Wallet
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-900/40 border border-purple-700/30 text-purple-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+              Smart Wallet · EIP-7702
+            </span>
             <button
               onClick={copyAddress}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-white/[0.04] border border-white/[0.07] text-gray-400 hover:text-white hover:border-white/20 transition-colors"
@@ -377,8 +369,7 @@ export default function WalletPage() {
           </div>
 
           {/* Smart Wallet status */}
-          {authMode === 'embedded' && (
-            <div className="rounded-2xl border border-emerald-700/30 bg-emerald-900/10 px-4 py-3 flex items-center gap-3">
+          <div className="rounded-2xl border border-emerald-700/30 bg-emerald-900/10 px-4 py-3 flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
                 <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -389,8 +380,7 @@ export default function WalletPage() {
                 <p className="text-xs text-emerald-600">Gas-free transactions enabled · EIP-7702 · MAv2</p>
               </div>
               <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 bg-emerald-900/40 px-2 py-0.5 rounded-full shrink-0">Live</span>
-            </div>
-          )}
+          </div>
 
           {/* Total portfolio card */}
           <div className="rounded-2xl bg-gradient-to-br from-purple-900/40 to-blue-900/30 border border-purple-700/30 p-5">

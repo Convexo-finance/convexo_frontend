@@ -32,12 +32,12 @@ convexo_frontend/
 │   │   └── ecopAbi.ts      — ECOP token ABI
 │   ├── hooks/
 │   │   ├── useAuth.ts      — SIWE sign-in/out
-│   │   ├── useWalletAccount.ts — Unified Account Kit + EOA
+│   │   ├── useWalletAccount.ts — Alchemy Account Kit (MAv2 / EIP-7702)
 │   │   ├── useV4Swap.ts    — Full V4 swap (Permit2 → Universal Router)
 │   │   ├── useV4Quote.ts   — Off-chain quote via V4 Quoter
 │   │   ├── useContracts.ts — getContractsForChain(useChainId())
 │   │   ├── useNFTBalance.ts
-│   │   ├── useConvexoWrite.ts — UO for MAv2, raw tx for EOA
+│   │   ├── useConvexoWrite.ts — UserOperation via Account Kit (MAv2)
 │   │   └── ...
 │   ├── stubs/thread-stream.js — Empty stub for turbopack alias
 │   └── wagmi/
@@ -75,20 +75,15 @@ npm run build      # ✅ aliases to next build --webpack
 
 Turbopack can't handle non-JS files inside `node_modules/thread-stream`. The webpack config aliases `thread-stream → false`.
 
-### 3. EOA signing — never use wagmi's `signMessage` or `getConnectorClient`
+### 3. Signing — always use Alchemy signer
 
-Both call `connector.getChainId()` internally. Account Kit wraps connectors in its internal wagmiConfig and those wrapped versions do NOT implement `getChainId`.
+Convexo uses embedded wallets only (email / passkey / Google OAuth). Never use wagmi's `signMessage`, `getConnectorClient`, or raw `personal_sign` via EIP-1193.
 
-**Always use:** `connector.getProvider()` → `personal_sign` via EIP-1193 directly (see `useAuth.ts`).
+**Correct:** `signer.signMessage(message)` — `AlchemySigner` handles EIP-191 prefix automatically.
 
-### 4. Two wallet paths — both must work
+Backend verifies with viem `verifyMessage()`.
 
-1. `isSignerConnected && signer` → Alchemy signer: `signer.signMessage(message)` (30s timeout)
-2. `eoaAddress && connector` → EOA: `connector.getProvider()` → `personal_sign` (60s timeout)
-
-Backend verifies with viem `verifyMessage()` — handles EIP-191 prefix correctly.
-
-### 5. No mock data
+### 4. No mock data
 
 All data must come from the real backend API or on-chain reads. No hardcoded arrays, no localStorage stubs for business data.
 
@@ -158,7 +153,7 @@ The vaults page (`app/investments/vaults/page.tsx`) fetches vault list from `GET
 ```
 GET /auth/nonce?address=<wallet>
 → build EIP-4361 SIWE message
-→ sign with wallet (Account Kit OR EOA via personal_sign)
+→ sign with Alchemy signer (AlchemySigner handles EIP-191 prefix automatically)
 → POST /auth/verify { message, signature, address, chainId, authMethod }
 → store accessToken in localStorage('convexo_jwt')
 → auto-refresh via 401 interceptor in lib/api/client.ts
@@ -227,7 +222,7 @@ Key endpoints used by frontend:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Auth (SIWE + JWT) | ✅ Complete | Both Account Kit + EOA paths |
+| Auth (SIWE + JWT) | ✅ Complete | Alchemy embedded signer only (email / passkey / Google) |
 | Onboarding | ✅ Complete | 3-step wizard wired to backend. Fixed infinite-loop 2026-04-11. |
 | ZKPassport (Tier 1) | ✅ Complete | 130 tests, trustless on-chain |
 | Veriff KYC (Tier 2) | ✅ Complete | Webhook → backend → NFT |

@@ -1,6 +1,5 @@
 import { createConfig, type AlchemyAccountsUIConfig, cookieStorage } from '@account-kit/react';
 import { alchemy, base, baseSepolia, sepolia, mainnet } from '@account-kit/infra';
-import { metaMask, coinbaseWallet } from 'wagmi/connectors';
 import { IS_MAINNET } from '@/lib/config/network';
 
 const uiConfig: AlchemyAccountsUIConfig = {
@@ -11,17 +10,6 @@ const uiConfig: AlchemyAccountsUIConfig = {
       [
         { type: 'passkey' },
         { type: 'social', authProviderId: 'google', mode: 'popup' },
-      ],
-      [
-        {
-          type: 'external_wallets',
-          walletConnect: { projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '' },
-          wallets: ['wallet_connect', 'metamask', 'coinbase wallet'],
-          chainType: ['evm'],
-          numFeaturedWallets: 1,
-          hideMoreButton: false,
-          moreButtonText: 'More wallets',
-        },
       ],
     ],
     addPasskeyOnSignup: true,
@@ -62,10 +50,6 @@ export const alchemyConfig = createConfig(
     ssr: true,
     storage: cookieStorage,
     enablePopupOauth: true,
-    connectors: [
-      metaMask({ enableAnalytics: false }),
-      coinbaseWallet({ appName: 'Convexo' }),
-    ],
   },
   uiConfig,
 );
