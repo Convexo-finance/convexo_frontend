@@ -40,7 +40,12 @@ const ZK_CHAIN_MAP: Record<number, SupportedChain> = {
 import { QRCodeSVG } from 'qrcode.react';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
 
-// Your app's unique scope for identity verification
+// Must match Convexo_Passport.APP_DOMAIN exactly — the contract hardcodes "protocol.convexo.xyz"
+// and verifyScopes() will revert with InvalidScope if any other domain is used, regardless
+// of which URL the user opened the app from (localhost, preview URLs, etc.).
+const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? 'protocol.convexo.xyz';
+
+// Must match Convexo_Passport.APP_SCOPE exactly
 const APP_SCOPE_STRING = 'convexo-passport-identity';
 
 // Must match Convexo_Passport._getSanctionedCountries() exactly —
@@ -85,9 +90,7 @@ export default function ZKVerificationPage() {
   // Collect the last proof from onProofGenerated — needed for getSolidityVerifierParameters
   const collectedProofRef = useRef<any>(null);
 
-  // Get domain from environment or use default
-  const domain = typeof window !== 'undefined' ? window.location.hostname : 'convexo.io';
-  const [zkPassport] = useState(() => new ZKPassport(domain));
+  const [zkPassport] = useState(() => new ZKPassport(APP_DOMAIN));
 
   // Check if user already has CONVEXO PASSPORT
   const { data: hasPassport, isLoading: checkingPassport, refetch: refetchPassport } = useReadContract({
