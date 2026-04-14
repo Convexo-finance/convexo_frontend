@@ -213,17 +213,20 @@ export default function ZKVerificationPage() {
             return;
           }
 
-          // Build Solidity-compatible proof params from the collected proof
+          // Build Solidity-compatible proof params from the collected proof.
+          // devMode must match the mode used in zkPassport.request() so the
+          // on-chain verifier accepts mock proofs on testnet (devMode: true).
           let solidityParams: SolidityVerifierParameters | null = null;
           try {
             if (collectedProofRef.current) {
               solidityParams = zkPassport.getSolidityVerifierParameters({
                 proof: collectedProofRef.current,
                 scope: APP_SCOPE_STRING,
+                devMode: !IS_MAINNET,
               });
             }
           } catch (e) {
-            // Proof may not be available in devMode — minting will fail gracefully
+            console.error('getSolidityVerifierParameters failed:', e);
           }
 
           const timestamp = Math.floor(Date.now() / 1000);
