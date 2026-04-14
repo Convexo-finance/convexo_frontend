@@ -24,7 +24,7 @@ convexo_frontend/
 ├── components/             — Shared UI (DashboardLayout, wallet/, ui/)
 ├── lib/
 │   ├── api/client.ts       — apiFetch + JWT + silent refresh
-│   ├── alchemy/config.ts   — Account Kit (MAv2, Gas Manager, connectors)
+│   ├── alchemy/config.ts   — Account Kit (MAv2, Gas Manager — embedded wallet only)
 │   ├── config/             — network.ts, tokens.ts, pinata.ts
 │   ├── contracts/
 │   │   ├── addresses.ts    — All chain addresses (v3.18) + PERMIT2 constant
@@ -56,14 +56,22 @@ convexo_frontend/
 ### 1. Always import wagmi hooks through the compat layer
 
 ```typescript
-// ✅ Correct
-import { useReadContract, useWriteContract, useAccount, useChainId } from '@/lib/wagmi/compat'
+// ✅ Correct — read-only hooks
+import { useReadContract, useAccount, useChainId } from '@/lib/wagmi/compat'
+
+// ✅ Correct — write hooks: always use useConvexoWrite (never useWriteContract)
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite'
 
 // ❌ Wrong — bypasses useWalletAccount bridge
 import { useAccount } from 'wagmi'
+
+// ❌ Wrong — useWriteContract calls connector.getChainId() internally;
+//            app-level wagmi has no connectors → runtime crash
+import { useWriteContract } from 'wagmi'
+import { useWriteContract } from '@/lib/wagmi/compat'
 ```
 
-`lib/wagmi/compat.ts` re-exports all of wagmi AND overrides `useAccount` → `useWalletAccount` and `useChainId` → `PRIMARY_CHAIN_ID`. The exception: `useWriteContract` can be imported from `'wagmi'` directly since compat re-exports it unchanged.
+`lib/wagmi/compat.ts` re-exports wagmi AND overrides `useAccount` → `useWalletAccount` and `useChainId` → `PRIMARY_CHAIN_ID`. For writes, always use `useConvexoWrite` — it sends a UserOperation via Account Kit's Gas Manager. For batched writes (approve + action in one tx), use `useSendUserOperation` from `@account-kit/react` directly with an array of UO calls.
 
 ### 2. Always use webpack — never bare `next dev`
 
@@ -120,10 +128,11 @@ See `lib/contracts/addresses.ts` for the full map. Key addresses:
 Pool: USDC (currency0) / ECOP (currency1), fee=500, tickSpacing=10
 Hook: `PassportGatedHook` — requires `hookData = abi.encode(userAddress)`
 
-**Swap flow:**
-1. `USDC.approve(Permit2, MaxUint256)` — one-time ERC-20 approval
-2. `Permit2.approve(USDC, UniversalRouter, maxUint160, expiration)` — one-time
-3. `UniversalRouter.execute(0x10, [v4SwapInput], deadline)` — actual swap
+**Swap flow (all steps batched into one UserOperation):**
+1. Read ERC-20 allowance → include `USDC.approve(Permit2, MaxUint256)` call if needed
+2. Read Permit2 allowance → include `Permit2.approve(USDC, UniversalRouter, maxUint160, expiry)` call if needed
+3. Always include `UniversalRouter.execute(0x10, [v4SwapInput], deadline)` call
+4. Send all needed calls as a single batched UO via `sendUserOperationAsync`
 
 **hookData is mandatory** — PassportGatedHook decodes `abi.decode(hookData, (address))` as the real user. Without it, the call reverts with `UnauthorizedUser`.
 
@@ -132,7 +141,7 @@ Hook: `PassportGatedHook` — requires `hookData = abi.encode(userAddress)`
 
 **Hooks:**
 - `useV4Quote` — calls `Quoter.quoteExactInputSingle` via `publicClient.simulateContract`, debounced 500ms
-- `useV4Swap` — handles all 3 steps (approvals + swap), exposes `step: SwapStep` for UI
+- `useV4Swap` — checks allowances then sends batched UO; `SwapStep`: `idle` → `swapping` → `success`/`error`
 
 ---
 
@@ -144,7 +153,7 @@ Hook: `PassportGatedHook` — requires `hookData = abi.encode(userAddress)`
 - Share economics: `getBaseSharePrice()` = principal / totalShares. `getExpectedFinalSharePrice()` includes interest.
 - `getRedeemState(address)` → `{ originalLocked, remainingLocked, claimed, claimableNow }`
 
-The vaults page (`app/investments/vaults/page.tsx`) fetches vault list from `GET /vaults` (backend), then reads on-chain state per vault via `useReadContract`. Deposit modal uses `writeContract` directly (not `useTokenizedBondVault` hook).
+The vaults page (`app/investments/vaults/page.tsx`) fetches vault list from `GET /vaults` (backend), then reads on-chain state per vault via `useReadContract`. Deposit modal batches `USDC.approve` + `vault.deposit` into a single UserOperation via `useSendUserOperation` (not `useTokenizedBondVault` hook).
 
 ---
 
@@ -218,7 +227,7 @@ Key endpoints used by frontend:
 
 ---
 
-## Phase status (as of v3.18.2, 2026-04-11)
+## Phase status (as of v3.18.3, 2026-04-13)
 
 | Phase | Status | Notes |
 |-------|--------|-------|
@@ -232,8 +241,8 @@ Key endpoints used by frontend:
 | Bank accounts | ✅ Complete | Full CRUD |
 | Contacts | ✅ Complete | Full CRUD |
 | Wallet (portfolio) | ✅ Complete | Alchemy Portfolio API |
-| Vault investments | ✅ Complete | GET /vaults + on-chain USDC approve → deposit. `useReadContract` for live vault state. |
-| Pool swaps | ✅ Complete | `useV4Swap` + `useV4Quote` wired. ETH Sepolia pool LIVE, router allowed ✅ |
+| Vault investments | ✅ Complete | GET /vaults + batched UO (approve + deposit). `useReadContract` for live vault state. |
+| Pool swaps | ✅ Complete | `useV4Swap` (batched UO: approve(s) + swap) + `useV4Quote`. ETH Sepolia pool LIVE ✅ |
 | Funding module | ✅ Complete | e-loans + e-contracts wired to real API. Business + Tier 3 gated. |
 | Tier gating (sidebar) | ✅ Complete | `requiredTier` + lock icons in Sidebar. Business-only items hidden for individual accounts. |
 | Route groups | ✅ Complete | All dashboard pages under `app/(dashboard)/`. Shared layout. |

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount } from '@/lib/wagmi/compat';
+import { useAccount, useReadContract } from '@/lib/wagmi/compat';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { apiFetch, ApiError } from '@/lib/api/client';
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from '@/lib/wagmi/compat';
+import { useSmartAccountClient, useSendUserOperation } from '@account-kit/react';
 import { useContracts } from '@/lib/hooks/useContracts';
 import TokenizedBondVaultABI from '@/abis/TokenizedBondVault.json';
 import ERC20ABI from '@/ERC20.json';
@@ -14,13 +14,10 @@ import {
   CubeIcon,
   LockClosedIcon,
   ArrowPathIcon,
-  BanknotesIcon,
-  ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { parseUnits, formatUnits } from 'viem';
-import { PRIMARY_CHAIN_ID } from '@/lib/config/network';
+import { parseUnits, formatUnits, encodeFunctionData, type Abi } from 'viem';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -190,54 +187,63 @@ function DepositModal({
 }) {
   const { address } = useAccount();
   const [amount, setAmount] = useState('');
-  const [step, setStep] = useState<'input' | 'approving' | 'depositing' | 'done' | 'error'>('input');
+  const [step, setStep] = useState<'input' | 'processing' | 'done' | 'error'>('input');
   const [errorMsg, setErrorMsg] = useState('');
 
   const minInvest = formatUSDC(vault.minInvestment);
   const amountWei = amount ? parseUnits(amount, 6) : 0n;
 
-  // Approve USDC
-  const { writeContract: approve, data: approveTx } = useWriteContract();
-  const { isSuccess: approveConfirmed } = useWaitForTransactionReceipt({ hash: approveTx });
+  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
+  const { sendUserOperation, sendUserOperationResult, error: uoError } = useSendUserOperation({ client, waitForTxn: true });
 
-  // Deposit
-  const { writeContract: deposit, data: depositTx } = useWriteContract();
-  const { isSuccess: depositConfirmed } = useWaitForTransactionReceipt({ hash: depositTx });
-
-  // After approve confirmed → deposit
+  // Watch for UO completion
   useEffect(() => {
-    if (!approveConfirmed || step !== 'approving') return;
-    setStep('depositing');
-    deposit({
-      address: vault.vaultAddress as `0x${string}`,
-      abi: TokenizedBondVaultABI,
-      functionName: 'deposit',
-      args: [amountWei, address],
-      chainId: PRIMARY_CHAIN_ID,
-    });
-  }, [approveConfirmed]);
+    if (sendUserOperationResult?.hash && step === 'processing') {
+      setStep('done');
+    }
+  }, [sendUserOperationResult, step]);
 
-  // After deposit confirmed → done
+  // Watch for UO error
   useEffect(() => {
-    if (!depositConfirmed || step !== 'depositing') return;
-    setStep('done');
-  }, [depositConfirmed]);
+    if (uoError && step === 'processing') {
+      const msg = (uoError as { shortMessage?: string; message?: string })?.shortMessage ?? uoError.message ?? 'Transaction failed';
+      setErrorMsg(msg);
+      setStep('error');
+    }
+  }, [uoError, step]);
 
   const handleDeposit = () => {
-    if (!amount || Number(amount) <= 0) return;
+    if (!amount || Number(amount) <= 0 || !address) return;
     const minWei = BigInt(vault.minInvestment);
     if (amountWei < minWei) {
       setErrorMsg(`Minimum investment is ${minInvest} USDC`);
       return;
     }
-    setStep('approving');
+    setStep('processing');
     setErrorMsg('');
-    approve({
-      address: contracts.USDC,
-      abi: ERC20ABI,
-      functionName: 'approve',
-      args: [vault.vaultAddress as `0x${string}`, amountWei],
-      chainId: PRIMARY_CHAIN_ID,
+
+    // Batch approve + deposit into a single UserOperation
+    sendUserOperation({
+      uo: [
+        {
+          target: contracts.USDC,
+          data: encodeFunctionData({
+            abi: ERC20ABI as Abi,
+            functionName: 'approve',
+            args: [vault.vaultAddress as `0x${string}`, amountWei],
+          }),
+          value: 0n,
+        },
+        {
+          target: vault.vaultAddress as `0x${string}`,
+          data: encodeFunctionData({
+            abi: TokenizedBondVaultABI as Abi,
+            functionName: 'deposit',
+            args: [amountWei, address],
+          }),
+          value: 0n,
+        },
+      ],
     });
   };
 
@@ -296,16 +302,10 @@ function DepositModal({
             </div>
 
             <div className="space-y-2">
-              {(step === 'approving') && (
-                <div className="flex items-center gap-2 text-sm text-blue-300">
-                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  Approving USDC…
-                </div>
-              )}
-              {(step === 'depositing') && (
+              {step === 'processing' && (
                 <div className="flex items-center gap-2 text-sm text-purple-300">
                   <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                  Depositing…
+                  Approving &amp; Depositing…
                 </div>
               )}
               <button

@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { useAccount, useChainId, usePublicClient } from '@/lib/wagmi/compat';
-import { useWriteContract } from 'wagmi';
-import { encodeAbiParameters, encodePacked, erc20Abi, maxUint160 } from 'viem';
+import { useSmartAccountClient, useSendUserOperation } from '@account-kit/react';
+import { encodeAbiParameters, encodeFunctionData, encodePacked, erc20Abi, maxUint160, type Abi } from 'viem';
 import { getContractsForChain, PERMIT2 } from '@/lib/contracts/addresses';
 
 // ─── ABIs ─────────────────────────────────────────────────────────────────────
@@ -147,9 +147,7 @@ function encodeV4SwapInput({
 
 export type SwapStep =
   | 'idle'
-  | 'approving-usdc'    // ERC-20 approve to Permit2 (one-time)
-  | 'approving-permit2' // Permit2.approve for Universal Router (one-time)
-  | 'swapping'          // Universal Router execute
+  | 'swapping'  // Checking allowances + sending batched UO (approve(s) + swap)
   | 'success'
   | 'error';
 
@@ -159,11 +157,12 @@ export function useV4Swap() {
   const publicClient = usePublicClient();
   const contracts = getContractsForChain(chainId);
 
+  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
+  const { sendUserOperationAsync } = useSendUserOperation({ client, waitForTxn: true });
+
   const [step, setStep] = useState<SwapStep>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
-
-  const { writeContractAsync } = useWriteContract();
 
   const swap = useCallback(async ({
     fromSymbol,
@@ -193,27 +192,16 @@ export function useV4Swap() {
 
     try {
       setErrorMsg('');
+      setStep('swapping');
 
-      // ── Step 1: ERC-20 approve inputToken → Permit2 (one-time, if needed) ──
+      // ── Read current allowances (no UO needed, just reads) ────────────────
       const erc20Allowance = await publicClient.readContract({
         address: inputToken,
         abi: erc20Abi,
         functionName: 'allowance',
         args: [userAddress, PERMIT2],
-      });
+      }) as bigint;
 
-      if ((erc20Allowance as bigint) < amountIn) {
-        setStep('approving-usdc');
-        const approveTx = await writeContractAsync({
-          address: inputToken,
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [PERMIT2, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveTx });
-      }
-
-      // ── Step 2: Permit2.approve for Universal Router (one-time, if needed) ──
       const permit2Allowance = await publicClient.readContract({
         address: PERMIT2,
         abi: PERMIT2_ABI,
@@ -224,21 +212,34 @@ export function useV4Swap() {
       const [p2Amount, p2Expiration] = permit2Allowance;
       const nowSeconds = Math.floor(Date.now() / 1000);
 
-      if (p2Amount < amountIn || p2Expiration < nowSeconds) {
-        setStep('approving-permit2');
-        const permit2Tx = await writeContractAsync({
-          address: PERMIT2,
-          abi: PERMIT2_ABI,
-          functionName: 'approve',
-          args: [inputToken, universalRouter as `0x${string}`, maxUint160, permit2Expiration()],
+      // ── Build batched call list ────────────────────────────────────────────
+      const calls: { target: `0x${string}`; data: `0x${string}`; value: bigint }[] = [];
+
+      if (erc20Allowance < amountIn) {
+        calls.push({
+          target: inputToken,
+          data: encodeFunctionData({
+            abi: erc20Abi as Abi,
+            functionName: 'approve',
+            args: [PERMIT2, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
+          }),
+          value: 0n,
         });
-        await publicClient.waitForTransactionReceipt({ hash: permit2Tx });
       }
 
-      // ── Step 3: Execute swap via Universal Router ──────────────────────────
-      setStep('swapping');
+      if (p2Amount < amountIn || p2Expiration < nowSeconds) {
+        calls.push({
+          target: PERMIT2,
+          data: encodeFunctionData({
+            abi: PERMIT2_ABI as Abi,
+            functionName: 'approve',
+            args: [inputToken, universalRouter as `0x${string}`, maxUint160, permit2Expiration()],
+          }),
+          value: 0n,
+        });
+      }
 
-      // hookData encodes the real user address — required by PassportGatedHook
+      // ── Build swap call ────────────────────────────────────────────────────
       const hookData = encodeAbiParameters([{ type: 'address' }], [userAddress]);
 
       const v4Input = encodeV4SwapInput({
@@ -253,15 +254,22 @@ export function useV4Swap() {
         hookData,
       });
 
-      const hash = await writeContractAsync({
-        address: universalRouter as `0x${string}`,
-        abi: UNIVERSAL_ROUTER_ABI,
-        functionName: 'execute',
-        args: [V4_SWAP_COMMAND, [v4Input], swapDeadline()],
+      calls.push({
+        target: universalRouter as `0x${string}`,
+        data: encodeFunctionData({
+          abi: UNIVERSAL_ROUTER_ABI as Abi,
+          functionName: 'execute',
+          args: [V4_SWAP_COMMAND, [v4Input], swapDeadline()],
+        }),
+        value: 0n,
       });
 
-      setTxHash(hash);
-      await publicClient.waitForTransactionReceipt({ hash });
+      // ── Send as single batched UserOperation ──────────────────────────────
+      const result = await sendUserOperationAsync({
+        uo: calls.length === 1 ? calls[0] : calls,
+      });
+
+      setTxHash(result.hash);
       setStep('success');
 
     } catch (err: unknown) {
@@ -270,7 +278,7 @@ export function useV4Swap() {
       setErrorMsg(msg);
       setStep('error');
     }
-  }, [userAddress, contracts, publicClient, writeContractAsync]);
+  }, [userAddress, contracts, publicClient, sendUserOperationAsync]);
 
   const reset = useCallback(() => {
     setStep('idle');

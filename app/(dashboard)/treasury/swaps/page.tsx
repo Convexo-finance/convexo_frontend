@@ -25,11 +25,9 @@ const TOKENS = {
 
 type TokenSymbol = keyof typeof TOKENS;
 
-// Step labels for the multi-step swap flow
+// Step label shown while the batched UO (approvals + swap) is in-flight
 const STEP_LABELS: Record<string, string> = {
-  'approving-usdc':    'Approving USDC…',
-  'approving-permit2': 'Setting up router…',
-  'swapping':          'Swapping…',
+  'swapping': 'Swapping…',
 };
 
 export default function SwapsPage() {
@@ -70,7 +68,7 @@ export default function SwapsPage() {
   const { swap, step, errorMsg, txHash, reset } = useV4Swap();
 
   const canAccess = hasPassportNFT || hasActivePassport || hasAnyLPNFT || hasEcreditscoringNFT;
-  const isProcessing = ['approving-usdc', 'approving-permit2', 'swapping'].includes(step);
+  const isProcessing = step === 'swapping';
 
   // Token balances
   const { data: usdcBalance } = useReadContract({
