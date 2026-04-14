@@ -35,7 +35,7 @@ export const alchemyConfig = createConfig(
       },
       {
         chain: sepolia,
-        // No gas sponsorship on testnet (policyId omitted)
+        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA,
       },
       {
         chain: baseSepolia,
@@ -46,7 +46,9 @@ export const alchemyConfig = createConfig(
         policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH : undefined,
       },
     ],
-    policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID : undefined,
+    policyId: IS_MAINNET
+      ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID
+      : process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA,
     ssr: true,
     storage: cookieStorage,
     enablePopupOauth: true,
