@@ -30,12 +30,12 @@ export const alchemyConfig = createConfig(
     chains: [
       {
         chain: base,
-        // Gas Manager policy for Base mainnet — no gas sponsorship on testnet
-        policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID : undefined,
+        policyId: IS_MAINNET ? (process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID || undefined) : undefined,
       },
       {
         chain: sepolia,
-        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA,
+        // Empty string env var must become undefined — Alchemy SDK treats "" differently from undefined
+        policyId: process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA || undefined,
       },
       {
         chain: baseSepolia,
@@ -43,12 +43,12 @@ export const alchemyConfig = createConfig(
       },
       {
         chain: mainnet,
-        policyId: IS_MAINNET ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH : undefined,
+        policyId: IS_MAINNET ? (process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH || undefined) : undefined,
       },
     ],
     policyId: IS_MAINNET
-      ? process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID
-      : process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA,
+      ? (process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID || undefined)
+      : (process.env.NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA || undefined),
     ssr: true,
     storage: cookieStorage,
     enablePopupOauth: true,

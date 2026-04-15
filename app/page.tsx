@@ -13,7 +13,7 @@ import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { isAuthenticated, isInitializing, isConnected, isSigningIn, error, clearError, signIn } = useAuth();
+  const { isAuthenticated, isInitializing, isConnected, isSigningIn, error, clearError, signIn, user } = useAuth();
   const { isConnected: isSignerConnected, isInitializing: isSignerInitializing } = useSignerStatus();
   const { onboardingStep } = useNavigation();
   const { logout } = useLogout();
@@ -45,12 +45,24 @@ export default function SignInPage() {
     if (isAuthenticated) return;
     if (error) return;
 
-    // First observation: record baseline and skip — do NOT auto-SIWE.
-    // This handles the case where the user arrives after logout with a
-    // wallet still briefly connected (disconnection is async). We wait
-    // for a genuine false → true transition before triggering SIWE.
+    // First observation: record baseline.
+    // If the wallet is already connected on mount (e.g. Google OAuth popup
+    // just completed and Alchemy restored the session from cookie), we check
+    // whether a JWT exists. No JWT = fresh OAuth return → trigger SIWE now.
+    // If a JWT exists, useAuth already restored the session → isAuthenticated
+    // will be true and this effect short-circuits at the top.
+    // After logout: signOut() clears the JWT AND calls alchemyLogout() which
+    // disconnects the signer, so isConnected will be false on next mount.
     if (prevConnected.current === null) {
       prevConnected.current = isConnected;
+      if (isConnected) {
+        const hasJwt = typeof window !== 'undefined' &&
+          !!sessionStorage.getItem('convexo_jwt');
+        if (!hasJwt) {
+          hasAutoSigned.current = true;
+          signIn();
+        }
+      }
       return;
     }
 
@@ -62,19 +74,22 @@ export default function SignInPage() {
   }, [pageReady, isConnected, isAuthenticated, error, signIn]);
 
   // ── Redirect on auth ────────────────────────────────────────────
-  // This is the SINGLE source of truth for post-login routing.
-  // Uses replace() so the sign-in page is removed from browser history
-  // (prevents back-button bouncing).
+  // Uses replace() so sign-in is removed from browser history.
+  // Fast path: user.onboardingStep from the JWT payload is available
+  // immediately (no network fetch). NavigationContext's onboardingStep
+  // requires a GET /onboarding/status call which can take 1-2 seconds.
   useEffect(() => {
-    if (!isAuthenticated) return;
-    // Wait until we know the onboarding step (null = still loading)
-    if (onboardingStep === null) return;
-    if (onboardingStep === 'NOT_STARTED' || onboardingStep === 'TYPE_SELECTED') {
+    if (!isAuthenticated || !user) return;
+    // JWT payload has onboardingStep encoded at sign-in time.
+    // Fall back to NavigationContext value while it loads.
+    const step = user.onboardingStep ?? onboardingStep;
+    if (step === null) return; // both sources still loading
+    if (step === 'NOT_STARTED' || step === 'TYPE_SELECTED') {
       router.replace('/onboarding');
     } else {
       router.replace('/profile');
     }
-  }, [isAuthenticated, onboardingStep, router]);
+  }, [isAuthenticated, user, onboardingStep, router]);
 
   // ── Auto-reset on error: show message, then clear and go back to AuthCard ──
   useEffect(() => {

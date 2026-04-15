@@ -4,28 +4,36 @@ const TOKEN_KEY = 'convexo_jwt'
 const REFRESH_TOKEN_KEY = 'convexo_refresh_token'
 
 // ─── Token management ─────────────────────────────────────────────────────────
+// sessionStorage: cleared automatically when the tab (or last tab for the
+// origin) is closed — banking-grade session behavior. On re-open the Alchemy
+// embedded signer session is still in its cookie, so SIWE re-authenticates
+// automatically without the user needing to touch anything.
+
+function getStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+  return window.sessionStorage
+}
 
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(TOKEN_KEY)
+  return getStorage()?.getItem(TOKEN_KEY) ?? null
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  getStorage()?.setItem(TOKEN_KEY, token)
 }
 
 export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(REFRESH_TOKEN_KEY)
+  return getStorage()?.getItem(REFRESH_TOKEN_KEY) ?? null
 }
 
 export function setRefreshToken(token: string): void {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token)
+  getStorage()?.setItem(REFRESH_TOKEN_KEY, token)
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  const s = getStorage()
+  s?.removeItem(TOKEN_KEY)
+  s?.removeItem(REFRESH_TOKEN_KEY)
 }
 
 // ─── API Error ────────────────────────────────────────────────────────────────

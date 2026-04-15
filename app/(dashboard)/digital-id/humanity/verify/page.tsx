@@ -39,6 +39,7 @@ const ZK_CHAIN_MAP: Record<number, SupportedChain> = {
 };
 import { QRCodeSVG } from 'qrcode.react';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
+import { usePublicClient } from '@/lib/wagmi/compat';
 
 // Must match Convexo_Passport.APP_DOMAIN exactly — the contract hardcodes "protocol.convexo.xyz"
 // and verifyScopes() will revert with InvalidScope if any other domain is used, regardless
@@ -74,6 +75,7 @@ export default function ZKVerificationPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const contracts = getContractsForChain(chainId);
+  const publicClient = usePublicClient();
   const { hasPassportNFT, hasActivePassport } = useNFTBalance();
 
   const [passportTraits, setPassportTraits] = useState<ConvexoPassportTraits | null>(null);
@@ -296,17 +298,33 @@ export default function ZKVerificationPage() {
 
     setStep('minting');
     setError(null);
-    
+
     try {
-      // Use the uniqueIdentifier directly from ZKPassport (no conversion needed)
       if (!identifierInput) {
         setError('Invalid unique identifier. Please complete verification again.');
         setStep('verified');
         return;
       }
 
-      // Check contract state - is this passport's identifier already used?
-      if (identifierUsed) {
+      // On testnet (devMode), ALL mock passport proofs share uniqueIdentifier = bytes32(1).
+      // If any address already minted using a mock passport this identifier is permanently
+      // locked — all future mock passport mints will revert with IdentifierAlreadyUsed.
+      // We check on-chain before wasting gas on a doomed UserOperation.
+      if (!IS_MAINNET) {
+        const mockIdentifier = '0x0000000000000000000000000000000000000000000000000000000000000001';
+        const isCurrentIdentifierMock = identifierInput === mockIdentifier ||
+          identifierInput.toLowerCase() === mockIdentifier;
+        if (identifierUsed || isCurrentIdentifierMock) {
+          // Re-read on-chain to be sure (cached read may be stale)
+          setError(
+            'The mock passport identifier has already been used on this testnet contract. ' +
+            'All ZKPassport devMode proofs share the same identifier (bytes32(1)). ' +
+            'An admin must call clearIdentifier() to reset it, or use a real passport.'
+          );
+          setStep('verified');
+          return;
+        }
+      } else if (identifierUsed) {
         setError('This passport has already been used to mint a CONVEXO PASSPORT. Each passport can only mint once across all wallets.');
         setStep('verified');
         return;
@@ -356,6 +374,53 @@ export default function ZKVerificationPage() {
         },
       };
 
+      // Pre-simulate to get a decoded revert reason before sending the UserOperation.
+      // wallet_prepareCalls returns a generic "execution reverted" without the specific
+      // error name — simulateContract decodes the exact custom error so we can show
+      // a meaningful message and avoid wasting gas on a doomed UserOperation.
+      if (publicClient && address) {
+        try {
+          await publicClient.simulateContract({
+            address: contracts.CONVEXO_PASSPORT as `0x${string}`,
+            abi: ConvexoPassportABI,
+            functionName: 'claimPassport',
+            args: [zkParams, false, ipfsMetadataHash],
+            account: address,
+          });
+        } catch (simErr: any) {
+          // simulateContract throws with a decoded error name if the ABI has it
+          const simMsg: string = simErr?.name ?? simErr?.message ?? String(simErr);
+          // Re-use the same error-decoding logic as the mintError handler
+          if (simMsg.includes('AlreadyHasPassport')) {
+            setError('You already have a CONVEXO PASSPORT.');
+            refetchPassport();
+          } else if (simMsg.includes('IdentifierAlreadyUsed')) {
+            setError('This passport identifier is already registered.' +
+              (!IS_MAINNET ? ' Contact admin to reset the mock identifier.' : ''));
+          } else if (simMsg.includes('ProofVerificationFailed')) {
+            setError('ZK proof verification failed on-chain. Please regenerate your proof and try again.');
+          } else if (simMsg.includes('InvalidScope')) {
+            setError('Proof domain/scope mismatch. Please regenerate your proof.');
+          } else if (simMsg.includes('InvalidSender')) {
+            setError('Proof was not generated for this wallet. Please regenerate your proof.');
+          } else if (simMsg.includes('InvalidChain')) {
+            setError('Proof was generated for a different network. Please regenerate your proof.');
+          } else if (simMsg.includes('SanctionsCheckFailed')) {
+            setError('Sanctions check failed. Cannot mint passport.');
+          } else if (simMsg.includes('NationalityNotCompliant')) {
+            setError('Nationality check failed. Cannot mint passport.');
+          } else if (simMsg.includes('PassportExpired')) {
+            setError('Your passport or ID has expired.');
+          } else {
+            // Unknown error — still try the UserOperation but log for debugging
+            console.error('[claimPassport simulate error]', simErr);
+            setError(`Simulation failed: ${simMsg}. Check console for details.`);
+          }
+          setStep('verified');
+          return;
+        }
+      }
+
       mintPassport({
         address: contracts.CONVEXO_PASSPORT,
         abi: ConvexoPassportABI,
@@ -370,14 +435,39 @@ export default function ZKVerificationPage() {
 
   useEffect(() => {
     if (mintError) {
-      const errorMessage = mintError.message || mintError.toString();
-      if (errorMessage.includes('AlreadyHasPassport')) {
+      const msg = mintError.message || mintError.toString();
+      if (msg.includes('AlreadyHasPassport')) {
         setError('You already have a CONVEXO PASSPORT.');
         refetchPassport();
-      } else if (errorMessage.includes('IdentifierAlreadyUsed')) {
-        setError('This identifier has already been used.');
+      } else if (msg.includes('IdentifierAlreadyUsed')) {
+        const devHint = !IS_MAINNET
+          ? ' On testnet, all mock passports share the same identifier — contact admin to reset it.'
+          : '';
+        setError(`This passport identifier is already registered.${devHint}`);
+      } else if (msg.includes('ProofVerificationFailed')) {
+        setError('ZK proof verification failed. Please generate a new proof and try again.');
+      } else if (msg.includes('InvalidScope')) {
+        setError('Proof scope mismatch. Please regenerate your proof.');
+      } else if (msg.includes('InvalidSender')) {
+        setError('Proof was not generated for this wallet address. Please regenerate your proof.');
+      } else if (msg.includes('InvalidChain')) {
+        setError('Proof was generated for a different network. Please regenerate your proof.');
+      } else if (msg.includes('SanctionsCheckFailed')) {
+        setError('Sanctions check failed. Your passport cannot be verified at this time.');
+      } else if (msg.includes('NationalityNotCompliant')) {
+        setError('Verification failed: your nationality is not permitted.');
+      } else if (msg.includes('PassportExpired')) {
+        setError('Your passport or ID document has expired.');
+      } else if (msg.includes('execution reverted')) {
+        // Generic revert — the specific error name was not decoded.
+        // On testnet the most common cause is mock identifier collision.
+        const devHint = !IS_MAINNET
+          ? ' On testnet, this is usually because the mock passport identifier is already in use. ' +
+            'Contact admin to call clearIdentifier() on the contract.'
+          : ' Possible causes: proof expired, identifier already used, or verification failed.';
+        setError(`Transaction reverted.${devHint}`);
       } else {
-        setError(errorMessage);
+        setError(msg);
       }
       setStep('verified');
     }
