@@ -125,7 +125,8 @@ See `lib/contracts/addresses.ts` for the full map. Key addresses:
 
 ## Uniswap V4 swap architecture (v3.18)
 
-Pool: USDC (currency0) / ECOP (currency1), fee=500, tickSpacing=10
+Pool: ECOP (currency0) / USDC (currency1) on ETH Sepolia (ECOP 0x19ac < USDC 0x1c7D), fee=500, tickSpacing=10
+Currency ordering is determined dynamically by address comparison — never hardcode.
 Hook: `PassportGatedHook` — requires `hookData = abi.encode(userAddress)`
 
 **Swap flow (all steps batched into one UserOperation):**
@@ -249,3 +250,39 @@ Key endpoints used by frontend:
 | Admin panel (in-app) | ✅ Complete | `/admin` — legacy, for convenience. Full admin at `convexo-admin/`. |
 | Admin app (standalone) | ✅ Scaffolded | `convexo-admin/` — EOA SIWE, all tabs, deploy as `admin.convexo.xyz`. |
 | ConvexoPoolHook (oracle band) | 🔜 Phase 2 contracts | Not deployed. Phase 1 hook has no price band. |
+
+---
+
+## Frontend rules (mandatory — apply to every feature change)
+
+### 1. V4 pool key — always derive currency ordering dynamically
+Never hardcode which token is `currency0`/`currency1`. On ETH Sepolia ECOP < USDC by address, so ECOP is currency0.
+The wrong ordering sends the swap to a non-existent pool (silent revert).
+
+```typescript
+const ecopIsC0 = contracts.ECOP.toLowerCase() < contracts.USDC.toLowerCase();
+const currency0 = (ecopIsC0 ? contracts.ECOP : contracts.USDC) as `0x${string}`;
+const currency1 = (ecopIsC0 ? contracts.USDC : contracts.ECOP) as `0x${string}`;
+// zeroForOne = true means selling currency0
+const zeroForOne = ecopIsC0 ? fromSymbol === 'ECOP' : fromSymbol === 'USDC';
+```
+
+### 2. Writes — always use UserOperation batching, never split approve + action
+Account Kit batches approve + swap into a single UO. No approval cooldown window, no double-click risk.
+See `useV4Swap.ts` — reads allowances first, adds approve calls only if needed, then appends the swap call, sends all as one `sendUserOperationAsync`.
+
+### 3. Token decimal handling
+USDC = 6 decimals, ECOP = 18 decimals. Always use `parseUnits(amount, token.decimals)`.
+Never pass a raw number where a bigint is expected.
+
+### 4. pollingInterval is set to 3000ms
+Set in `lib/wagmi/config.ts`. Keeps balance/read hooks fast. Do not remove it.
+
+### 5. No mock data anywhere
+Every data source must be a real backend API call or on-chain read. No hardcoded arrays, no localStorage stubs for business data.
+
+### 6. OG image metadata — use absolute URL
+Any `<meta property="og:image">` must use the full `https://protocol.convexo.xyz/...` URL, not a relative path. Relative paths break social unfurling.
+
+### 7. Vercel env var format — no inline comments
+Vercel strips everything after `#` on the same line. `NEXT_PUBLIC_X=value  # comment` becomes `value  # comment` — breaks the value. Always use bare values.

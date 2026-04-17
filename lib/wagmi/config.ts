@@ -76,6 +76,7 @@ export const config = createConfig({
   chains: IS_MAINNET
     ? [base, unichainMainnet, arbitrum, mainnet, sepolia, baseSepolia, unichainSepolia, arbitrumSepolia]
     : [sepolia, baseSepolia, unichainSepolia, arbitrumSepolia, base, unichainMainnet, arbitrum, mainnet],
+  pollingInterval: 3_000,
   transports: {
     [base.id]:            http(baseRpc),
     [unichainMainnet.id]: http(process.env.NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL || 'https://mainnet.unichain.org'),

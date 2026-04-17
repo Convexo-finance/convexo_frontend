@@ -186,9 +186,13 @@ export function useV4Swap() {
       return;
     }
 
-    // USDC is currency0 (lower address), ECOP is currency1
-    const zeroForOne = fromSymbol === 'USDC';
-    const inputToken = zeroForOne ? contracts.USDC : contracts.ECOP;
+    // Determine canonical pool key ordering: currency0 < currency1 by address
+    const ecopIsC0 = contracts.ECOP.toLowerCase() < contracts.USDC.toLowerCase();
+    const currency0 = (ecopIsC0 ? contracts.ECOP : contracts.USDC) as `0x${string}`;
+    const currency1 = (ecopIsC0 ? contracts.USDC : contracts.ECOP) as `0x${string}`;
+    // zeroForOne = true means selling currency0; false means selling currency1
+    const zeroForOne = ecopIsC0 ? fromSymbol === 'ECOP' : fromSymbol === 'USDC';
+    const inputToken = fromSymbol === 'USDC' ? contracts.USDC : contracts.ECOP;
 
     try {
       setErrorMsg('');
@@ -243,8 +247,8 @@ export function useV4Swap() {
       const hookData = encodeAbiParameters([{ type: 'address' }], [userAddress]);
 
       const v4Input = encodeV4SwapInput({
-        currency0: contracts.USDC,
-        currency1: contracts.ECOP,
+        currency0,
+        currency1,
         fee: 500,
         tickSpacing: 10,
         hooks: contracts.PASSPORT_GATED_HOOK as `0x${string}`,

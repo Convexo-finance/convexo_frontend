@@ -75,8 +75,11 @@ export function useV4Quote({
         [userAddress ?? '0x0000000000000000000000000000000000000000']
       );
 
-      // USDC is currency0 (lower address), ECOP is currency1
-      const zeroForOne = fromSymbol === 'USDC'; // USDC→ECOP
+      // Determine canonical pool key ordering: currency0 < currency1 by address
+      const ecopIsC0 = contracts.ECOP.toLowerCase() < contracts.USDC.toLowerCase();
+      const currency0 = (ecopIsC0 ? contracts.ECOP : contracts.USDC) as `0x${string}`;
+      const currency1 = (ecopIsC0 ? contracts.USDC : contracts.ECOP) as `0x${string}`;
+      const zeroForOne = ecopIsC0 ? fromSymbol === 'ECOP' : fromSymbol === 'USDC';
 
       const result = await publicClient.simulateContract({
         address: quoter as `0x${string}`,
@@ -84,8 +87,8 @@ export function useV4Quote({
         functionName: 'quoteExactInputSingle',
         args: [{
           poolKey: {
-            currency0: contracts.USDC,
-            currency1: contracts.ECOP,
+            currency0,
+            currency1,
             fee: 500,
             tickSpacing: 10,
             hooks: contracts.PASSPORT_GATED_HOOK as `0x${string}`,
@@ -96,9 +99,8 @@ export function useV4Quote({
         }],
       });
 
-      // deltaAmounts from pool perspective:
-      //   zeroForOne (USDC→ECOP): deltaAmounts[0] > 0 (pool gains USDC), deltaAmounts[1] < 0 (pool loses ECOP)
-      //   Output = -deltaAmounts[1] for zeroForOne, -deltaAmounts[0] for oneForZero
+      // deltaAmounts from pool perspective: output token has negative delta (pool loses it)
+      // outputIdx = 1 for zeroForOne (selling c0, receiving c1), 0 for oneForZero
       const deltaAmounts = result.result[0] as bigint[];
       const outputIdx = zeroForOne ? 1 : 0;
       const rawDelta = deltaAmounts[outputIdx];

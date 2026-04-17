@@ -118,7 +118,7 @@ function getReputationDetails(address user) returns (
 **Image Hash**: `bafybeiekwlyujx32cr5u3ixt5esfxhusalt5ljtrmsng74q7k45tilugh4`
 **Verification**: Fully trustless — ZK proof verified on-chain by `IZKPassportVerifier` (no admin bypass)
 **ZKPassport Verifier**: `0x1D000001000EFD9a6371f4d90bB8920D5431c0D8` (Ethereum, Ethereum Sepolia, Base, Base Sepolia)
-**App Domain**: `loans.convexo.xyz` | **App Scope**: `convexo-passport-identity`
+**App Domain**: `protocol.convexo.xyz` | **App Scope**: `convexo-passport-identity`
 
 ### Write Functions
 
