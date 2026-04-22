@@ -151,7 +151,6 @@ const navItems: NavItem[] = [
     subItems: [
       { name: 'OTC Orders', href: '/treasury/otc', icon: ClipboardDocumentListIcon, description: 'Large orders' },
       { name: 'Swaps', href: '/treasury/swaps', icon: ArrowsRightLeftIcon, description: 'ECOP/USDC/EUR Pools' },
-      { name: 'Monetization', href: '/treasury/monetization', icon: CurrencyDollarIcon, description: 'COP ↔ ECOP' },
     ],
   },
   {

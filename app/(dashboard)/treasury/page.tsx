@@ -102,23 +102,7 @@ export default function TreasuryPage() {
           </div>
 
           {/* Main Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link href="/treasury/monetization">
-              <div className="card-interactive p-6 h-full">
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 w-fit mb-4">
-                  <CurrencyDollarIcon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">Monetization</h3>
-                <p className="text-gray-400 mb-4">
-                  Convert COP to ECOP stablecoin and back. 1:1 peg with Colombian Peso.
-                </p>
-                <div className="flex items-center gap-2 text-emerald-400 font-medium">
-                  <span>Convert Now</span>
-                  <ArrowRightIcon className="w-4 h-4" />
-                </div>
-              </div>
-            </Link>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Link href="/treasury/swaps">
               <div className="card-interactive p-6 h-full">
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 w-fit mb-4">
