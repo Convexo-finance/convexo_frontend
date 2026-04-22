@@ -1,90 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Telegram Bot configuration
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || ''; // Get chat ID from @zktps
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
+interface OrderPayload {
+  orderId: string;
+  orderType: 'buy' | 'sell';
+  digitalAsset: string;
+  fiatCurrency: string;
+  assetAmount: number;
+  estimatedFiat: number;
+  rate: number;
+  walletAddress: string;
+  timestamp: string;
+  // sell-side: user's bank account
+  bankName?: string;
+  bankAccount?: string;
+  accountType?: string;
+  holderName?: string;
+  accountLabel?: string;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const {
-      orderType,
-      amount,
-      rate,
-      total,
-      chain,
-      walletAddress,
-      bankName,
-      bankAccount,
-      accountType,
-      userEmail,
-    } = body;
+    const body: OrderPayload = await request.json();
 
-    // Format message for Telegram and Email
-    const timestamp = new Date().toISOString();
-    const orderMessage = formatOrderMessage({
-      orderType,
-      amount,
-      rate,
-      total,
-      chain,
-      walletAddress,
-      bankName,
-      bankAccount,
-      accountType,
-      timestamp,
-      userEmail,
-    });
+    // Try to persist to backend (fire-and-forget — endpoint may not exist yet)
+    if (API_URL) {
+      fetch(`${API_URL}/otc/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(() => {});
+    }
 
-    // Send to Telegram
+    const telegramMsg = buildTelegramMessage(body);
+    const emailHtml = buildEmailHtml(body);
+
     let telegramSuccess = false;
     if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
       try {
-        const telegramResponse = await fetch(
+        const res = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: TELEGRAM_CHAT_ID,
-              text: orderMessage,
+              text: telegramMsg,
               parse_mode: 'HTML',
             }),
           }
         );
-
-        if (telegramResponse.ok) {
-          telegramSuccess = true;
-        } else {
-          console.error('Telegram API error:', await telegramResponse.text());
-        }
-      } catch (error) {
-        console.error('Error sending to Telegram:', error);
+        telegramSuccess = res.ok;
+        if (!res.ok) console.error('Telegram error:', await res.text());
+      } catch (err) {
+        console.error('Telegram send failed:', err);
       }
     }
 
-    // Send Email using Resend (you can also use SendGrid, Nodemailer, etc.)
     let emailSuccess = false;
-    try {
-      const emailHtml = formatEmailHtml({
-        orderType,
-        amount,
-        rate,
-        total,
-        chain,
-        walletAddress,
-        bankName,
-        bankAccount,
-        accountType,
-        timestamp,
-        userEmail,
-      });
-
-      // If you have Resend configured
-      if (process.env.RESEND_API_KEY) {
-        const emailResponse = await fetch('https://api.resend.com/emails', {
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -93,191 +72,126 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             from: 'OTC Orders <orders@convexo.xyz>',
             to: 'william@convexo.xyz',
-            subject: `🔄 New OTC Order - ${orderType.toUpperCase()} ${amount} USDC`,
+            subject: `🔄 OTC ${body.orderType.toUpperCase()} — ${body.assetAmount} ${body.digitalAsset} [${body.orderId}]`,
             html: emailHtml,
           }),
         });
-
-        if (emailResponse.ok) {
-          emailSuccess = true;
-        }
+        emailSuccess = res.ok;
+      } catch (err) {
+        console.error('Email send failed:', err);
       }
-    } catch (error) {
-      console.error('Error sending email:', error);
     }
 
-    // Return success if at least one notification method worked
-    if (telegramSuccess || emailSuccess) {
-      return NextResponse.json({
-        success: true,
-        message: 'Order submitted successfully',
-        notifications: {
-          telegram: telegramSuccess,
-          email: emailSuccess,
-        },
-      });
-    } else {
-      // Even if notifications failed, we can still save the order
-      return NextResponse.json({
-        success: true,
-        message: 'Order received but notifications may have failed',
-        notifications: {
-          telegram: false,
-          email: false,
-        },
-      });
-    }
-  } catch (error) {
-    console.error('Error processing order:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to process order',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      orderId: body.orderId,
+      notifications: { telegram: telegramSuccess, email: emailSuccess },
+    });
+  } catch (err) {
+    console.error('OTC create-order error:', err);
+    return NextResponse.json({ success: false, error: 'Failed to process order' }, { status: 500 });
   }
 }
 
-function formatOrderMessage(data: any): string {
-  const {
-    orderType,
-    amount,
-    rate,
-    total,
-    chain,
-    walletAddress,
-    bankName,
-    bankAccount,
-    accountType,
-    timestamp,
-    userEmail,
-  } = data;
+function buildTelegramMessage(d: OrderPayload): string {
+  const directionEmoji = d.orderType === 'buy' ? '🟢' : '🔴';
+  const fiatFormatted =
+    d.fiatCurrency === 'COP'
+      ? `${d.estimatedFiat.toLocaleString('es-CO', { minimumFractionDigits: 2 })} COP`
+      : `$${d.estimatedFiat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USD`;
 
-  let message = `🔄 <b>NEW OTC ORDER</b>\n\n`;
-  message += `<b>Order Type:</b> ${orderType.toUpperCase()}\n`;
-  message += `<b>Amount:</b> ${amount} USDC\n`;
-  message += `<b>Exchange Rate:</b> ${rate.toFixed(2)} COP/USD\n`;
-  message += `<b>Total:</b> ${total.toFixed(2)} COP\n`;
-  message += `<b>Chain:</b> ${chain}\n`;
-  message += `<b>Time:</b> ${new Date(timestamp).toLocaleString()}\n`;
-  
-  if (userEmail) {
-    message += `<b>User Email:</b> ${userEmail}\n`;
-  }
-  
-  message += `\n`;
+  let msg = `🔄 <b>NEW OTC ORDER</b>\n`;
+  msg += `<b>ID:</b> <code>${d.orderId}</code>\n\n`;
 
-  if (orderType === 'buy') {
-    message += `💰 <b>PAYMENT DETAILS:</b>\n`;
-    message += `<b>Wallet Address:</b> <code>${walletAddress}</code>\n\n`;
-    message += `Client will transfer ${total.toFixed(2)} COP to Convexo's bank account.\n`;
-    message += `Upon confirmation, ${amount} USDC will be sent to the wallet above.`;
-  } else {
-    message += `🏦 <b>BANK DETAILS:</b>\n`;
-    message += `<b>Bank Name:</b> ${bankName}\n`;
-    message += `<b>Account:</b> ${bankAccount}\n`;
-    message += `<b>Type:</b> ${accountType}\n`;
-    message += `<b>Wallet:</b> <code>${walletAddress}</code>\n\n`;
-    message += `Client will send ${amount} USDC from the wallet above.\n`;
-    message += `Upon confirmation, ${total.toFixed(2)} COP will be transferred to the bank account.`;
+  msg += `${directionEmoji} <b>${d.orderType.toUpperCase()}</b>\n`;
+  msg += `<b>Asset:</b> ${d.assetAmount} ${d.digitalAsset}\n`;
+  msg += `<b>Fiat:</b> ${d.fiatCurrency}\n`;
+  msg += `<b>Rate:</b> 1 ${d.digitalAsset} = ${d.rate} ${d.fiatCurrency}\n`;
+  msg += `<b>Estimated Total:</b> ${fiatFormatted}\n`;
+  msg += `<b>Time:</b> ${new Date(d.timestamp).toLocaleString()}\n\n`;
+
+  msg += `👛 <b>WALLET</b>\n`;
+  msg += `<code>${d.walletAddress}</code>\n\n`;
+
+  if (d.orderType === 'sell' && d.bankName) {
+    msg += `🏦 <b>DESTINATION BANK (send ${d.fiatCurrency} here)</b>\n`;
+    msg += `<b>Bank:</b> ${d.bankName}\n`;
+    msg += `<b>Account:</b> ${d.bankAccount}\n`;
+    msg += `<b>Type:</b> ${d.accountType}\n`;
+    if (d.holderName) msg += `<b>Holder:</b> ${d.holderName}\n`;
+    if (d.accountLabel) msg += `<b>Label:</b> ${d.accountLabel}\n`;
+  } else if (d.orderType === 'buy') {
+    msg += `💰 <b>CLIENT WILL SEND</b>\n`;
+    msg += `${fiatFormatted} → Convexo bank account\n`;
+    msg += `Upon confirmation, send <b>${d.assetAmount} ${d.digitalAsset}</b> to wallet above.`;
   }
 
-  return message;
+  return msg;
 }
 
-function formatEmailHtml(data: any): string {
-  const {
-    orderType,
-    amount,
-    rate,
-    total,
-    chain,
-    walletAddress,
-    bankName,
-    bankAccount,
-    accountType,
-    timestamp,
-    userEmail,
-  } = data;
+function buildEmailHtml(d: OrderPayload): string {
+  const directionColor = d.orderType === 'buy' ? '#10b981' : '#ef4444';
+  const fiatFormatted =
+    d.fiatCurrency === 'COP'
+      ? `${d.estimatedFiat.toLocaleString('es-CO', { minimumFractionDigits: 2 })} COP`
+      : `$${d.estimatedFiat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USD`;
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px; }
-    .info-row { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
-    .label { font-weight: bold; color: #4b5563; }
-    .value { color: #1f2937; }
-    .highlight { background: #fef3c7; padding: 2px 6px; border-radius: 3px; }
-    .section { margin: 20px 0; padding: 15px; background: white; border-left: 4px solid #3b82f6; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; background: ${directionColor}; color: white; font-weight: bold; font-size: 14px; }
+    .content { background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px; }
+    .row { display: flex; justify-content: space-between; padding: 10px 14px; background: white; border-radius: 6px; margin-bottom: 8px; }
+    .label { color: #6b7280; font-size: 13px; }
+    .value { color: #111827; font-weight: 600; }
+    .section { margin-top: 20px; padding: 16px; background: white; border-left: 4px solid #8b5cf6; border-radius: 0 6px 6px 0; }
+    .mono { font-family: monospace; background: #f3f4f6; padding: 3px 8px; border-radius: 4px; font-size: 13px; }
+    .highlight { background: #fef3c7; padding: 12px; border-radius: 6px; margin-top: 12px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0;">🔄 New OTC Order</h1>
-      <p style="margin: 5px 0 0 0; opacity: 0.9;">${new Date(timestamp).toLocaleString()}</p>
+      <h2 style="margin: 0 0 8px 0;">🔄 New OTC Order</h2>
+      <span class="badge">${d.orderType.toUpperCase()}</span>
+      <p style="margin: 8px 0 0 0; opacity: 0.8; font-size: 13px;">ID: ${d.orderId} · ${new Date(d.timestamp).toLocaleString()}</p>
     </div>
     <div class="content">
-      <div class="info-row">
-        <span class="label">Order Type:</span>
-        <span class="value highlight">${orderType.toUpperCase()}</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Amount:</span>
-        <span class="value">${amount} USDC</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Exchange Rate:</span>
-        <span class="value">${rate.toFixed(2)} COP/USD (includes 1.5% spread)</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Total:</span>
-        <span class="value"><strong>${total.toFixed(2)} COP</strong></span>
-      </div>
-      <div class="info-row">
-        <span class="label">Chain:</span>
-        <span class="value">${chain}</span>
-      </div>
-      ${userEmail ? `
-      <div class="info-row">
-        <span class="label">User Email:</span>
-        <span class="value">${userEmail}</span>
-      </div>
-      ` : ''}
-      
-      ${orderType === 'buy' ? `
+      <div class="row"><span class="label">Asset Amount</span><span class="value">${d.assetAmount} ${d.digitalAsset}</span></div>
+      <div class="row"><span class="label">Fiat Currency</span><span class="value">${d.fiatCurrency}</span></div>
+      <div class="row"><span class="label">Rate</span><span class="value">1 ${d.digitalAsset} = ${d.rate} ${d.fiatCurrency}</span></div>
+      <div class="row"><span class="label">Estimated Total</span><span class="value">${fiatFormatted}</span></div>
+      <div class="row"><span class="label">Wallet</span><span class="value mono">${d.walletAddress}</span></div>
+
+      ${d.orderType === 'sell' && d.bankName ? `
       <div class="section">
-        <h3 style="margin-top: 0;">💰 Payment Details</h3>
-        <p><strong>Wallet Address:</strong><br><code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${walletAddress}</code></p>
-        <p style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 4px;">
-          Client will transfer <strong>${total.toFixed(2)} COP</strong> to Convexo's bank account.<br>
-          Upon confirmation, <strong>${amount} USDC</strong> will be sent to the wallet address above.
-        </p>
-      </div>
-      ` : `
+        <strong>🏦 Destination Bank Account</strong>
+        <div style="margin-top: 10px;">
+          <div class="row"><span class="label">Bank</span><span class="value">${d.bankName}</span></div>
+          <div class="row"><span class="label">Account</span><span class="value">${d.bankAccount}</span></div>
+          <div class="row"><span class="label">Type</span><span class="value">${d.accountType}</span></div>
+          ${d.holderName ? `<div class="row"><span class="label">Holder</span><span class="value">${d.holderName}</span></div>` : ''}
+          ${d.accountLabel ? `<div class="row"><span class="label">Label</span><span class="value">${d.accountLabel}</span></div>` : ''}
+        </div>
+        <div class="highlight">
+          Client will send <strong>${d.assetAmount} ${d.digitalAsset}</strong> from wallet above.<br>
+          Send <strong>${fiatFormatted}</strong> to the bank account above upon confirmation.
+        </div>
+      </div>` : `
       <div class="section">
-        <h3 style="margin-top: 0;">🏦 Bank Details</h3>
-        <p><strong>Bank Name:</strong> ${bankName}</p>
-        <p><strong>Account Number:</strong> ${bankAccount}</p>
-        <p><strong>Account Type:</strong> ${accountType}</p>
-        <p><strong>Wallet Address:</strong><br><code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px;">${walletAddress}</code></p>
-        <p style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 4px;">
-          Client will send <strong>${amount} USDC</strong> from the wallet address above.<br>
-          Upon confirmation, <strong>${total.toFixed(2)} COP</strong> will be transferred to the bank account above.
-        </p>
-      </div>
-      `}
+        <strong>💰 Client Payment</strong>
+        <div class="highlight" style="margin-top: 12px;">
+          Client will send <strong>${fiatFormatted}</strong> to Convexo&apos;s bank account.<br>
+          Send <strong>${d.assetAmount} ${d.digitalAsset}</strong> to wallet above upon confirmation.
+        </div>
+      </div>`}
     </div>
   </div>
 </body>
-</html>
-  `;
+</html>`;
 }
-
