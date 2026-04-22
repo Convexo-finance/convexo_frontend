@@ -35,7 +35,7 @@ export default function FundingPage() {
               You need a CONVEXO PASSPORT to access Treasury services.
             </p>
             <a
-              href="/digital-id/humanity/verify"
+              href="/digital-id/humanity"
               className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg"
             >
               Get Verified with ZKPassport

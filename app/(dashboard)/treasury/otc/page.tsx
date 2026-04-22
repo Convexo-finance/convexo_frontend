@@ -128,7 +128,7 @@ export default function OTCPage() {
           <div className="text-center p-8">
             <h2 className="text-2xl font-bold text-white mb-2">Identity Verification Required</h2>
             <p className="text-gray-400 mb-4">You need a Convexo Passport to access Treasury services.</p>
-            <a href="/digital-id/humanity/verify" className="btn-primary inline-block">
+            <a href="/digital-id/humanity" className="btn-primary inline-block">
               Get Verified with ZKPassport
             </a>
           </div>
