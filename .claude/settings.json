@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install)",
+      "Bash(npm install *)",
+      "Bash(npm ls *)",
+      "Bash(npm audit *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(node *)",
+      "Bash(python3 *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git show *)",
+      "Bash(git stash *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(wc *)",
+      "Bash(rm -rf .next)",
+      "Bash(mkdir -p *)",
+      "Bash(pkill *)",
+      "WebFetch(domain:docs.login.xyz)",
+      "WebFetch(domain:docs.alchemy.com)",
+      "WebFetch(domain:ethskills.com)",
+      "mcp__ide__getDiagnostics"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(rm -rf node_modules)",
+      "Bash(npm publish *)"
+    ]
+  }
+}
