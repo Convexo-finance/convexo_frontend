@@ -35,5 +35,12 @@
       "Bash(rm -rf node_modules)",
       "Bash(npm publish *)"
     ]
+  },
+  "enabledPlugins": {
+    "ethskills@ethskills": true,
+    "uniswap-trading@uniswap-ai": true,
+    "uniswap-hooks@uniswap-ai": true,
+    "uniswap-viem@uniswap-ai": true,
+    "uniswap-driver@uniswap-ai": true
   }
 }

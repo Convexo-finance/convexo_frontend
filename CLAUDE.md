@@ -108,7 +108,7 @@ See `lib/contracts/addresses.ts` for the full map. Key addresses:
 - `REPUTATION_MANAGER`: `0x50b81F36a95E1363288Ef44aD7E48A8CaCDFa349`
 
 **ETH Sepolia (PRIMARY testnet — ZKPassport verifier deployed here):**
-- `PASSPORT_GATED_HOOK`: `0xA4c7d0f1bb255460C7b3CBE9910318CB57Cb8A80` (redeployed 2026-04-11)
+- `PASSPORT_GATED_HOOK`: `0xd3f980f48638783a8324ff99301028f08bda8a80` (redeployed 2026-04-22, new pool seeded 6,250 USDC)
 - `UNIVERSAL_ROUTER`: `0x3A9D48AB9751398BbFa63ad67599Bb04e4BdF98b` (allowed on hook ✅)
 - `QUOTER`: `0x61b3f2011a92d183c7dbadbda940a7555ccf9227`
 - USDC: `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`
