@@ -67,8 +67,9 @@ interface ConvexoPassportTraits {
   nationalityCompliant: boolean;
   zkPassportTimestamp: number;
   zkPassportResult: any;
-  // Solidity-compatible ZK proof params for on-chain verification
   solidityParams: SolidityVerifierParameters | null;
+  // UTC date string (YYYY-MM-DD) when the proof was generated — used to detect day-boundary staleness
+  proofDateUTC: string;
 }
 
 export default function ZKVerificationPage() {
@@ -244,6 +245,7 @@ export default function ZKVerificationPage() {
             zkPassportTimestamp: timestamp,
             zkPassportResult: result,
             solidityParams,
+            proofDateUTC: new Date().toISOString().slice(0, 10),
           });
           setIdentifierInput(uid ?? '');
           setStep('verified');
@@ -277,6 +279,18 @@ export default function ZKVerificationPage() {
   const handleMint = async () => {
     if (!identifierInput || !contracts?.CONVEXO_PASSPORT || !passportTraits) {
       setError('Please complete verification first');
+      return;
+    }
+
+    // The proof commits to today's UTC date (YYYYMMDD). If the calendar day changed
+    // since the proof was generated, the on-chain helper will see a stale date and
+    // revert with PassportExpired(). Catch this before wasting gas.
+    const todayUTC = new Date().toISOString().slice(0, 10);
+    if (passportTraits.proofDateUTC && passportTraits.proofDateUTC !== todayUTC) {
+      setError('Your ZKPassport proof has expired (generated on a previous day). Please verify again.');
+      setPassportTraits(null);
+      setIdentifierInput('');
+      setStep('idle');
       return;
     }
 
@@ -389,7 +403,9 @@ export default function ZKVerificationPage() {
           });
         } catch (simErr: any) {
           // simulateContract throws with a decoded error name if the ABI has it
-          const simMsg: string = simErr?.name ?? simErr?.message ?? String(simErr);
+          // simErr.name is the viem error class ("ContractFunctionExecutionError"), not the
+          // Solidity error. Use message which contains the decoded error name in full text.
+          const simMsg: string = simErr?.message ?? simErr?.name ?? String(simErr);
           // Re-use the same error-decoding logic as the mintError handler
           if (simMsg.includes('AlreadyHasPassport')) {
             setError('You already have a CONVEXO PASSPORT.');
@@ -410,7 +426,13 @@ export default function ZKVerificationPage() {
           } else if (simMsg.includes('NationalityNotCompliant')) {
             setError('Nationality check failed. Cannot mint passport.');
           } else if (simMsg.includes('PassportExpired')) {
-            setError('Your passport or ID has expired.');
+            // The proof's committed date is from a previous UTC day — the contract
+            // rejects it even if the physical passport is valid. Force re-verification.
+            setError('Your ZKPassport proof has expired. Please verify again to generate a fresh proof.');
+            setPassportTraits(null);
+            setIdentifierInput('');
+            setStep('idle');
+            return;
           } else {
             // Unknown error — still try the UserOperation but log for debugging
             console.error('[claimPassport simulate error]', simErr);
@@ -457,7 +479,10 @@ export default function ZKVerificationPage() {
       } else if (msg.includes('NationalityNotCompliant')) {
         setError('Verification failed: your nationality is not permitted.');
       } else if (msg.includes('PassportExpired')) {
-        setError('Your passport or ID document has expired.');
+        setError('Your ZKPassport proof has expired. Please verify again to generate a fresh proof.');
+        setPassportTraits(null);
+        setIdentifierInput('');
+        setStep('idle');
       } else if (msg.includes('execution reverted')) {
         // Generic revert — the specific error name was not decoded.
         // On testnet the most common cause is mock identifier collision.

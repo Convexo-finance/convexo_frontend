@@ -27,7 +27,7 @@ convexo_frontend/
 │   ├── alchemy/config.ts   — Account Kit (MAv2, Gas Manager — embedded wallet only)
 │   ├── config/             — network.ts, tokens.ts, pinata.ts
 │   ├── contracts/
-│   │   ├── addresses.ts    — All chain addresses (v3.18) + PERMIT2 constant
+│   │   ├── addresses.ts    — All chain addresses (v3.18 deterministic / v3.19 ETH Sepolia) + PERMIT2
 │   │   ├── abis.ts         — All contract ABIs
 │   │   └── ecopAbi.ts      — ECOP token ABI
 │   ├── hooks/
@@ -97,7 +97,7 @@ All data must come from the real backend API or on-chain reads. No hardcoded arr
 
 ---
 
-## Contract addresses (v3.18)
+## Contract addresses (v3.18 deterministic | ETH Sepolia v3.19)
 
 See `lib/contracts/addresses.ts` for the full map. Key addresses:
 
@@ -228,13 +228,13 @@ Key endpoints used by frontend:
 
 ---
 
-## Phase status (as of v3.18.3, 2026-04-13)
+## Phase status (as of v3.19, 2026-04-22)
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Auth (SIWE + JWT) | ✅ Complete | Alchemy embedded signer only (email / passkey / Google) |
+| Auth (SIWE + JWT) | ✅ Complete | sessionStorage JWT (tab-close logout). Google OAuth spinner fixed. |
 | Onboarding | ✅ Complete | 3-step wizard wired to backend. Fixed infinite-loop 2026-04-11. |
-| ZKPassport (Tier 1) | ✅ Complete | 130 tests, trustless on-chain |
+| ZKPassport (Tier 1) | ✅ Complete | Trustless onchain. Proof staleness (UTC day boundary) detected + handled. |
 | Veriff KYC (Tier 2) | ✅ Complete | Webhook → backend → NFT |
 | Sumsub KYB (Tier 2) | ✅ Complete | Webhook → backend → NFT |
 | Credit Score (Tier 3) | ✅ Complete | n8n AI → backend → NFT |
@@ -286,3 +286,17 @@ Any `<meta property="og:image">` must use the full `https://protocol.convexo.xyz
 
 ### 7. Vercel env var format — no inline comments
 Vercel strips everything after `#` on the same line. `NEXT_PUBLIC_X=value  # comment` becomes `value  # comment` — breaks the value. Always use bare values.
+
+### 8. ZKPassport proofs expire at UTC midnight — detect staleness before minting
+The ZKPassport proof commits to today's UTC calendar date (YYYYMMDD). The onchain helper converts `block.timestamp` to the same YYYYMMDD format for comparison. If the user generated the proof on a previous UTC day and tries to mint the next day, the contract reverts with `PassportExpired()` — even if their physical passport is valid.
+
+Always stamp `proofDateUTC: new Date().toISOString().slice(0, 10)` on the proof and check it before simulation:
+
+```typescript
+const todayUTC = new Date().toISOString().slice(0, 10);
+if (passportTraits.proofDateUTC !== todayUTC) {
+  // stale proof — reset to idle so user re-verifies
+}
+```
+
+Also: when decoding simulation errors, use `simErr?.message` not `simErr?.name`. The `.name` field is always the viem error class (`"ContractFunctionExecutionError"`), not the Solidity error name.
