@@ -31,13 +31,13 @@ export default function DigitalIDPage() {
   // Calculate user tier - Tier 3 is Ecreditscoring NFTs
   const userTier = hasEcreditscoringNFT ? 3 : (hasLPIndividualsNFT || hasLPBusinessNFT) ? 2 : (hasPassportNFT || hasActivePassport) ? 1 : 0;
 
-  // Determine which cards are relevant per accountType
+  // Filter cards by accountType:
   // Individual: CONVEXO_PASSPORT + LP_INDIVIDUALS
   // Business:   CONVEXO_PASSPORT + LP_BUSINESS + ECREDITSCORING
-  // null:       show all (safety fallback)
+  // null:       show all (safety fallback while loading)
   const isRelevant = (cardKey: string): boolean => {
-    if (!accountType) return true; // fallback: show all
-    if (cardKey === 'passport') return true; // always relevant
+    if (!accountType) return true;
+    if (cardKey === 'passport') return true;
     if (accountType === 'INDIVIDUAL') return cardKey === 'lp-individuals';
     if (accountType === 'BUSINESS') return cardKey === 'lp-business' || cardKey === 'credit-score';
     return true;
@@ -117,13 +117,24 @@ export default function DigitalIDPage() {
 
           {/* Current Status Banner */}
           <div className={`card p-6 ${
-            userTier >= 1 
-              ? 'bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-700/50' 
+            userTier >= 1
+              ? 'bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-purple-700/50'
               : 'bg-gray-800/50'
           }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm mb-1">Your Current Tier</p>
+                <div className="flex items-center gap-3 mb-1">
+                  <p className="text-gray-400 text-sm">Your Current Tier</p>
+                  {accountType && (
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${
+                      accountType === 'BUSINESS'
+                        ? 'bg-blue-900/40 text-blue-400 border-blue-700/50'
+                        : 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50'
+                    }`}>
+                      {accountType === 'BUSINESS' ? 'Business' : 'Individual'}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-3xl font-bold ${
                     userTier === 0 ? 'text-gray-400' :
@@ -134,8 +145,9 @@ export default function DigitalIDPage() {
                   </span>
                   <span className="text-xl text-gray-300">
                     {userTier === 0 ? 'Unverified' :
-                     userTier === 1 ? 'Individual Investor' :
-                     userTier === 2 ? 'Limited Partner (Individual or Business)' : 'Vault Creator'}
+                     userTier === 1 ? 'Passport Holder' :
+                     userTier === 2 ? (accountType === 'BUSINESS' ? 'Limited Partner — Business' : 'Limited Partner — Individual') :
+                     'Vault Creator'}
                   </span>
                 </div>
               </div>
@@ -162,18 +174,15 @@ export default function DigitalIDPage() {
 
           {/* NFT Cards */}
           <div className="space-y-6">
-            {nftCards.map((nft, index) => {
-              const relevant = isRelevant(nft.key);
-
+            {nftCards.filter(nft => isRelevant(nft.key)).map((nft) => {
               const cardContent = (
                 <div className={`card p-6 flex items-start gap-6 transition-all duration-300 ${
-                  !relevant ? 'opacity-40 cursor-default' :
                   nft.owned ? 'border-emerald-700/50 bg-emerald-900/5 cursor-pointer hover:border-purple-500/50' :
                   'cursor-pointer hover:border-purple-500/50'
                 }`}>
                   {/* NFT Image */}
                   <div className={`relative flex-shrink-0 w-32 h-32 rounded-2xl overflow-hidden ${
-                    nft.owned && relevant ? '' : 'opacity-50 grayscale'
+                    nft.owned ? '' : 'opacity-50 grayscale'
                   }`}>
                     <Image
                       src={nft.image}
@@ -181,7 +190,7 @@ export default function DigitalIDPage() {
                       fill
                       className="object-cover"
                     />
-                    {nft.owned && relevant && (
+                    {nft.owned && (
                       <div className="absolute -top-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
                         <CheckBadgeIcon className="w-5 h-5 text-white" />
                       </div>
@@ -195,7 +204,7 @@ export default function DigitalIDPage() {
                         <div className="flex items-center gap-3 mb-1">
                           <h3 className="text-xl font-semibold text-white">{nft.name}</h3>
                           <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            nft.owned && relevant
+                            nft.owned
                               ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700/50'
                               : 'bg-gray-800 text-gray-400 border border-gray-700'
                           }`}>
@@ -203,9 +212,6 @@ export default function DigitalIDPage() {
                           </span>
                         </div>
                         <p className="text-gray-400">{nft.description}</p>
-                        {!relevant && (
-                          <p className="text-xs text-amber-400/80 mt-1">Not available for your account type</p>
-                        )}
                       </div>
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${nft.gradient}`}>
                         <nft.icon className="w-6 h-6 text-white" />
@@ -230,7 +236,7 @@ export default function DigitalIDPage() {
                     {/* Status */}
                     <div className="mt-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {nft.owned && relevant ? (
+                        {nft.owned ? (
                           <>
                             <CheckBadgeIcon className="w-5 h-5 text-emerald-400" />
                             <span className="text-emerald-400 font-medium">Verified & Active</span>
@@ -238,45 +244,51 @@ export default function DigitalIDPage() {
                         ) : (
                           <>
                             <XCircleIcon className="w-5 h-5 text-gray-500" />
-                            <span className="text-gray-400">{relevant ? 'Not Verified' : 'Not available'}</span>
+                            <span className="text-gray-400">Not Verified</span>
                           </>
                         )}
                       </div>
-                      {relevant && (
-                        <div className="flex items-center gap-2 text-purple-400 font-medium">
-                          <span>{nft.owned ? 'View Details' : 'Get Verified'}</span>
-                          <ArrowRightIcon className="w-4 h-4" />
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-purple-400 font-medium">
+                        <span>{nft.owned ? 'View Details' : 'Get Verified'}</span>
+                        <ArrowRightIcon className="w-4 h-4" />
+                      </div>
                     </div>
                   </div>
                 </div>
               );
 
-              // Relevant cards link to the verification page; irrelevant cards are non-interactive
-              return relevant ? (
+              return (
                 <Link key={nft.key} href={nft.href}>{cardContent}</Link>
-              ) : (
-                <div key={nft.key}>{cardContent}</div>
               );
             })}
           </div>
 
           {/* Tier Progression Info */}
           <div className="card">
-            <h3 className="text-lg font-semibold text-white mb-4">Tier Progression</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Your Verification Path</h3>
             <p className="text-gray-400 mb-6">
-              Complete verifications to unlock more protocol features. Each tier includes all benefits from lower tiers.
+              {accountType === 'BUSINESS'
+                ? 'Business accounts unlock Vault Creator (Tier 3) via Credit Score verification.'
+                : accountType === 'INDIVIDUAL'
+                ? 'Individual accounts reach Limited Partner (Tier 2) via personal KYC.'
+                : 'Complete verifications to unlock more protocol features.'}
             </p>
             <div className="relative">
               <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-700" />
               <div className="relative flex justify-between">
-                {[
-                  { tier: 0, label: 'Unverified', current: userTier === 0 },
-                  { tier: 1, label: 'Passport', current: userTier === 1 },
-                  { tier: 2, label: 'LP', current: userTier === 2 },
-                  { tier: 3, label: 'Vault Creator', current: userTier === 3 },
-                ].map((step) => (
+                {(accountType === 'BUSINESS'
+                  ? [
+                      { tier: 0, label: 'Unverified', current: userTier === 0 },
+                      { tier: 1, label: 'Passport', current: userTier === 1 },
+                      { tier: 2, label: 'LP Business', current: userTier === 2 },
+                      { tier: 3, label: 'Vault Creator', current: userTier === 3 },
+                    ]
+                  : [
+                      { tier: 0, label: 'Unverified', current: userTier === 0 },
+                      { tier: 1, label: 'Passport', current: userTier === 1 },
+                      { tier: 2, label: 'LP Individual', current: userTier === 2 },
+                    ]
+                ).map((step) => (
                   <div key={step.tier} className="flex flex-col items-center">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm z-10 ${
                       userTier >= step.tier

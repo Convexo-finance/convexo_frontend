@@ -116,6 +116,8 @@ interface NavSubItem {
   icon: React.ComponentType<{ className?: string }>;
   requiredTier?: number;
   description?: string;
+  businessOnly?: boolean;
+  individualOnly?: boolean;
 }
 
 // Flat navigation items (no section grouping)
@@ -136,9 +138,9 @@ const navItems: NavItem[] = [
     icon: IdentificationIcon,
     subItems: [
       { name: 'Tier 1: Humanity', href: '/digital-id/humanity', icon: ShieldCheckIcon, description: 'ZK Passport', requiredTier: 0 },
-      { name: 'Tier 2: LP Individuals', href: '/digital-id/limited-partner-individuals', icon: UserGroupIcon, description: 'Individual KYC', requiredTier: 0 },
-      { name: 'Tier 2: LP Business', href: '/digital-id/limited-partner-business', icon: BuildingOfficeIcon, description: 'Business KYB', requiredTier: 0 },
-      { name: 'Tier 3: Credit Score', href: '/digital-id/credit-score', icon: SparklesIcon, description: 'Vault Creator', requiredTier: 0 },
+      { name: 'Tier 2: LP Individuals', href: '/digital-id/limited-partner-individuals', icon: UserGroupIcon, description: 'Individual KYC', requiredTier: 0, individualOnly: true },
+      { name: 'Tier 2: LP Business', href: '/digital-id/limited-partner-business', icon: BuildingOfficeIcon, description: 'Business KYB', requiredTier: 0, businessOnly: true },
+      { name: 'Tier 3: Credit Score', href: '/digital-id/credit-score', icon: SparklesIcon, description: 'Vault Creator', requiredTier: 0, businessOnly: true },
     ],
   },
   {
@@ -236,15 +238,14 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   const canAccessItem = (item: NavItem | NavSubItem) => {
     if ('adminOnly' in item && item.adminOnly) return isAdmin;
-    if ('businessOnly' in item && item.businessOnly && !isBusinessAccount) return false;
+    if (item.businessOnly && !isBusinessAccount) return false;
+    if ('individualOnly' in item && item.individualOnly && isBusinessAccount) return false;
     if (item.requiredTier !== undefined) return userTier >= item.requiredTier;
     return true;
   };
 
   const visibleItems = useMemo(() => navItems.filter(item => {
     if (item.adminOnly) return isAdmin;
-    // Business-only items (e.g. Funding) are hidden entirely for Individual accounts.
-    // We only show them once the user's accountType is confirmed as BUSINESS.
     if (item.businessOnly && !isBusinessAccount) return false;
     return true;
   }), [isAdmin, isBusinessAccount]);
@@ -342,7 +343,12 @@ export function Sidebar({ onClose }: SidebarProps) {
                       isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                     }`}
                   >
-                    {item.subItems?.map((subItem) => {
+                    {item.subItems?.filter(subItem => {
+                      // Hide items that don't match account type entirely
+                      if (subItem.businessOnly && !isBusinessAccount) return false;
+                      if (subItem.individualOnly && isBusinessAccount) return false;
+                      return true;
+                    }).map((subItem) => {
                       const isSubLocked = !canAccessItem(subItem);
                       const isSubActive = isSubItemActive(subItem.href);
 

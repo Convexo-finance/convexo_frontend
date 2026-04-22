@@ -2,6 +2,7 @@
 
 import { useAccount } from '@/lib/wagmi/compat';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { NFTDisplayCard } from '@/components/NFTDisplayCard';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -19,6 +20,7 @@ import {
 
 export default function CreditScorePage() {
   const { isConnected, address } = useAccount();
+  const { accountType } = useNavigation();
   const { hasEcreditscoringNFT, hasAnyLPNFT, canRequestCreditScore } = useNFTBalance();
 
   const isVerified = hasEcreditscoringNFT;
@@ -61,6 +63,23 @@ export default function CreditScorePage() {
             <p className="text-gray-400">Connect your wallet to view credit scoring</p>
           </div>
         </div>
+    );
+  }
+
+  if (accountType === 'INDIVIDUAL') {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[80vh]">
+        <div className="text-center p-8 max-w-md">
+          <LockClosedIcon className="w-16 h-16 mx-auto mb-4 text-amber-500/60" />
+          <h2 className="text-2xl font-bold text-white mb-2">Business Accounts Only</h2>
+          <p className="text-gray-400 mb-6">
+            Credit Score evaluation is only available to business accounts. It enables vault creation and access to credit lines.
+          </p>
+          <Link href="/digital-id">
+            <button className="btn-primary">Back to Digital ID</button>
+          </Link>
+        </div>
+      </div>
     );
   }
 

@@ -3,6 +3,7 @@
 import { useAccount } from '@/lib/wagmi/compat';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { useVerificationStatus } from '@/lib/hooks/useVerification';
+import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { NFTDisplayCard } from '@/components/NFTDisplayCard';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -14,11 +15,13 @@ import {
   DocumentTextIcon,
   ShieldCheckIcon,
   IdentificationIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import { getIPFSUrl } from '@/lib/contracts/addresses';
 
 export default function LimitedPartnerIndividualsPage() {
   const { isConnected, address } = useAccount();
+  const { accountType } = useNavigation();
   const { hasLPIndividualsNFT } = useNFTBalance();
   const { status: veriffStatus, isLoading } = useVerificationStatus(address);
 
@@ -34,6 +37,23 @@ export default function LimitedPartnerIndividualsPage() {
             <p className="text-gray-400">Connect your wallet to view LP verification</p>
           </div>
         </div>
+    );
+  }
+
+  if (accountType === 'BUSINESS') {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[80vh]">
+        <div className="text-center p-8 max-w-md">
+          <LockClosedIcon className="w-16 h-16 mx-auto mb-4 text-amber-500/60" />
+          <h2 className="text-2xl font-bold text-white mb-2">Individual Accounts Only</h2>
+          <p className="text-gray-400 mb-6">
+            Individual investor verification is only available to personal accounts. Business entities use LP Business verification instead.
+          </p>
+          <Link href="/digital-id/limited-partner-business">
+            <button className="btn-primary">Go to LP Business</button>
+          </Link>
+        </div>
+      </div>
     );
   }
 
