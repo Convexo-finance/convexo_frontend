@@ -173,6 +173,12 @@ export function useV4Swap() {
     amountIn: bigint;
     amountOutMinimum?: bigint;
   }) => {
+    if (!client) {
+      setErrorMsg('Smart account not ready — sign in with email, passkey, or Google to swap');
+      setStep('error');
+      return;
+    }
+
     if (!userAddress || !contracts || !publicClient) {
       setErrorMsg('Wallet not connected');
       setStep('error');
@@ -282,7 +288,7 @@ export function useV4Swap() {
       setErrorMsg(msg);
       setStep('error');
     }
-  }, [userAddress, contracts, publicClient, sendUserOperationAsync]);
+  }, [userAddress, contracts, publicClient, sendUserOperationAsync, client]);
 
   const reset = useCallback(() => {
     setStep('idle');
