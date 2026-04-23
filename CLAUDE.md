@@ -140,8 +140,10 @@ Hook: `PassportGatedHook` — requires `hookData = abi.encode(userAddress)`
 **Admin prerequisite (done once):**
 `hook.allowRouter(universalRouter)` — run `scripts/allow-router.sh` in `convexo_contracts/`.
 
+**V4 Quoter note (known issue):** The official Uniswap V4 Quoter (`0x61b3f...`) returns `PoolNotInitialized` (0x6190b2b0) for this pool even though it IS initialized. Root cause: compatibility mismatch between Quoter and PoolManager version on ETH Sepolia. **Do NOT use the Quoter for price quotes on ETH Sepolia.** Instead use the extsload-based approach implemented in `useV4Quote.ts` — reads sqrtPriceX96 directly from PoolManager storage and computes output off-chain. One Quoter is deployed per chain by Uniswap; addresses are at developers.uniswap.org/contracts/v4/deployments.
+
 **Hooks:**
-- `useV4Quote` — calls `Quoter.quoteExactInputSingle` via `publicClient.simulateContract`, debounced 500ms
+- `useV4Quote` — reads sqrtPriceX96 via PoolManager.extsload (bypasses broken Quoter), computes spot price off-chain, debounced 500ms
 - `useV4Swap` — checks allowances then sends batched UO; `SwapStep`: `idle` → `swapping` → `success`/`error`
 
 ---
@@ -191,7 +193,7 @@ CORS is permissive (any origin) — access is controlled by JWT.
 - `mainnet` → `PRIMARY_CHAIN_ID = 8453` (Base)
 - `testnet` → `PRIMARY_CHAIN_ID = 11155111` (ETH Sepolia — ZKPassport verifier deployed here)
 
-ETH Sepolia is the primary testnet because ZKPassport verifier (`0x1D000001000EFD9a6371f4d90bB8920D5431c0D8`) is NOT deployed on Base Sepolia. The USDC/ECOP pool is also live on ETH Sepolia (2026-04-11).
+ETH Sepolia is the primary testnet because ZKPassport verifier (`0x1D000001000EFD9a6371f4d90bB8920D5431c0D8`) is NOT deployed on Base Sepolia. The USDC/ECOP pool is live on ETH Sepolia (reseeded 2026-04-22, hook v3.20, LP tokenId 26391, 6,250 USDC concentrated + 500 USDC full-range backstop).
 
 `useChainId()` (overridden in compat.ts) always returns `PRIMARY_CHAIN_ID`.
 All contract calls target the primary chain. Wallet page reads balances on all chains separately.

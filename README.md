@@ -184,16 +184,13 @@ convexo_frontend/
 │   │   └── market-lps/
 │   │
 │   ├── profile/
-│   │   ├── bank-accounts/            # Full CRUD, AES-256 encrypted at rest
+│   │   ├── bank-accounts/            # Full CRUD, country-first adaptive form (CO/US/EU), SWIFT/IBAN/routing
 │   │   ├── contacts/                 # Wallet address book
 │   │   └── wallet/                   # Multi-chain portfolio view
 │   │
-│   └── treasury/                     # Tier 2+
-│       ├── swaps/
-│       ├── convert-fast/
-│       ├── otc/
-│       ├── monetization/
-│       └── fiat-to-stable/
+│   └── treasury/                     # Tier 1+
+│       ├── swaps/                    # ECOP↔USDC Uniswap V4 pool
+│       └── otc/                      # OTC desk orders (Telegram + email notifications)
 │
 ├── components/
 │   ├── DashboardLayout.tsx           # Sidebar + AnimatePresence page transitions
@@ -419,7 +416,7 @@ const { hasPassportNFT, hasAnyLPNFT, hasEcreditscoringNFT, tier } = useNFTBalanc
 | `useSendToken` | Unified ETH/ERC-20 transfer with chain switching |
 | `useUserReputation` | Cached tier from backend + manual sync trigger |
 | `useVaults` | Tokenized bond vault reads |
-| `useV4Quote` | Off-chain quote via Uniswap V4 Quoter — debounced 500ms |
+| `useV4Quote` | Reads sqrtPriceX96 from `PoolManager.extsload` (bypasses broken ETH Sepolia Quoter), computes spot-price off-chain — debounced 500ms |
 | `useV4Swap` | Full V4 swap: ERC-20 approve → Permit2 approve → Universal Router execute |
 | `useContracts` | Returns contract addresses for the current chain (`getContractsForChain`) |
 
@@ -481,10 +478,8 @@ The `components/wallet/` directory contains the full wallet page UI:
 | `/digital-id/limited-partner-individuals` | Veriff KYC | — |
 | `/digital-id/limited-partner-business` | Sumsub KYB | — |
 | `/digital-id/credit-score/verify` | AI credit score (3 PDFs + 9 fields) | 2 |
-| `/treasury/swaps` | USDC ↔ ECOP swap — on-chain V4 Quoter + Universal Router | 1 |
-| `/treasury/convert-fast` | ECOP ↔ USDC — live rate from `GET /rates/ECOP-USDC` | 2 |
-| `/treasury/otc` | OTC orders | 2 |
-| `/treasury/monetization` | Yield tools | 2 |
+| `/treasury/swaps` | USDC ↔ ECOP swap — extsload spot-price quote + Universal Router | 1 |
+| `/treasury/otc` | OTC orders — Telegram + Resend email notifications, 4-step form | 1 |
 | `/investments/vaults` | Tokenized bond vaults | 1 |
 | `/investments/market-lps` | LP market | 1 |
 | `/funding` | Funding requests (Business only) | 3 |
@@ -544,8 +539,9 @@ See [DEPLOY.md](./DEPLOY.md) for the full production checklist.
 | TypeScript errors | ✅ 0 | `npx tsc --noEmit` clean |
 | Production build | ✅ passing | `npm run build --webpack` |
 | Primary testnet | ✅ ETH Sepolia (11155111) | ZKPassport verifier + pool LIVE — `NEXT_PUBLIC_NETWORK_MODE=testnet` |
-| V4 swap wired (v3.18) | ✅ | `useV4Swap` + `useV4Quote` — Universal Router allowed on ETH Sepolia hook |
-| V4 addresses (v3.18) | ✅ | UNIVERSAL_ROUTER, POSITION_MANAGER, QUOTER, PERMIT2 all chains |
+| V4 swap wired (v3.20) | ✅ | `useV4Swap` + `useV4Quote` — hook v3.20, pool seeded 6,250 USDC, Universal Router allowed |
+| V4 quote (v3.20) | ✅ | extsload-based spot-price (Quoter bypass) — see `useV4Quote.ts` + CLAUDE.md for rationale |
+| V4 addresses (v3.18+) | ✅ | UNIVERSAL_ROUTER, POSITION_MANAGER, PERMIT2 all chains |
 | Vault investments | ✅ | `GET /vaults` backend + on-chain `useReadContract` for live state |
 | ZKPassport flow | ✅ | Age ≥18, sanctions (20 ISO alpha-3), nationality, expiry — `devMode` OFF for prod |
 | Auth (JWT decode) | ✅ | Instant session restore from JWT payload — no network call on mount |

@@ -1,43 +1,77 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useChainId, usePublicClient, useAccount } from '@/lib/wagmi/compat';
-import { encodeAbiParameters } from 'viem';
+import { useChainId, usePublicClient } from '@/lib/wagmi/compat';
+import { encodePacked, keccak256 } from 'viem';
 import { getContractsForChain } from '@/lib/contracts/addresses';
 
-// V4 Quoter ABI — quoteExactInputSingle only
-const QUOTER_ABI = [
+// StateLibrary constants (v4-core v1.0.x)
+const POOLS_SLOT = BigInt(6);
+
+// MASK_160_BITS = (1 << 160) - 1
+const MASK_160_BITS = (1n << 160n) - 1n;
+
+const EXTSLOAD_ABI = [
   {
-    name: 'quoteExactInputSingle',
+    name: 'extsload',
     type: 'function',
-    inputs: [{
-      name: 'params',
-      type: 'tuple',
-      components: [
-        {
-          name: 'poolKey',
-          type: 'tuple',
-          components: [
-            { name: 'currency0', type: 'address' },
-            { name: 'currency1', type: 'address' },
-            { name: 'fee', type: 'uint24' },
-            { name: 'tickSpacing', type: 'int24' },
-            { name: 'hooks', type: 'address' },
-          ],
-        },
-        { name: 'zeroForOne', type: 'bool' },
-        { name: 'exactAmount', type: 'uint128' },
-        { name: 'hookData', type: 'bytes' },
-      ],
-    }],
-    outputs: [
-      { name: 'deltaAmounts', type: 'int128[]' },
-      { name: 'sqrtPriceX96After', type: 'uint160' },
-      { name: 'initializedTicksLoaded', type: 'uint32' },
-    ],
-    stateMutability: 'nonpayable',
+    inputs: [{ name: 'slot', type: 'bytes32' }],
+    outputs: [{ name: '', type: 'bytes32' }],
+    stateMutability: 'view',
   },
 ] as const;
+
+/** Compute pool storage slot: keccak256(abi.encodePacked(poolId, POOLS_SLOT)) */
+function poolStateSlot(poolId: `0x${string}`): `0x${string}` {
+  return keccak256(
+    encodePacked(
+      ['bytes32', 'bytes32'],
+      [poolId, `0x${POOLS_SLOT.toString(16).padStart(64, '0')}` as `0x${string}`]
+    )
+  );
+}
+
+/** Compute keccak256(abi.encode(currency0, currency1, fee, tickSpacing, hooks)) */
+function computePoolId(
+  currency0: `0x${string}`,
+  currency1: `0x${string}`,
+  fee: number,
+  tickSpacing: number,
+  hooks: `0x${string}`
+): `0x${string}` {
+  // abi.encode pads each value to 32 bytes
+  const addr0 = currency0.toLowerCase().replace('0x', '').padStart(64, '0');
+  const addr1 = currency1.toLowerCase().replace('0x', '').padStart(64, '0');
+  const feeHex = fee.toString(16).padStart(64, '0');
+  const tickHex = ((tickSpacing < 0 ? (BigInt(tickSpacing) + (1n << 256n)) : BigInt(tickSpacing))).toString(16).padStart(64, '0');
+  const hooksHex = hooks.toLowerCase().replace('0x', '').padStart(64, '0');
+  return keccak256(`0x${addr0}${addr1}${feeHex}${tickHex}${hooksHex}`);
+}
+
+/**
+ * Estimate output amount from sqrtPriceX96 (no price impact — accurate for small swaps).
+ *
+ * ECOP = currency0 (18 decimals), USDC = currency1 (6 decimals)
+ * sqrtPriceX96 encodes price as: sqrt(token1/token0) * 2^96 (raw unit ratio)
+ *
+ * raw price = (sqrtPriceX96 / 2^96)^2 → ratio of raw token units
+ *
+ * For zeroForOne (ECOP → USDC):
+ *   outUSDC_raw = inECOP_raw * sqrtPriceX96^2 / 2^192
+ * For oneForZero (USDC → ECOP):
+ *   outECOP_raw = inUSDC_raw * 2^192 / sqrtPriceX96^2
+ */
+function estimateOutput(sqrtPriceX96: bigint, amountIn: bigint, zeroForOne: boolean): bigint {
+  const Q192 = 1n << 192n;
+  if (sqrtPriceX96 === 0n) return 0n;
+  if (zeroForOne) {
+    // selling currency0 (ECOP) for currency1 (USDC)
+    return (amountIn * sqrtPriceX96 * sqrtPriceX96) / Q192;
+  } else {
+    // selling currency1 (USDC) for currency0 (ECOP)
+    return (amountIn * Q192) / (sqrtPriceX96 * sqrtPriceX96);
+  }
+}
 
 export function useV4Quote({
   fromSymbol,
@@ -46,7 +80,6 @@ export function useV4Quote({
   fromSymbol: 'USDC' | 'ECOP';
   amountIn: bigint;
 }) {
-  const { address: userAddress } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const contracts = getContractsForChain(chainId);
@@ -61,65 +94,47 @@ export function useV4Quote({
       return;
     }
 
-    const quoter = contracts.QUOTER;
-    if (!quoter || quoter === '0x0000000000000000000000000000000000000000') return;
-
     setIsLoading(true);
     setError(null);
 
     try {
-      // hookData encodes the user address (required by PassportGatedHook)
-      // Fall back to zero address for quote-only calls (hook reads but doesn't gate quotes)
-      const hookData = encodeAbiParameters(
-        [{ type: 'address' }],
-        [userAddress ?? '0x0000000000000000000000000000000000000000']
-      );
-
-      // Determine canonical pool key ordering: currency0 < currency1 by address
       const ecopIsC0 = contracts.ECOP.toLowerCase() < contracts.USDC.toLowerCase();
       const currency0 = (ecopIsC0 ? contracts.ECOP : contracts.USDC) as `0x${string}`;
       const currency1 = (ecopIsC0 ? contracts.USDC : contracts.ECOP) as `0x${string}`;
       const zeroForOne = ecopIsC0 ? fromSymbol === 'ECOP' : fromSymbol === 'USDC';
 
-      const result = await publicClient.simulateContract({
-        address: quoter as `0x${string}`,
-        abi: QUOTER_ABI,
-        functionName: 'quoteExactInputSingle',
-        args: [{
-          poolKey: {
-            currency0,
-            currency1,
-            fee: 500,
-            tickSpacing: 10,
-            hooks: contracts.PASSPORT_GATED_HOOK as `0x${string}`,
-          },
-          zeroForOne,
-          exactAmount: amountIn,
-          hookData,
-        }],
+      const poolId = computePoolId(currency0, currency1, 500, 10, contracts.PASSPORT_GATED_HOOK as `0x${string}`);
+      const slot = poolStateSlot(poolId);
+
+      const raw = await publicClient.readContract({
+        address: contracts.POOL_MANAGER as `0x${string}`,
+        abi: EXTSLOAD_ABI,
+        functionName: 'extsload',
+        args: [slot],
       });
 
-      // deltaAmounts from pool perspective: output token has negative delta (pool loses it)
-      // outputIdx = 1 for zeroForOne (selling c0, receiving c1), 0 for oneForZero
-      const deltaAmounts = result.result[0] as bigint[];
-      const outputIdx = zeroForOne ? 1 : 0;
-      const rawDelta = deltaAmounts[outputIdx];
-      setAmountOut(rawDelta < 0n ? -rawDelta : rawDelta);
+      const slotData = BigInt(raw as string);
+      const sqrtPriceX96 = slotData & MASK_160_BITS;
+
+      if (sqrtPriceX96 === 0n) {
+        setError('Pool not initialized');
+        setAmountOut(null);
+        return;
+      }
+
+      const out = estimateOutput(sqrtPriceX96, amountIn, zeroForOne);
+      setAmountOut(out > 0n ? out : null);
     } catch (err: unknown) {
-      const raw = (err as { shortMessage?: string; message?: string });
-      const text = raw?.shortMessage ?? raw?.message ?? '';
-      // 0x6190b2b0 = PoolNotInitialized() — pool doesn't exist on this chain yet
-      const msg = text.includes('0x6190b2b0') || text.includes('PoolNotInitialized')
-        ? 'Pool not available on this network yet'
-        : text || 'Quote unavailable';
-      setError(msg);
+      const msg = (err as { shortMessage?: string; message?: string })?.shortMessage
+        ?? (err as { message?: string })?.message
+        ?? 'Quote unavailable';
+      setError(msg.slice(0, 120));
       setAmountOut(null);
     } finally {
       setIsLoading(false);
     }
-  }, [contracts, publicClient, fromSymbol, amountIn, userAddress]);
+  }, [contracts, publicClient, fromSymbol, amountIn]);
 
-  // Debounce: wait 500ms after last input change before fetching
   useEffect(() => {
     if (amountIn === 0n) {
       setAmountOut(null);

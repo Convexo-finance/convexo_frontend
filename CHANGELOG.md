@@ -4,6 +4,37 @@ Format: version → what changed → status.
 
 ---
 
+## v3.20 — 2026-04-22 (OTC, bank accounts, swap quote, hook v3.20)
+
+### PassportGatedHook v3.20 — new pool
+- Redeployed hook to `0xd3f980f48638783a8324ff99301028f08bda8a80` (correct ReputationManager `0x28a9b3bA5...`, `setReputationManager()` available)
+- New USDC/ECOP pool: fee=500, tickSpacing=10, sqrtPriceX96 at 3650 COP/USDC rate, LP tokenId 26391
+- Seeded: 6,250 USDC concentrated + 500 USDC full-range backstop. Universal Router + Position Manager allowed on-chain.
+- Previous v3.19 hook (`0xA4c7d0f1...`) abandoned — pool had only 8 wei liquidity.
+
+### Swap quote — extsload replaces broken Quoter
+- Root cause: the official Uniswap V4 Quoter (`0x61b3f...`) returns `PoolNotInitialized` (0x6190b2b0) for this pool despite correct on-chain state (sqrtPriceX96 confirmed non-zero via `PoolManager.extsload`).
+- `useV4Quote.ts` rewritten: reads sqrtPriceX96 directly from PoolManager storage using StateLibrary v1.0.x slot formula (`keccak256(abi.encodePacked(poolId, uint256(6)))`), computes spot-price output off-chain. Swap execution via UniversalRouter was never broken.
+- Uniswap AI + ethskills Claude plugins installed at project scope.
+
+### OTC Trading — form & notifications
+- Rate logic: USDC/USDT vs USD = 0.994 fixed; ECOP vs COP = 0.994 fixed; USDC/USDT vs COP = live rate × 1.01
+- 4-step form: Order Type → Asset/Amount → Payment Method → Review & Submit
+- Payment method for SELL filtered by bank currency matching selected fiat
+- Order submission POSTs to `/api/otc/create-order` before opening chat: Telegram bot alert + Resend email + fire-and-forget backend `POST /otc/orders`
+
+### Bank Accounts — redesign
+- Country-first form: auto-fills currency, adapts fields by region (CO/US/EU/OTHER)
+- New mandatory fields: holder name, document type + number, SWIFT/BIC, bank country
+- EU: IBAN instead of account number; US: ABA routing + state; CO: SWIFT optional
+- Bank address section added (street, city, state, postal code)
+- Table display: Account, Bank, Country, Currency, Number/IBAN, SWIFT, Holder, Status, Actions
+
+### Navigation
+- Monetization module removed (sidebar entry, Treasury landing card, `treasury/monetization/` directory)
+
+---
+
 ## v3.19 — 2026-04-22 (ZKPassport proof staleness + V4 ordering + auth + batched UOs)
 
 ### ZKPassport proof day-boundary staleness fix (critical)
