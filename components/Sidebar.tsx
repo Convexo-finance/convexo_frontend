@@ -62,7 +62,7 @@ function UserFooter() {
           onClick={openAuthModal}
           className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm transition-colors"
         >
-          Connect Wallet
+          Sign In
         </button>
       </div>
     );

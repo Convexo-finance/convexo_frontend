@@ -11,7 +11,7 @@ export { useAccount } from '@/lib/hooks/useWalletAccount';
 // but we make it explicit here so every hook reads the same chain.
 //
 // Rule: ALL protocol contract calls (NFT mint, vault, reputation) target Base
-// mainnet (8453) in production or Base Sepolia (84532) in dev/testnet.
+// mainnet (8453) in production or ETH Sepolia (11155111) in dev/testnet.
 // The wallet page reads balances on ALL chains separately via explicit chainId params.
 import { PRIMARY_CHAIN_ID } from '@/lib/config/network';
 export function useChainId(): number {
