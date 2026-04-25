@@ -4,6 +4,36 @@ Format: version → what changed → status.
 
 ---
 
+## v3.23 — 2026-04-25 (OTC bank accounts, contact buttons, passport card)
+
+### Fixed
+- OTC wizard step 3: `BankAccount.accountNumber` renamed to `accountNumberMasked` — backend stores the masked value only; wrong field name caused the bank account dropdown to appear empty even when accounts existed
+- Passport card: `tokenOfOwnerByIndex` is not in the ConvexoPassport ABI; replaced `#?` display with shortened `uniqueIdentifier` from `getVerifiedIdentity`
+
+### Added
+- OTC history table: WhatsApp and Telegram contact icons on every order row, pre-filled with order ID for follow-up
+- OTC wizard step 4: "Create Another Order" button appears after a successful order submission
+- Passport card: fully custom design replacing generic `NFTDisplayCard` — gradient header, NFT thumbnail, wallet address, verified date, live status dot, 4-check verification grid (KYC / Sanctions / Age 18+ / Nationality), Explorer link
+
+### Removed
+- Passport card: "Soulbound" label removed
+- Passport card: "Next steps" box removed
+- Unused `NFTDisplayCard` import on humanity page
+
+---
+
+## v3.22 — 2026-04-25 (OTC wizard + history fix)
+
+### Fixed
+- OTC orders were never persisted: `POST /api/otc/create-order` (Next.js route) forwarded to backend with no `Authorization` header; `requireAuth` rejected it silently; fixed by calling `apiFetch('/otc/orders')` directly so the JWT is included
+
+### Added
+- OTC page redesigned: order history table always visible on load; **Create Order** button at bottom opens a 4-step wizard modal (Order Type → Asset & Amount → Payment → Review & Submit)
+- Wizard features: step progress bar, Back/Next navigation, Cancel, auto-refresh history 1.5 s after submit
+- Status types expanded to include `CONFIRMED` and `IN_PROGRESS`
+
+---
+
 ## v3.21 — 2026-04-25 (Wire fixes: OTC, reputation sync, admin verification)
 
 ### Fixed
