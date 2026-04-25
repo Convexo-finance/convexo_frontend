@@ -29,7 +29,7 @@ interface BankAccount {
   id: string;
   accountName: string;
   bankName: string;
-  accountNumber: string;
+  accountNumberMasked: string;
   accountType: 'SAVINGS' | 'CHECKING' | 'BUSINESS';
   currency: string;
   holderName: string | null;
@@ -223,7 +223,7 @@ export default function OTCPage() {
       ...(orderType === 'SELL' && selectedAccount
         ? {
             bankName:     selectedAccount.bankName,
-            bankAccount:  selectedAccount.accountNumber,
+            bankAccount:  selectedAccount.accountNumberMasked,
             accountType:  selectedAccount.accountType,
             holderName:   selectedAccount.holderName ?? undefined,
             accountLabel: selectedAccount.accountName,
@@ -421,16 +421,36 @@ export default function OTCPage() {
                         })}
                       </td>
                       <td className="py-3">
-                        {order.txHash && (
+                        <div className="flex items-center gap-2">
+                          {order.txHash && (
+                            <a
+                              href={getTxExplorerLink(chainId, order.txHash)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
+                            >
+                              Tx <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                            </a>
+                          )}
                           <a
-                            href={getTxExplorerLink(chainId, order.txHash)}
+                            href={`https://wa.me/573186766035?text=${encodeURIComponent(`Hi, I want to follow up on my OTC order ${order.orderId ?? order.id}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
+                            title="Contact via WhatsApp"
+                            className="text-[#25D366] hover:opacity-80 transition-opacity"
                           >
-                            Tx <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                            <DevicePhoneMobileIcon className="w-4 h-4" />
                           </a>
-                        )}
+                          <a
+                            href={`https://t.me/convexoprotocol?text=${encodeURIComponent(`Hi, I want to follow up on my OTC order ${order.orderId ?? order.id}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Contact via Telegram"
+                            className="text-[#229ED9] hover:opacity-80 transition-opacity"
+                          >
+                            <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -632,7 +652,7 @@ export default function OTCPage() {
                                 <div className="flex items-start justify-between">
                                   <div>
                                     <p className="text-sm font-semibold text-white">{acc.bankName}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">{acc.accountName} · {acc.accountNumber}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{acc.accountName} · {acc.accountNumberMasked}</p>
                                     <p className="text-xs text-gray-500">{acc.accountType}</p>
                                   </div>
                                   {acc.isDefault && (
@@ -710,16 +730,28 @@ export default function OTCPage() {
                       {orderType === 'SELL' && selectedAccount && (
                         <div className="flex justify-between">
                           <span className="text-gray-500">Deposit to</span>
-                          <span className="text-gray-300">{selectedAccount.bankName} · {selectedAccount.accountNumber}</span>
+                          <span className="text-gray-300">{selectedAccount.bankName} · {selectedAccount.accountNumberMasked}</span>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {submitted && (
-                    <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                      <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
-                      Order registered. Continue via WhatsApp or Telegram to confirm.
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                        <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />
+                        Order registered. Continue via WhatsApp or Telegram to confirm.
+                      </div>
+                      <button
+                        onClick={() => {
+                          closeWizard();
+                          setTimeout(openWizard, 50);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-purple-500/50 text-purple-400 hover:bg-purple-500/10 transition-all text-sm font-medium"
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                        Create Another Order
+                      </button>
                     </div>
                   )}
 

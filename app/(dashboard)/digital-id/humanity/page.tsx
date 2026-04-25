@@ -10,7 +10,7 @@ import {
 } from '@/lib/wagmi/compat';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite';
-import { getContractsForChain } from '@/lib/contracts/addresses';
+import { getContractsForChain, getBlockExplorerUrl } from '@/lib/contracts/addresses';
 import { ConvexoPassportABI } from '@/lib/contracts/abis';
 import { IS_MAINNET } from '@/lib/config/network';
 import {
@@ -18,7 +18,6 @@ import {
   uploadMetadataToPinata,
   type PassportTraits as PinataPassportTraits,
 } from '@/lib/config/pinata';
-import { NFTDisplayCard } from '@/components/NFTDisplayCard';
 import {
   ShieldCheckIcon,
   FingerPrintIcon,
@@ -579,69 +578,113 @@ export default function HumanityPage() {
 
   if (hasPassport && identity) {
     const id = identity as VerifiedIdentity;
+    const shortId = id.uniqueIdentifier
+      ? `${id.uniqueIdentifier.slice(0, 10)}…${id.uniqueIdentifier.slice(-8)}`
+      : '—';
+    const verifiedDate = new Date(Number(id.verifiedAt) * 1000).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+
     return (
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
         <Breadcrumb />
 
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">CONVEXO PASSPORT</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Your verified digital identity — Tier 1 active</p>
+          <h1 className="text-3xl font-bold text-white">CONVEXO PASSPORT</h1>
+          <p className="text-gray-400 mt-1">Your verified digital identity — Tier 1 active</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* NFT card */}
-          <NFTDisplayCard type="passport" address={address} />
+        {/* Passport Card */}
+        <div className="relative rounded-2xl overflow-hidden border border-emerald-500/30 shadow-2xl shadow-emerald-900/20">
+          {/* Card header strip */}
+          <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <ShieldCheckIcon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold tracking-widest text-xs uppercase">Convexo Protocol</p>
+                <p className="text-emerald-200 text-xs">Digital Passport</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 bg-white/20 text-white text-xs font-bold rounded-full tracking-wider">
+              TIER 1
+            </span>
+          </div>
 
-          {/* Traits + status */}
-          <div className="space-y-4">
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/50 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <CheckBadgeIcon className="h-8 w-8 text-emerald-500" />
+          {/* Card body */}
+          <div className="bg-gradient-to-br from-[#0a1a12] to-[#0f1a16] px-6 py-5 flex gap-5">
+            {/* NFT image */}
+            <div className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 border-emerald-500/40">
+              <Image
+                src="/NFTs/convexo_zkpassport.png"
+                alt="Convexo Passport NFT"
+                width={96}
+                height={96}
+                className="object-cover w-full h-full"
+              />
+            </div>
+
+            {/* Identity fields */}
+            <div className="flex-1 min-w-0 space-y-3">
+              <div>
+                <p className="text-xs text-emerald-500/70 uppercase tracking-widest mb-0.5">Holder</p>
+                <p className="text-white font-mono text-sm truncate">
+                  {address ? `${address.slice(0, 12)}…${address.slice(-8)}` : '—'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">Verified Human</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                    {id.isActive ? 'Active' : 'Inactive'} · verified {new Date(Number(id.verifiedAt) * 1000).toLocaleDateString()}
-                  </p>
+                  <p className="text-xs text-emerald-500/70 uppercase tracking-widest mb-0.5">Status</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <p className="text-emerald-400 text-sm font-semibold">
+                      {id.isActive ? 'Active' : 'Inactive'}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-500/70 uppercase tracking-widest mb-0.5">Verified</p>
+                  <p className="text-gray-300 text-sm">{verifiedDate}</p>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {[
-                  { label: 'KYC', ok: id.kycVerified },
-                  { label: 'Sanctions', ok: id.sanctionsPassed },
-                  { label: 'Age 18+', ok: id.isOver18 },
-                  { label: 'Nationality', ok: true },
-                ].map(({ label, ok }) => (
-                  <div key={label} className="flex items-center gap-2 p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
-                    <span className={ok ? 'text-emerald-500' : 'text-gray-400'}>
-                      {ok ? '✓' : '–'}
-                    </span>
-                    <span className="text-gray-700 dark:text-gray-300">{label}</span>
+          {/* Verification checks */}
+          <div className="bg-[#0d1a10] border-t border-emerald-900/50 px-6 py-4">
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { label: 'KYC', ok: id.kycVerified },
+                { label: 'Sanctions', ok: id.sanctionsPassed },
+                { label: 'Age 18+', ok: id.isOver18 },
+                { label: 'Nationality', ok: true },
+              ].map(({ label, ok }) => (
+                <div key={label} className="flex flex-col items-center gap-1">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${ok ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                    <span className={`text-sm ${ok ? 'text-emerald-400' : 'text-red-400'}`}>{ok ? '✓' : '✗'}</span>
                   </div>
-                ))}
-              </div>
+                  <p className="text-xs text-gray-500">{label}</p>
+                </div>
+              ))}
             </div>
+          </div>
 
-            {/* Next steps */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Next steps</p>
-              <div className="space-y-1">
-                {[
-                  { label: 'Treasury & Swaps', href: '/treasury' },
-                  { label: 'Vault Investments', href: '/investments/vaults' },
-                  { label: 'Upgrade to Tier 2', href: '/digital-id/limited-partner-individuals' },
-                ].map(({ label, href }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
-                  >
-                    <span className="text-gray-800 dark:text-gray-200 text-sm">{label}</span>
-                    <ArrowRightIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-700 dark:group-hover:text-white transition-colors" />
-                  </Link>
-                ))}
-              </div>
+          {/* Card footer */}
+          <div className="bg-[#091510] border-t border-emerald-900/40 px-6 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-emerald-500/50 uppercase tracking-widest">Unique ID</p>
+              <p className="text-gray-400 font-mono text-xs mt-0.5">{shortId}</p>
             </div>
+            <a
+              href={`${getBlockExplorerUrl(chainId)}/token/${contracts?.CONVEXO_PASSPORT}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              View on Explorer
+              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+            </a>
           </div>
         </div>
       </div>
