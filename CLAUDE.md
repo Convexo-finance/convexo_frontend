@@ -31,12 +31,13 @@ convexo_frontend/
 │   │   ├── abis.ts         — All contract ABIs
 │   │   └── ecopAbi.ts      — ECOP token ABI
 │   ├── hooks/
-│   │   ├── useAuth.ts      — SIWE sign-in/out
+│   │   ├── useAuth.ts      — SIWE sign-in/out + signInStage (nonce/signing/verifying)
 │   │   ├── useWalletAccount.ts — Alchemy Account Kit (MAv2 / EIP-7702)
 │   │   ├── useV4Swap.ts    — Full V4 swap (Permit2 → Universal Router)
 │   │   ├── useV4Quote.ts   — Off-chain quote via V4 Quoter
 │   │   ├── useContracts.ts — getContractsForChain(useChainId())
-│   │   ├── useNFTBalance.ts
+│   │   ├── useNFTBalance.ts — on-chain balanceOf reads for all 4 NFT contracts
+│   │   ├── useNFTMetadata.ts — Alchemy getNFTsForOwner (correct chain + addresses)
 │   │   ├── useConvexoWrite.ts — UserOperation via Account Kit (MAv2)
 │   │   └── ...
 │   ├── stubs/thread-stream.js — Empty stub for turbopack alias
@@ -185,6 +186,10 @@ CORS is permissive (any origin) — access is controlled by JWT.
 
 `useNFTBalance()` reads all 4 contracts on-chain and exposes `hasPassportNFT`, `hasActivePassport`, `hasAnyLPNFT`, `hasEcreditscoringNFT`, `tier`.
 
+`useNFTMetadata()` calls Alchemy `getNFTsForOwner` on the correct chain (`eth-sepolia` testnet / `base-mainnet` mainnet) using addresses from `getContractsForChain`. Returns `passport[]`, `lpIndividual[]`, `lpBusiness[]`, `creditScore[]` arrays with tokenId, name, imageUrl, and attributes. **Do NOT hardcode contract addresses here** — always derive from `getContractsForChain`.
+
+`NFTDisplayCard` (in `components/`) uses `useNFTMetadata` to get tokenId + attributes. If Alchemy hasn't cached the IPFS metadata yet (common right after minting on testnet), it falls back to fetching the tokenURI IPFS JSON directly via Pinata gateway. Note: `Convexo_Passport` is **not** ERC721Enumerable — `tokenOfOwnerByIndex` does not exist in the ABI.
+
 ---
 
 ## Network mode
@@ -221,31 +226,37 @@ Client: `lib/api/client.ts` — `apiFetch<T>(path, options?)` + silent refresh o
 Key endpoints used by frontend:
 - `POST /auth/nonce`, `POST /auth/verify`, `POST /auth/refresh`, `POST /auth/logout`
 - `GET/PUT /profile`
-- `GET/POST/PUT/DELETE /bank-accounts`
+- `GET/POST/PUT/DELETE /bank-accounts` + `POST /bank-accounts/:id/default`
 - `GET/POST/PUT/DELETE /contacts`
-- `GET /rates/USDC-ECOP`
+- `GET /rates/:pair` (e.g. `USDC-ECOP`)
 - `GET /vaults`
-- `POST /verification/credit-score/submit`
-- `GET /onboarding/status`
+- `GET/POST /onboarding/type`, `GET/POST /onboarding/profile`, `GET /onboarding/status`
+- `GET/POST /otc/orders` — OTC order history + creation (persisted from Next.js API route)
+- `POST /verification/kyc/submit` — LP Individual: multipart form (governmentId, rutDocument?, proofOfAddress files)
+- `POST /verification/kyb/submit` — LP Business: multipart form (company info + rep + shareholders JSON + 5 files)
+- `GET /verification/credit-score/status`
+- `POST /reputation/sync` — fire-and-forget warm on login
 
 ---
 
-## Phase status (as of v3.19, 2026-04-22)
+## Phase status (as of v3.24, 2026-04-25)
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Auth (SIWE + JWT) | ✅ Complete | sessionStorage JWT (tab-close logout). Google OAuth spinner fixed. |
-| Onboarding | ✅ Complete | 3-step wizard wired to backend. Fixed infinite-loop 2026-04-11. |
+| Auth (SIWE + JWT) | ✅ Complete | sessionStorage JWT (tab-close logout). Sign-in stages: nonce/signing/verifying with animated UI. |
+| Onboarding | ✅ Complete | 3-step wizard wired to backend. Business form pre-fills KYB from onboarding profile data. |
 | ZKPassport (Tier 1) | ✅ Complete | Trustless onchain. Proof staleness (UTC day boundary) detected + handled. |
-| Veriff KYC (Tier 2) | ✅ Complete | Webhook → backend → NFT |
-| Sumsub KYB (Tier 2) | ✅ Complete | Webhook → backend → NFT |
+| KYC — LP Individuals (Tier 2) | ✅ Complete | Inline form: gov ID + RUT + proof of address → `POST /verification/kyc/submit` (manual review) |
+| KYB — LP Business (Tier 2) | ✅ Complete | Inline form: company info + address + rep + shareholders + 5 doc uploads → `POST /verification/kyb/submit` |
 | Credit Score (Tier 3) | ✅ Complete | n8n AI → backend → NFT |
+| NFT display | ✅ Complete | `useNFTMetadata` (Alchemy getNFTsForOwner, correct chain+addresses) + `NFTDisplayCard` IPFS fallback |
 | Profile page | ✅ Complete | GET/PUT /profile wired |
 | Bank accounts | ✅ Complete | Full CRUD |
 | Contacts | ✅ Complete | Full CRUD |
 | Wallet (portfolio) | ✅ Complete | Alchemy Portfolio API |
 | Vault investments | ✅ Complete | GET /vaults + batched UO (approve + deposit). `useReadContract` for live vault state. |
-| Pool swaps | ✅ Complete | `useV4Swap` (batched UO: approve(s) + swap) + `useV4Quote`. ETH Sepolia pool LIVE ✅ |
+| Pool swaps | ✅ Complete | `useV4Swap` (batched UO: approve(s) + swap) + `useV4Quote`. ETH Sepolia pool LIVE ✅. Swap history via Alchemy getAssetTransfers. |
+| OTC trading | ✅ Complete | Wizard flow (buy/sell + bank accounts). Order history tab → `GET /otc/orders`. Notifications via Telegram + email. |
 | Funding module | ✅ Complete | e-loans + e-contracts wired to real API. Business + Tier 3 gated. |
 | Tier gating (sidebar) | ✅ Complete | `requiredTier` + lock icons in Sidebar. Business-only items hidden for individual accounts. |
 | Route groups | ✅ Complete | All dashboard pages under `app/(dashboard)/`. Shared layout. |

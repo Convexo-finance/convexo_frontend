@@ -4,6 +4,17 @@ Format: version → what changed → status.
 
 ---
 
+## v3.24 — 2026-04-25 (NFT metadata fix + CLAUDE.md sync)
+
+### Fixed
+- `useNFTMetadata`: was querying wrong contract addresses (old deployment) and always Base Mainnet regardless of `NEXT_PUBLIC_NETWORK_MODE`. Now derives addresses from `getContractsForChain(chainId)` and picks `eth-sepolia` (testnet) or `base-mainnet` (mainnet) Alchemy NFT endpoint.
+- `NFTDisplayCard`: called `tokenOfOwnerByIndex` which does **not exist** in `Convexo_Passport` ABI (not ERC721Enumerable). `effectiveTokenId` was always `undefined` so `tokenURI` was never fetched and no metadata/attributes ever loaded. Replaced with `useNFTMetadata` (Alchemy `getNFTsForOwner`). Falls back to direct IPFS fetch via Pinata gateway when Alchemy hasn't cached attributes yet (common post-mint on testnet).
+
+### Changed
+- `CLAUDE.md` updated to v3.24: phase table, backend endpoint list, NFT/useNFTMetadata documentation, hooks list.
+
+---
+
 ## v3.23 — 2026-04-25 (OTC bank accounts, contact buttons, passport card)
 
 ### Fixed
