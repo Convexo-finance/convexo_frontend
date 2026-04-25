@@ -172,7 +172,10 @@ export function useAuth() {
       setIsAuthenticated(true)
 
       // Fire-and-forget: warm the reputation cache after login
-      apiFetch('/reputation/sync', { method: 'POST' }).catch(() => {})
+      apiFetch('/reputation/sync', {
+        method: 'POST',
+        body: JSON.stringify({ chainId: PRIMARY_CHAIN_ID }),
+      }).catch(() => {})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed')
     } finally {

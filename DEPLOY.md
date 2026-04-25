@@ -1,6 +1,6 @@
 # Convexo Frontend — Deployment Guide
 
-> Updated: 2026-03-04
+> Updated: 2026-04-25 | Stack: Next.js 14 App Router + Alchemy Account Kit v4 | Hosted: Vercel
 
 ---
 
@@ -9,7 +9,7 @@
 | Tool | Version |
 |------|---------|
 | Node.js | 20+ |
-| npm / pnpm | latest |
+| npm | latest |
 
 ---
 
@@ -24,106 +24,200 @@ npm install
 
 ### 2. Environment Variables
 
-Create `.env.local`:
+Create `.env.local` (copy from `.env.example`):
 
 ```env
+# Network mode — controls primary chain
+# mainnet → BASE (8453) | testnet → ETH Sepolia (11155111)
+NEXT_PUBLIC_NETWORK_MODE=testnet
+
+# Backend API
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_key
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_wc_project_id
-NEXT_PUBLIC_CHAIN_ID=84532
+
+# Alchemy — Account Kit + RPC
+NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
+
+# Gas Manager policy IDs (one per gas-sponsored network)
+NEXT_PUBLIC_ALCHEMY_POLICY_ID=your_base_mainnet_policy_id
+NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH=your_eth_mainnet_policy_id
+NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA=your_eth_sepolia_policy_id
+
+# RPC URLs (Alchemy)
+NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/...
+NEXT_PUBLIC_BASE_MAINNET_RPC_URL=https://base-mainnet.g.alchemy.com/v2/...
+NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=https://unichain-mainnet.g.alchemy.com/v2/...
+NEXT_PUBLIC_ARBITRUM_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/...
+NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://base-sepolia.g.alchemy.com/v2/...
+NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/...
+NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL=https://unichain-sepolia.g.alchemy.com/v2/...
+NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/...
+
+# Pinata IPFS (metadata display)
+PINATA_JWT=...
+PINATA_API_KEY=...
+PINATA_SECRET_KEY=...
+NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
 ```
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Backend API base URL |
-| `NEXT_PUBLIC_ALCHEMY_API_KEY` | Alchemy API key (Account Kit + RPC) |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect Cloud project ID |
-| `NEXT_PUBLIC_CHAIN_ID` | Target chain (84532 = Base Sepolia, 8453 = Base Mainnet) |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_NETWORK_MODE` | Yes | `mainnet` (Base 8453) or `testnet` (ETH Sepolia 11155111) |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend base URL |
+| `NEXT_PUBLIC_ALCHEMY_API_KEY` | Yes | Alchemy API key — Account Kit + RPC |
+| `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | Mainnet | Gas Manager policy ID for Base |
+| `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` | Mainnet | Gas Manager policy ID for ETH Mainnet |
+| `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` | Testnet | Gas Manager policy ID for ETH Sepolia |
+| `NEXT_PUBLIC_*_RPC_URL` | Yes | RPC URLs for all supported chains |
+| `PINATA_JWT` | Yes | Pinata JWT for server-side uploads |
+| `NEXT_PUBLIC_PINATA_GATEWAY` | Yes | Pinata gateway for IPFS metadata display |
 
 ### 3. Start Dev Server
 
 ```bash
-npm run dev
+npm run dev        # ← always use this, NOT npx next dev
 # → App at http://localhost:3000
 ```
 
-> **Prerequisite:** The backend must be running at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`).  
-> See `convexo-backend/DEPLOY.md` for backend setup.
+> **Critical:** `npm run dev` aliases `next dev --webpack`. Never use bare `npx next dev` — it defaults to Turbopack which cannot bundle `thread-stream` inside node_modules.
+
+> **Prerequisite:** The backend must be running at `NEXT_PUBLIC_API_URL` (default `http://localhost:3001`). See `convexo-backend/DEPLOY.md`.
 
 ---
 
-## Verify Onboarding Flow
+## Onboarding Flow (Local Verification)
 
-After both frontend and backend are running:
+After both services are running:
 
-1. **New wallet sign-in** → should redirect to `/onboarding`
-2. **Step 1:** Pick INDIVIDUAL or BUSINESS → calls `POST /onboarding/type`
-3. **Step 2:** Fill profile form → calls `POST /onboarding/profile`
-4. **Step 3:** See verification roadmap → link to `/digital-id`
-5. **Returning user:** Refresh page → lands on dashboard (no redirect)
+1. Sign in with email/passkey/Google OAuth → Alchemy embedded wallet created
+2. New wallet → redirects to `/onboarding`
+3. Step 1: Pick INDIVIDUAL or BUSINESS → `POST /onboarding/type`
+4. Step 2: Fill profile form → `POST /onboarding/profile`
+5. Step 3: Verification roadmap → link to `/digital-id`
+6. Returning user → JWT restored from `sessionStorage`, lands on dashboard
 
 Key routes:
 
 | Route | Description |
 |-------|-------------|
-| `/onboarding` | Standalone wizard (no `DashboardLayout`) |
-| `/digital-id` | NFT credential cards filtered by `accountType` |
-| `/profile` | Read-only identity section + editable contact |
-| `/dashboard` | Main dashboard (requires onboarding complete) |
-
-> **Note:** The onboarding page does NOT use `DashboardLayout` / `AuthGuard`.  
-> This prevents redirect loops. It handles its own auth check internally.
+| `/` | Landing / sign-in (public) |
+| `/onboarding` | Standalone 3-step wizard (no DashboardLayout) |
+| `/digital-id/humanity` | ZKPassport → Tier 1 (Convexo Passport NFT) |
+| `/digital-id/kyc` | Veriff KYC → Tier 2 Individual (LP_Individuals NFT) |
+| `/digital-id/kyb` | Sumsub KYB → Tier 2 Business (LP_Business NFT) |
+| `/digital-id/credit-score` | n8n AI credit score → Tier 3 (Ecreditscoring NFT) |
+| `/treasury/swaps` | USDC↔ECOP swap (Uniswap V4 live) |
+| `/investments/vaults` | Tokenized bond vaults (ERC-7540) |
+| `/funding` | Business-only vault funding |
+| `/treasury/otc` | OTC trade orders |
+| `/profile` | Bank accounts, contacts, wallet |
+| `/admin` | In-app admin panel (admin role required) |
 
 ---
 
-## Smart Contract Addresses
+## Contract Addresses (v3.18 / v3.19)
 
-All chains use deterministic deployment (same addresses):
+Deterministic via `CREATE2` salt `convexo.v3.18` — same address on all chains **except** ETH Sepolia which uses v3.19.
 
 | Contract | Address |
 |----------|---------|
-| CONVEXO_PASSPORT | `0x2AD6aA7652C5167881b60C5bEa8713A0F0520cDD` |
-| LP_INDIVIDUALS | `0xF4aA32C029CfFa6050107E65FFF6e25AA2E58554` |
-| LP_BUSINESS | `0x147070275646d9Cab76Ae26e5Eb632f5A6e8024C` |
-| ECREDITSCORING | `0x20Be7F2D32Ddaa7c056CC6C39415275401cdF9E7` |
-| REPUTATION_MANAGER | `0x64DA6680046F15909413bc93a822FEFB342F5861` |
+| `CONVEXO_PASSPORT` (all except ETH Sep) | `0x648D128c117bC83aEAAd408ab69F0E5cb6291790` |
+| `CONVEXO_PASSPORT` (ETH Sepolia v3.19) | `0xCde95545f2446C2CfdDA7439493AD453014AC562` |
+| `LP_INDIVIDUALS` | `0xE244e4B2B37EA6f6453d3154da548e7f2e1e5Df3` |
+| `LP_BUSINESS` | `0x70cFe52560Dc2DD981d2374bB6b01c2170E5597B` |
+| `ECREDITSCORING` | `0xa448Aa6bfd5bA16BBd756cAF8E2cd68b31b51D88` |
+| `REPUTATION_MANAGER` (all except ETH Sep) | `0x50b81F36a95E1363288Ef44aD7E48A8CaCDFa349` |
+| `REPUTATION_MANAGER` (ETH Sepolia v3.19) | `0x28a9b3bA5ddf3D7542a2BCC00Bc7eC72363bEB8b` |
+| `PERMIT2` | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+
+### Pool (ETH Sepolia — Primary Testnet)
+
+| Contract | Address |
+|----------|---------|
+| `PASSPORT_GATED_HOOK` (v3.20) | `0xd3f980f48638783a8324ff99301028f08bda8a80` |
+| `UNIVERSAL_ROUTER` | `0x3A9D48AB9751398BbFa63ad67599Bb04e4BdF98b` |
+| USDC | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
+| ECOP | `0x19ac2612e560b2bbedf88660a2566ef53c0a15a1` |
 
 ### Supported Chains
 
-| Chain | Chain ID |
-|-------|----------|
-| Unichain Mainnet | 130 |
-| Base Mainnet | 8453 |
-| Unichain Sepolia | 1301 |
-| Base Sepolia | 84532 |
-| Ethereum Sepolia | 11155111 |
+| Chain | Chain ID | Role |
+|-------|----------|------|
+| Base | 8453 | Primary mainnet (ZKPassport ✅) |
+| Unichain | 130 | Secondary mainnet |
+| Arbitrum One | 42161 | ECOP only |
+| ETH Sepolia | 11155111 | **Primary testnet** (ZKPassport ✅, pool live) |
+| Base Sepolia | 84532 | Secondary testnet (pool seeded, no ZKPassport) |
+| Uni Sepolia | 1301 | Testnet |
+| Arb Sepolia | 421614 | Testnet |
 
 ---
 
 ## Production Deployment (Vercel)
 
+### Steps
+
 1. Connect GitHub repo to Vercel
-2. Set environment variables:
-   ```
-   NEXT_PUBLIC_API_URL=https://api.convexo.io
-   NEXT_PUBLIC_ALCHEMY_API_KEY=...
-   NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
-   NEXT_PUBLIC_CHAIN_ID=8453
-   ```
-3. Framework preset: **Next.js**
-4. Build command: `npm run build`
-5. Output directory: `.next`
+2. Framework preset: **Next.js**
+3. Build command: `npm run build` (uses `--webpack` flag)
+4. Output directory: `.next`
+5. Set all environment variables (see section above)
+
+### Critical Vercel Env Var Rules
+
+- **No inline comments** — Vercel strips everything after `#` on the same line. `VALUE=abc # comment` → stored as `abc # comment`, breaking the value.
+- **No trailing spaces** in any value.
+
+### Production Env Vars (Vercel)
+
+```
+NEXT_PUBLIC_NETWORK_MODE=mainnet
+NEXT_PUBLIC_API_URL=https://convexo-api-production.up.railway.app
+NEXT_PUBLIC_ALCHEMY_API_KEY=...
+NEXT_PUBLIC_ALCHEMY_POLICY_ID=...           (Base mainnet Gas Manager)
+NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH=...       (ETH mainnet Gas Manager)
+NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA=...   (ETH Sepolia Gas Manager)
+NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=...
+NEXT_PUBLIC_BASE_MAINNET_RPC_URL=...
+NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=...
+NEXT_PUBLIC_ARBITRUM_RPC_URL=...
+NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=...
+NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL=...
+NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL=...
+NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL=...
+PINATA_JWT=...
+PINATA_API_KEY=...
+PINATA_SECRET_KEY=...
+NEXT_PUBLIC_PINATA_GATEWAY=...
+```
 
 ---
 
 ## Checklist Before Production
 
-- [ ] `NEXT_PUBLIC_API_URL` points to production backend
-- [ ] `NEXT_PUBLIC_CHAIN_ID` set to mainnet (8453)
-- [ ] Alchemy API key active for production
-- [ ] WalletConnect project ID configured
-- [ ] Smart contract addresses verified on target chain
-- [ ] Onboarding flow tested: new wallet → type selection → profile → digital-id
-- [ ] Profile page shows read-only identity for Individual and Business
-- [ ] Digital-id page filters NFT cards by accountType
-- [ ] OTC, Treasury, Funding pages gated by tier
+### Auth & Alchemy
+- [ ] Alchemy dashboard → App → **Allowed Domains** includes `protocol.convexo.xyz`
+- [ ] Gas Manager policy for Base mainnet allows `protocol.convexo.xyz` as origin
+- [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID` is the UUID with no trailing comments or spaces
+- [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` set if testnet is used
+
+### Network
+- [ ] `NEXT_PUBLIC_NETWORK_MODE=mainnet` for production
+- [ ] All RPC URLs for mainnet chains populated
+
+### Contracts
+- [ ] Contract addresses in `lib/contracts/addresses.ts` match on-chain deployments for target chains
+- [ ] ABIs in `abis/` are synced from latest `convexo_contracts/out/` (`bash scripts/extract-abis.sh`)
+
+### Wallet
+- [ ] No `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` — WalletConnect is fully removed (embedded wallets only)
+- [ ] No EOA connectors — only Alchemy Account Kit (email / passkey / Google OAuth)
+
+### Pool & Swaps
+- [ ] `useV4Quote` uses `extsload` path (Quoter is broken on ETH Sepolia — do not re-enable)
+- [ ] Hook router allowed: `allowRouter(universalRouter)` called on deployed hook
+
+### General
+- [ ] `npm run build` passes with zero TypeScript errors
+- [ ] No mock data anywhere — all pages wire to real backend or on-chain reads
+- [ ] OTC orders page reads `data.items` (not flat array)
+- [ ] Reputation sync sends `{ chainId: PRIMARY_CHAIN_ID }` in body

@@ -132,8 +132,8 @@ export default function OTCPage() {
   useEffect(() => {
     if (tab !== 'history' || !isConnected) return;
     setLoadingOrders(true);
-    apiFetch<OTCOrder[]>('/otc/orders')
-      .then(data => setOrders(Array.isArray(data) ? data : []))
+    apiFetch<{ items: OTCOrder[]; total: number }>('/otc/orders')
+      .then(data => setOrders(data?.items ?? []))
       .catch(() => setOrders([]))
       .finally(() => setLoadingOrders(false));
   }, [tab, isConnected]);

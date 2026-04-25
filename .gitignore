@@ -42,4 +42,5 @@ next-env.d.ts
 # Claude Code — local only (personal config, secrets, local notes)
 CLAUDE.local.md
 .claude/settings.local.json
+mcp.json
 

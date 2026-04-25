@@ -153,7 +153,7 @@ function BackendUserPanel() {
     try {
       await apiFetch(`/admin/verifications/${actionVerifId}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status, notes: actionNotes || undefined }),
+        body: JSON.stringify({ status, rejectionReason: actionNotes || undefined }),
       });
       setActionMsg(`Verification ${status.toLowerCase()} successfully.`);
       if (selectedUser) fetchUserDetail(selectedUser.user.id);
@@ -361,11 +361,11 @@ function BackendUserPanel() {
                   </p>
 
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Notes (optional)</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Rejection Reason (optional)</label>
                     <textarea
                       value={actionNotes}
                       onChange={(e) => setActionNotes(e.target.value)}
-                      placeholder="Add notes for approval or rejection..."
+                      placeholder="Add reason for rejection (sent to user)..."
                       className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 text-sm focus:border-purple-500 focus:outline-none resize-none h-16"
                     />
                   </div>

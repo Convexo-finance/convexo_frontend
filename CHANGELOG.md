@@ -4,6 +4,15 @@ Format: version → what changed → status.
 
 ---
 
+## v3.21 — 2026-04-25 (Wire fixes: OTC, reputation sync, admin verification)
+
+### Fixed
+- OTC orders history tab: `GET /otc/orders` returns `{ items, total, limit, offset }` — frontend was typed as a flat array; `Array.isArray` guard always evaluated to `[]`; now reads `data.items`
+- Reputation sync after login: `POST /reputation/sync` now sends `{ chainId: PRIMARY_CHAIN_ID }` in body; previously sent no body, causing backend to default to chainId 8453 (Base mainnet) even in testnet mode (ETH Sepolia 11155111)
+- Admin verification action: `PUT /admin/verifications/:id/status` body field renamed from `notes` to `rejectionReason` to match backend Zod schema; Zod was silently stripping the misnamed field, making the rejection reason textarea dead UI
+
+---
+
 ## v3.20 — 2026-04-22 (OTC, bank accounts, swap quote, hook v3.20)
 
 ### PassportGatedHook v3.20 — new pool
