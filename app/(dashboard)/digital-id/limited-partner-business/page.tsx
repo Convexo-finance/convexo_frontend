@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
@@ -192,6 +192,25 @@ export default function LimitedPartnerBusinessPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // ── Pre-fill from onboarding profile ───────────────────────────────────────
+  useEffect(() => {
+    apiFetch<Record<string, string>>('/profile')
+      .then((p) => {
+        if (p.companyName)           setCompanyName(p.companyName);
+        if (p.country)               { setCountry(p.country); setOfficeCountry(p.country); }
+        if (p.registrationNumber)    setIncorporationNumber(p.registrationNumber);
+        if (p.taxId)                 setTaxNumber(p.taxId);
+        if (p.address)               setStreet(p.address);
+        if (p.city)                  setCity(p.city);
+        if (p.repFirstName)          setRepFirstName(p.repFirstName);
+        if (p.repLastName)           setRepLastName(p.repLastName);
+        if (p.repEmail)              setRepEmail(p.repEmail);
+        if (p.repPhone)              setRepPhone(p.repPhone);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isVerified = hasLPBusinessNFT;
 
