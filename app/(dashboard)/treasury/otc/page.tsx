@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
 import { apiFetch } from '@/lib/api/client';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
+import { getTxExplorerLink } from '@/lib/contracts/addresses';
+import { useChainId } from '@/lib/wagmi/compat';
 import {
   ArrowsRightLeftIcon,
   BanknotesIcon,
@@ -11,11 +13,14 @@ import {
   ChatBubbleLeftRightIcon,
   BuildingLibraryIcon,
   CheckCircleIcon,
+  ClockIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 type OrderType = 'buy' | 'sell';
 type DigitalAsset = 'USDC' | 'USDT' | 'ECOP';
 type FiatCurrency = 'USD' | 'COP';
+type Tab = 'new' | 'history';
 
 interface BankAccount {
   id: string;
@@ -28,10 +33,23 @@ interface BankAccount {
   isDefault: boolean;
 }
 
+interface OTCOrder {
+  id: string;
+  orderId: string;
+  orderType: 'buy' | 'sell';
+  digitalAsset: string;
+  fiatCurrency: string;
+  assetAmount: number;
+  estimatedFiat: number;
+  rate: number;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
+  txHash?: string;
+  createdAt: string;
+  bankName?: string;
+  bankAccount?: string;
+}
+
 // Rate: 1 unit of asset = RATE units of fiat
-// USDC/USDT vs USD → 0.994 (fixed)
-// ECOP vs COP      → 0.994 (fixed)
-// USDC/USDT vs COP → live USD/COP × 1.01 (live + 1% fee)
 const FIXED_RATE = 0.994;
 const COP_FEE = 1.01;
 
@@ -39,10 +57,21 @@ function getOrderId(): string {
   return `OTC-${Date.now()}`;
 }
 
+const STATUS_STYLE: Record<OTCOrder['status'], string> = {
+  PENDING:    'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30',
+  PROCESSING: 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
+  COMPLETED:  'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30',
+  CANCELLED:  'bg-red-500/10 text-red-400 border border-red-500/30',
+};
+
 export default function OTCPage() {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { hasPassportNFT } = useNFTBalance();
 
+  const [tab, setTab] = useState<Tab>('new');
+
+  // ── New order state ────────────────────────────────────────────────
   const [orderType, setOrderType] = useState<OrderType>('buy');
   const [digitalAsset, setDigitalAsset] = useState<DigitalAsset>('USDC');
   const [fiatCurrency, setFiatCurrency] = useState<FiatCurrency>('USD');
@@ -53,6 +82,10 @@ export default function OTCPage() {
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // ── History state ──────────────────────────────────────────────────
+  const [orders, setOrders] = useState<OTCOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   // ECOP only trades against COP
   useEffect(() => {
@@ -95,6 +128,16 @@ export default function OTCPage() {
       .catch(() => {});
   }, [isConnected]);
 
+  // Load order history when tab switches to history
+  useEffect(() => {
+    if (tab !== 'history' || !isConnected) return;
+    setLoadingOrders(true);
+    apiFetch<OTCOrder[]>('/otc/orders')
+      .then(data => setOrders(Array.isArray(data) ? data : []))
+      .catch(() => setOrders([]))
+      .finally(() => setLoadingOrders(false));
+  }, [tab, isConnected]);
+
   // Rate calculation
   const getRate = (): number | null => {
     if (fiatCurrency === 'USD') return FIXED_RATE;
@@ -106,7 +149,6 @@ export default function OTCPage() {
   const parsedAmount = assetAmount ? parseFloat(assetAmount) : 0;
   const estimatedFiat = rate && parsedAmount > 0 ? parsedAmount * rate : null;
 
-  // Bank accounts compatible with the selected fiat currency
   const compatibleAccounts = bankAccounts.filter(
     a => a.currency.toUpperCase() === fiatCurrency
   );
@@ -126,7 +168,6 @@ export default function OTCPage() {
   const isFormValid =
     parsedAmount > 0 && (orderType === 'buy' || !!selectedAccountId);
 
-  // Submit: POST to internal API (triggers Telegram + email + backend), then open chat
   const submitOrder = async (channel: 'whatsapp' | 'telegram') => {
     if (!isFormValid || !estimatedFiat || !rate) return;
 
@@ -190,14 +231,12 @@ export default function OTCPage() {
 
     let msg = `🔄 *NEW OTC ORDER — ${p.orderType.toUpperCase()}*\n`;
     msg += `🆔 ID: ${p.orderId}\n\n`;
-
     msg += `💱 *ORDER*\n`;
     msg += `Asset: ${p.assetAmount} ${p.digitalAsset}\n`;
     msg += `Fiat: ${p.fiatCurrency}\n`;
     msg += `Rate: 1 ${p.digitalAsset} = ${p.rate} ${p.fiatCurrency} (${rateLabel})\n`;
     msg += `Estimated: ${fiatStr}\n`;
     msg += `Time: ${new Date(p.timestamp).toLocaleString()}\n\n`;
-
     msg += `👛 *WALLET*\n${p.walletAddress}\n\n`;
 
     if (p.orderType === 'sell' && p.bankName) {
@@ -249,297 +288,407 @@ export default function OTCPage() {
           <p className="mt-1 text-gray-400">Buy or sell digital assets at competitive rates</p>
         </div>
 
-        {/* Rate Banner */}
-        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 rounded-xl p-5 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24" />
-          <div className="relative z-10 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-blue-200 mb-2 flex items-center gap-2">
-                Live USD/COP Reference
-                {isLoadingRate && <span className="inline-block w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />}
-              </p>
-              {liveUSDCOP ? (
-                <p className="text-3xl font-bold">
-                  1 USD = {liveUSDCOP.toLocaleString('es-CO', { minimumFractionDigits: 2 })} COP
-                </p>
-              ) : (
-                <div className="h-8 w-48 bg-white/20 rounded animate-pulse" />
-              )}
-            </div>
-            <div className="flex-shrink-0 text-right text-sm text-blue-200 space-y-1">
-              <p>USDC · USDT · ECOP vs USD → <span className="text-white font-semibold">0.994</span></p>
-              <p>ECOP vs COP → <span className="text-white font-semibold">0.994</span></p>
-              <p>USDC · USDT vs COP → <span className="text-white font-semibold">live + 1%</span></p>
-            </div>
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-gray-800/50 rounded-xl">
+          {(['new', 'history'] as Tab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                tab === t
+                  ? 'bg-gray-700 text-white shadow'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {t === 'new' ? 'New Order' : 'Order History'}
+            </button>
+          ))}
         </div>
 
-        {/* Form */}
-        <div className="card space-y-6">
-
-          {/* Step 1 — Order type */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 1 — Order type</p>
-            <div className="grid grid-cols-2 gap-3">
-              {(['buy', 'sell'] as OrderType[]).map(type => (
-                <button
-                  key={type}
-                  onClick={() => { setOrderType(type); setSubmitted(false); }}
-                  className={`p-4 rounded-xl border-2 transition-all text-left ${
-                    orderType === type
-                      ? type === 'buy' ? 'border-emerald-500 bg-emerald-500/10' : 'border-red-500 bg-red-500/10'
-                      : 'border-gray-700 hover:border-gray-600'
-                  }`}
-                >
-                  <BanknotesIcon className={`w-6 h-6 mb-2 ${
-                    orderType === type ? (type === 'buy' ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500'
-                  }`} />
-                  <p className="font-semibold text-white capitalize">{type}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {type === 'buy' ? 'Pay fiat → receive crypto' : 'Send crypto → receive fiat'}
+        {/* ── NEW ORDER TAB ─────────────────────────────────────────── */}
+        {tab === 'new' && (
+          <>
+            {/* Rate Banner */}
+            <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 rounded-xl p-5 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24" />
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-blue-200 mb-2 flex items-center gap-2">
+                    Live USD/COP Reference
+                    {isLoadingRate && <span className="inline-block w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />}
                   </p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Step 2 — Asset + Fiat */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 2 — What to trade</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Digital Asset</label>
-                <select
-                  value={digitalAsset}
-                  onChange={e => { setDigitalAsset(e.target.value as DigitalAsset); setSubmitted(false); }}
-                  className="w-full px-3 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-purple-500 focus:outline-none"
-                >
-                  <option value="USDC">USDC</option>
-                  <option value="USDT">USDT</option>
-                  <option value="ECOP">ECOP</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Fiat Currency</label>
-                <select
-                  value={fiatCurrency}
-                  onChange={e => { setFiatCurrency(e.target.value as FiatCurrency); setSubmitted(false); }}
-                  disabled={digitalAsset === 'ECOP'}
-                  className="w-full px-3 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-purple-500 focus:outline-none disabled:opacity-50"
-                >
-                  <option value="USD">USD</option>
-                  <option value="COP">COP</option>
-                </select>
-                {digitalAsset === 'ECOP' && (
-                  <p className="text-xs text-gray-500 mt-1">ECOP only trades vs COP</p>
-                )}
+                  {liveUSDCOP ? (
+                    <p className="text-3xl font-bold">
+                      1 USD = {liveUSDCOP.toLocaleString('es-CO', { minimumFractionDigits: 2 })} COP
+                    </p>
+                  ) : (
+                    <div className="h-8 w-48 bg-white/20 rounded animate-pulse" />
+                  )}
+                </div>
+                <div className="flex-shrink-0 text-right text-sm text-blue-200 space-y-1">
+                  <p>USDC · USDT · ECOP vs USD → <span className="text-white font-semibold">0.994</span></p>
+                  <p>ECOP vs COP → <span className="text-white font-semibold">0.994</span></p>
+                  <p>USDC · USDT vs COP → <span className="text-white font-semibold">live + 1%</span></p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Step 3 — Amount */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 3 — Amount</p>
-            <div className="relative">
-              <input
-                type="number"
-                value={assetAmount}
-                onChange={e => { setAssetAmount(e.target.value); setSubmitted(false); }}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-4 pr-24 bg-gray-800 border border-gray-700 rounded-xl text-white text-2xl font-semibold focus:border-purple-500 focus:outline-none placeholder-gray-600"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-lg">
-                {digitalAsset}
-              </span>
-            </div>
+            {/* Form */}
+            <div className="card space-y-6">
 
-            {/* Conversion preview */}
-            {estimatedFiat && rate && (
-              <div className="mt-3 bg-gray-800/60 border border-gray-700 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Step 1 — Order type */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 1 — Order type</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['buy', 'sell'] as OrderType[]).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => { setOrderType(type); setSubmitted(false); }}
+                      className={`p-4 rounded-xl border-2 transition-all text-left ${
+                        orderType === type
+                          ? type === 'buy' ? 'border-emerald-500 bg-emerald-500/10' : 'border-red-500 bg-red-500/10'
+                          : 'border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <BanknotesIcon className={`w-6 h-6 mb-2 ${
+                        orderType === type ? (type === 'buy' ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500'
+                      }`} />
+                      <p className="font-semibold text-white capitalize">{type}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {type === 'buy' ? 'Pay fiat → receive crypto' : 'Send crypto → receive fiat'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step 2 — Asset + Fiat */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 2 — What to trade</p>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      {orderType === 'buy' ? 'You Pay' : 'You Send'}
-                    </p>
-                    <p className="text-xl font-bold text-white">
-                      {orderType === 'buy'
-                        ? formatFiat(estimatedFiat)
-                        : `${parsedAmount.toLocaleString()} ${digitalAsset}`}
-                    </p>
-                  </div>
-                  <ArrowsRightLeftIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">You Receive</p>
-                    <p className="text-xl font-bold text-emerald-400">
-                      {orderType === 'buy'
-                        ? `${parsedAmount.toLocaleString()} ${digitalAsset}`
-                        : formatFiat(estimatedFiat)}
-                    </p>
-                  </div>
-                </div>
-                <div className="border-t border-gray-700 pt-3 flex justify-between text-sm">
-                  <span className="text-gray-500">{rateLabel}</span>
-                  <span className="text-white font-medium">
-                    1 {digitalAsset} = {fiatCurrency === 'COP'
-                      ? rate.toLocaleString('es-CO', { minimumFractionDigits: 2 })
-                      : rate.toFixed(4)} {fiatCurrency}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Step 4 — Payment method */}
-          <div className="border-t border-gray-700 pt-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Step 4 — Payment method</p>
-
-            {orderType === 'sell' ? (
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  Your {fiatCurrency} bank account <span className="text-red-400">*</span>
-                </label>
-                {compatibleAccounts.length > 0 ? (
-                  <>
+                    <label className="block text-sm text-gray-400 mb-2">Digital Asset</label>
                     <select
-                      value={selectedAccountId}
-                      onChange={e => setSelectedAccountId(e.target.value)}
+                      value={digitalAsset}
+                      onChange={e => { setDigitalAsset(e.target.value as DigitalAsset); setSubmitted(false); }}
                       className="w-full px-3 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-purple-500 focus:outline-none"
                     >
-                      {compatibleAccounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.bankName} — {acc.accountName}
-                          {acc.isDefault ? ' (default)' : ''}
-                        </option>
-                      ))}
+                      <option value="USDC">USDC</option>
+                      <option value="USDT">USDT</option>
+                      <option value="ECOP">ECOP</option>
                     </select>
-                    {selectedAccount && (
-                      <div className="mt-3 p-3 bg-gray-800/40 rounded-lg text-sm grid grid-cols-2 gap-x-4 gap-y-1.5 text-gray-300">
-                        <p><span className="text-gray-500">Bank</span><br />{selectedAccount.bankName}</p>
-                        <p><span className="text-gray-500">Account</span><br />{selectedAccount.accountNumber}</p>
-                        <p><span className="text-gray-500">Type</span><br />{selectedAccount.accountType}</p>
-                        {selectedAccount.holderName && (
-                          <p><span className="text-gray-500">Holder</span><br />{selectedAccount.holderName}</p>
-                        )}
-                      </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Fiat Currency</label>
+                    <select
+                      value={fiatCurrency}
+                      onChange={e => { setFiatCurrency(e.target.value as FiatCurrency); setSubmitted(false); }}
+                      disabled={digitalAsset === 'ECOP'}
+                      className="w-full px-3 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-purple-500 focus:outline-none disabled:opacity-50"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="COP">COP</option>
+                    </select>
+                    {digitalAsset === 'ECOP' && (
+                      <p className="text-xs text-gray-500 mt-1">ECOP only trades vs COP</p>
                     )}
-                  </>
-                ) : (
-                  <div className="flex items-center gap-3 p-4 bg-gray-800/50 border border-gray-700 rounded-xl">
-                    <BuildingLibraryIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-gray-300">No {fiatCurrency} bank accounts saved</p>
-                      <a href="/profile/bank-accounts" className="text-xs text-purple-400 hover:text-purple-300">
-                        Add a bank account in your profile →
-                      </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 — Amount */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Step 3 — Amount</p>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={assetAmount}
+                    onChange={e => { setAssetAmount(e.target.value); setSubmitted(false); }}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-4 pr-24 bg-gray-800 border border-gray-700 rounded-xl text-white text-2xl font-semibold focus:border-purple-500 focus:outline-none placeholder-gray-600"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-lg">
+                    {digitalAsset}
+                  </span>
+                </div>
+
+                {estimatedFiat && rate && (
+                  <div className="mt-3 bg-gray-800/60 border border-gray-700 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                          {orderType === 'buy' ? 'You Pay' : 'You Send'}
+                        </p>
+                        <p className="text-xl font-bold text-white">
+                          {orderType === 'buy'
+                            ? formatFiat(estimatedFiat)
+                            : `${parsedAmount.toLocaleString()} ${digitalAsset}`}
+                        </p>
+                      </div>
+                      <ArrowsRightLeftIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">You Receive</p>
+                        <p className="text-xl font-bold text-emerald-400">
+                          {orderType === 'buy'
+                            ? `${parsedAmount.toLocaleString()} ${digitalAsset}`
+                            : formatFiat(estimatedFiat)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-700 pt-3 flex justify-between text-sm">
+                      <span className="text-gray-500">{rateLabel}</span>
+                      <span className="text-white font-medium">
+                        1 {digitalAsset} = {fiatCurrency === 'COP'
+                          ? rate.toLocaleString('es-CO', { minimumFractionDigits: 2 })
+                          : rate.toFixed(4)} {fiatCurrency}
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-xl text-sm space-y-1.5">
-                <p className="text-gray-300 font-medium mb-2">You will send {fiatCurrency} to Convexo</p>
-                <p className="text-xs text-yellow-400">
-                  Our team will share payment instructions after you submit the order via WhatsApp or Telegram.
-                </p>
+
+              {/* Step 4 — Payment method */}
+              <div className="border-t border-gray-700 pt-6">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Step 4 — Payment method</p>
+
+                {orderType === 'sell' ? (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Your {fiatCurrency} bank account <span className="text-red-400">*</span>
+                    </label>
+                    {compatibleAccounts.length > 0 ? (
+                      <>
+                        <select
+                          value={selectedAccountId}
+                          onChange={e => setSelectedAccountId(e.target.value)}
+                          className="w-full px-3 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-purple-500 focus:outline-none"
+                        >
+                          {compatibleAccounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.bankName} — {acc.accountName}
+                              {acc.isDefault ? ' (default)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedAccount && (
+                          <div className="mt-3 p-3 bg-gray-800/40 rounded-lg text-sm grid grid-cols-2 gap-x-4 gap-y-1.5 text-gray-300">
+                            <p><span className="text-gray-500">Bank</span><br />{selectedAccount.bankName}</p>
+                            <p><span className="text-gray-500">Account</span><br />{selectedAccount.accountNumber}</p>
+                            <p><span className="text-gray-500">Type</span><br />{selectedAccount.accountType}</p>
+                            {selectedAccount.holderName && (
+                              <p><span className="text-gray-500">Holder</span><br />{selectedAccount.holderName}</p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 bg-gray-800/50 border border-gray-700 rounded-xl">
+                        <BuildingLibraryIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm text-gray-300">No {fiatCurrency} bank accounts saved</p>
+                          <a href="/profile/bank-accounts" className="text-xs text-purple-400 hover:text-purple-300">
+                            Add a bank account in your profile →
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-xl text-sm space-y-1.5">
+                    <p className="text-gray-300 font-medium mb-2">You will send {fiatCurrency} to Convexo</p>
+                    <p className="text-xs text-yellow-400">
+                      Our team will share payment instructions after you submit the order via WhatsApp or Telegram.
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Order review + submit */}
-          {isFormValid && estimatedFiat && (
-            <div className="border-t border-gray-700 pt-6 space-y-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Order Summary</p>
+              {/* Order review + submit */}
+              {isFormValid && estimatedFiat && (
+                <div className="border-t border-gray-700 pt-6 space-y-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Order Summary</p>
 
-              <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
-                <div className={`px-4 py-3 text-sm font-semibold ${orderType === 'buy' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-red-600/20 text-red-300'}`}>
-                  {orderType === 'buy' ? '🟢 Buy Order' : '🔴 Sell Order'} — {digitalAsset}/{fiatCurrency}
-                </div>
-                <div className="p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">{orderType === 'buy' ? 'You receive' : 'You send'}</span>
-                    <span className="text-white font-semibold">{parsedAmount.toLocaleString()} {digitalAsset}</span>
+                  <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+                    <div className={`px-4 py-3 text-sm font-semibold ${orderType === 'buy' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-red-600/20 text-red-300'}`}>
+                      {orderType === 'buy' ? '🟢 Buy Order' : '🔴 Sell Order'} — {digitalAsset}/{fiatCurrency}
+                    </div>
+                    <div className="p-4 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">{orderType === 'buy' ? 'You receive' : 'You send'}</span>
+                        <span className="text-white font-semibold">{parsedAmount.toLocaleString()} {digitalAsset}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">{orderType === 'buy' ? 'You pay' : 'You receive'}</span>
+                        <span className="text-emerald-400 font-semibold">{formatFiat(estimatedFiat)}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-gray-800 pt-2 mt-2">
+                        <span className="text-gray-500">Rate ({rateLabel})</span>
+                        <span className="text-gray-300">
+                          1 {digitalAsset} = {fiatCurrency === 'COP'
+                            ? (rate ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 2 })
+                            : (rate ?? 0).toFixed(4)} {fiatCurrency}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Wallet</span>
+                        <span className="text-gray-300 font-mono text-xs">
+                          {address ? `${address.slice(0, 8)}…${address.slice(-6)}` : '—'}
+                        </span>
+                      </div>
+                      {orderType === 'sell' && selectedAccount && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">To account</span>
+                          <span className="text-gray-300">{selectedAccount.bankName} · {selectedAccount.accountNumber}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">{orderType === 'buy' ? 'You pay' : 'You receive'}</span>
-                    <span className="text-emerald-400 font-semibold">{formatFiat(estimatedFiat)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-gray-800 pt-2 mt-2">
-                    <span className="text-gray-500">Rate ({rateLabel})</span>
-                    <span className="text-gray-300">
-                      1 {digitalAsset} = {fiatCurrency === 'COP'
-                        ? (rate ?? 0).toLocaleString('es-CO', { minimumFractionDigits: 2 })
-                        : (rate ?? 0).toFixed(4)} {fiatCurrency}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Wallet</span>
-                    <span className="text-gray-300 font-mono text-xs">
-                      {address ? `${address.slice(0, 8)}…${address.slice(-6)}` : '—'}
-                    </span>
-                  </div>
-                  {orderType === 'sell' && selectedAccount && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">To account</span>
-                      <span className="text-gray-300">{selectedAccount.bankName} · {selectedAccount.accountNumber}</span>
+
+                  {submitted && (
+                    <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                      <CheckCircleIcon className="w-5 h-5" />
+                      Order registered. Continue via WhatsApp or Telegram to confirm.
                     </div>
                   )}
-                </div>
-              </div>
 
-              {submitted && (
-                <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                  <CheckCircleIcon className="w-5 h-5" />
-                  Order registered. Continue via WhatsApp or Telegram to confirm.
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => submitOrder('whatsapp')}
+                      disabled={isSubmitting}
+                      className="flex items-center justify-center gap-3 py-4 rounded-xl bg-[#25D366]/10 border-2 border-[#25D366] hover:bg-[#25D366]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <span className="w-5 h-5 border-2 border-[#25D366] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <DevicePhoneMobileIcon className="w-5 h-5 text-[#25D366]" />
+                      )}
+                      <div className="text-left">
+                        <p className="font-semibold text-[#25D366]">WhatsApp</p>
+                        <p className="text-xs text-gray-400">+57 318 676 6035</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => submitOrder('telegram')}
+                      disabled={isSubmitting}
+                      className="flex items-center justify-center gap-3 py-4 rounded-xl bg-[#229ED9]/10 border-2 border-[#229ED9] hover:bg-[#229ED9]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <span className="w-5 h-5 border-2 border-[#229ED9] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <ChatBubbleLeftRightIcon className="w-5 h-5 text-[#229ED9]" />
+                      )}
+                      <div className="text-left">
+                        <p className="font-semibold text-[#229ED9]">Telegram</p>
+                        <p className="text-xs text-gray-400">@convexoprotocol</p>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => submitOrder('whatsapp')}
-                  disabled={isSubmitting}
-                  className="flex items-center justify-center gap-3 py-4 rounded-xl bg-[#25D366]/10 border-2 border-[#25D366] hover:bg-[#25D366]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <span className="w-5 h-5 border-2 border-[#25D366] border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <DevicePhoneMobileIcon className="w-5 h-5 text-[#25D366]" />
-                  )}
-                  <div className="text-left">
-                    <p className="font-semibold text-[#25D366]">WhatsApp</p>
-                    <p className="text-xs text-gray-400">+57 318 676 6035</p>
-                  </div>
-                </button>
+              {!isFormValid && (
+                <p className="text-xs text-gray-500 text-center pt-2 border-t border-gray-700">
+                  {orderType === 'sell' && compatibleAccounts.length === 0
+                    ? `Add a ${fiatCurrency} bank account to your profile to place a sell order`
+                    : 'Complete the form above to generate your order'}
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
+        {/* ── HISTORY TAB ───────────────────────────────────────────── */}
+        {tab === 'history' && (
+          <div className="card">
+            {loadingOrders ? (
+              <div className="flex items-center justify-center py-12 gap-3">
+                <div className="w-5 h-5 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                <span className="text-gray-400 text-sm">Loading orders…</span>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                <ClockIcon className="w-10 h-10 text-gray-600" />
+                <p className="text-gray-400 font-medium">No orders yet</p>
+                <p className="text-gray-600 text-sm">Your OTC order history will appear here</p>
                 <button
-                  onClick={() => submitOrder('telegram')}
-                  disabled={isSubmitting}
-                  className="flex items-center justify-center gap-3 py-4 rounded-xl bg-[#229ED9]/10 border-2 border-[#229ED9] hover:bg-[#229ED9]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setTab('new')}
+                  className="mt-2 text-sm text-purple-400 hover:text-purple-300"
                 >
-                  {isSubmitting ? (
-                    <span className="w-5 h-5 border-2 border-[#229ED9] border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <ChatBubbleLeftRightIcon className="w-5 h-5 text-[#229ED9]" />
-                  )}
-                  <div className="text-left">
-                    <p className="font-semibold text-[#229ED9]">Telegram</p>
-                    <p className="text-xs text-gray-400">@convexoprotocol</p>
-                  </div>
+                  Place your first order →
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-4">
+                  {orders.length} order{orders.length !== 1 ? 's' : ''}
+                </p>
+                {orders.map(order => (
+                  <div key={order.id ?? order.orderId} className="p-4 bg-gray-800/50 border border-gray-700/50 rounded-xl space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          order.orderType === 'buy'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : 'bg-red-500/10 text-red-400'
+                        }`}>
+                          {order.orderType.toUpperCase()}
+                        </span>
+                        <span className="text-sm font-mono text-gray-500">{order.orderId}</span>
+                      </div>
+                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${STATUS_STYLE[order.status ?? 'PENDING']}`}>
+                        {order.status ?? 'PENDING'}
+                      </span>
+                    </div>
 
-          {!isFormValid && (
-            <p className="text-xs text-gray-500 text-center pt-2 border-t border-gray-700">
-              {orderType === 'sell' && compatibleAccounts.length === 0
-                ? `Add a ${fiatCurrency} bank account to your profile to place a sell order`
-                : 'Complete the form above to generate your order'}
-            </p>
-          )}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Asset</span>
+                        <span className="text-white font-semibold">{order.assetAmount.toLocaleString()} {order.digitalAsset}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Fiat</span>
+                        <span className="text-emerald-400 font-semibold">
+                          {order.fiatCurrency === 'COP'
+                            ? `${order.estimatedFiat.toLocaleString('es-CO', { minimumFractionDigits: 2 })} COP`
+                            : `$${order.estimatedFiat.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`}
+                        </span>
+                      </div>
+                      {order.bankName && (
+                        <div className="flex justify-between col-span-2">
+                          <span className="text-gray-500">Bank</span>
+                          <span className="text-gray-300">{order.bankName} · {order.bankAccount}</span>
+                        </div>
+                      )}
+                    </div>
 
-        </div>
+                    <div className="flex items-center justify-between border-t border-gray-700/50 pt-2.5">
+                      <span className="text-xs text-gray-500">
+                        {new Date(order.createdAt).toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </span>
+                      {order.txHash && (
+                        <a
+                          href={getTxExplorerLink(chainId, order.txHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
+                        >
+                          View tx <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );

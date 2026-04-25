@@ -13,7 +13,7 @@ import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { isAuthenticated, isInitializing, isConnected, isSigningIn, error, clearError, signIn, user } = useAuth();
+  const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, error, clearError, signIn, user } = useAuth();
   const { isConnected: isSignerConnected, isInitializing: isSignerInitializing } = useSignerStatus();
   const { onboardingStep } = useNavigation();
   const { logout } = useLogout();
@@ -141,17 +141,32 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Signing in progress */}
+        {/* Sign-in progress — staged labels */}
         {isConnected && isSigningIn && (
           <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-6 shadow-2xl shadow-black/40">
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-4">
               <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
-              <p className="text-white font-medium text-sm">Verifying wallet ownership…</p>
-              <p className="text-gray-500 text-xs text-center">
-                {isSignerConnected
-                  ? 'This is automatic for embedded wallets'
-                  : 'Please approve the signature request in your wallet'}
-              </p>
+              <div className="text-center space-y-1">
+                <p className="text-white font-medium text-sm">
+                  {signInStage === 'nonce' && 'Preparing sign-in…'}
+                  {signInStage === 'signing' && 'Sign the message in your wallet'}
+                  {signInStage === 'verifying' && 'Verifying with server…'}
+                </p>
+                <p className="text-gray-500 text-xs">
+                  {signInStage === 'nonce' && 'Fetching a one-time code from the server'}
+                  {signInStage === 'signing' && 'Alchemy will sign automatically — this takes a moment'}
+                  {signInStage === 'verifying' && 'Almost done — confirming your identity'}
+                </p>
+              </div>
+              {/* Progress dots */}
+              <div className="flex gap-2">
+                {(['nonce', 'signing', 'verifying'] as const).map((s) => (
+                  <div
+                    key={s}
+                    className={`h-1.5 w-8 rounded-full transition-colors ${signInStage === s ? 'bg-purple-500' : 'bg-gray-700'}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -162,20 +177,24 @@ export default function SignInPage() {
             <div className="flex flex-col items-center gap-2 text-center">
               <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
               <p className="text-gray-500 text-xs">{error}</p>
+              <p className="text-gray-600 text-xs">Resetting in a moment…</p>
             </div>
           </div>
         )}
 
-        {/* Connected but not yet signing — waiting for auto-SIWE or manual retry */}
+        {/* Connected, waiting for auto-SIWE to fire (brief transition) */}
         {isConnected && !isSigningIn && !error && (
-          <div className="flex flex-col items-center gap-3 py-4">
-            <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin" />
-            <button
-              onClick={() => { hasAutoSigned.current = false; signIn(); }}
-              className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
-            >
-              Try again
-            </button>
+          <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-5 shadow-2xl shadow-black/40">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin" />
+              <p className="text-gray-400 text-xs">Wallet connected — signing in…</p>
+              <button
+                onClick={() => { hasAutoSigned.current = false; signIn(); }}
+                className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+              >
+                Taking too long? Try again
+              </button>
+            </div>
           </div>
         )}
 

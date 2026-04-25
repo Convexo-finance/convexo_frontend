@@ -71,6 +71,8 @@ function decodeJwtPayload(token: string): AuthUser | null {
   }
 }
 
+export type SignInStage = 'idle' | 'nonce' | 'signing' | 'verifying'
+
 export function useAuth() {
   const { isConnected: isSignerConnected } = useSignerStatus()
   const signer = useSigner()
@@ -79,6 +81,7 @@ export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isSigningIn, setIsSigningIn] = useState(false)
+  const [signInStage, setSignInStage] = useState<SignInStage>('idle')
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -127,6 +130,7 @@ export function useAuth() {
     }
 
     setIsSigningIn(true)
+    setSignInStage('nonce')
     setError(null)
 
     try {
@@ -135,6 +139,7 @@ export function useAuth() {
 
       // 1. Get nonce
       const { nonce } = await apiFetch<{ nonce: string }>(`/auth/nonce?address=${address}`)
+      setSignInStage('signing')
 
       // 2. Build EIP-4361 SIWE message
       const message = createSiweMessage({
@@ -154,6 +159,7 @@ export function useAuth() {
         'Signing timed out — try reloading the page',
       )
 
+      setSignInStage('verifying')
       // 4. Verify with backend — receive JWT
       const result = await apiFetch<VerifyResponse>('/auth/verify', {
         method: 'POST',
@@ -171,6 +177,7 @@ export function useAuth() {
       setError(err instanceof Error ? err.message : 'Sign-in failed')
     } finally {
       setIsSigningIn(false)
+      setSignInStage('idle')
     }
   }, [isSignerConnected, signer])
 
@@ -206,6 +213,7 @@ export function useAuth() {
     isInitializing,
     isConnected: isSignerConnected,
     isSigningIn,
+    signInStage,
     user,
     error,
     clearError: () => setError(null),
