@@ -113,7 +113,7 @@ interface PassportTraits {
 }
 
 interface VerifiedIdentity {
-  uniqueIdentifier: `0x${string}`;
+  identifierHash: `0x${string}`;
   personhoodProof: `0x${string}`;
   verifiedAt: bigint;
   zkPassportTimestamp: bigint;
@@ -121,6 +121,7 @@ interface VerifiedIdentity {
   kycVerified: boolean;
   sanctionsPassed: boolean;
   isOver18: boolean;
+  nationalityCompliant: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -577,9 +578,16 @@ export default function HumanityPage() {
   // ── Already verified ──────────────────────────────────────────────────────
 
   if (hasPassport && identity) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = identity as any;
+    console.log('[DEBUG identity]', raw);
     const id = identity as VerifiedIdentity;
-    const shortId = id.uniqueIdentifier
-      ? `${id.uniqueIdentifier.slice(0, 10)}…${id.uniqueIdentifier.slice(-8)}`
+    // Viem may return named tuple as object (id.identifierHash) or array (id[0]) depending on ABI const-ness.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawIdHash: string | undefined = id.identifierHash ?? (raw as any)[0];
+    const ZERO_BYTES32 = `0x${'0'.repeat(64)}`;
+    const shortId = rawIdHash && rawIdHash !== ZERO_BYTES32
+      ? `${rawIdHash.slice(0, 10)}…${rawIdHash.slice(-8)}`
       : '—';
     const verifiedDate = new Date(Number(id.verifiedAt) * 1000).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',

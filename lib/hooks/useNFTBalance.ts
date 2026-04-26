@@ -177,7 +177,7 @@ export function useNFTBalance() {
     hasActivePassport: hasActivePassport === true,
     passportBalance: typeof passport === 'bigint' ? passport : undefined,
     verifiedIdentity: verifiedIdentity as {
-      uniqueIdentifier: `0x${string}`;
+      identifierHash: `0x${string}`;
       personhoodProof: `0x${string}`;
       verifiedAt: bigint;
       zkPassportTimestamp: bigint;
@@ -185,6 +185,7 @@ export function useNFTBalance() {
       kycVerified: boolean;
       sanctionsPassed: boolean;
       isOver18: boolean;
+      nationalityCompliant: boolean;
     } | undefined,
 
     // Tier 2: Limited Partner (Individuals or Business)
