@@ -1,17 +1,19 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import {
-  useSignerStatus,
-  useSigner,
-  useLogout,
-} from '@account-kit/react'
+import { useSignerStatus, useSigner, useLogout } from '@account-kit/react'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
-import { apiFetch, attemptTokenRefresh, setToken, setRefreshToken, getToken, getRefreshToken, clearToken } from '../api/client'
+import {
+  apiFetch,
+  attemptTokenRefresh,
+  setToken,
+  setRefreshToken,
+  getToken,
+  getRefreshToken,
+  clearToken,
+} from '../api/client'
 import { PRIMARY_CHAIN_ID } from '@/lib/config/network'
-
-type AuthMethod = 'EMAIL' | 'PASSKEY' | 'GOOGLE'
 
 export interface AuthUser {
   id: string
@@ -27,27 +29,10 @@ interface VerifyResponse {
   user: AuthUser
 }
 
-async function detectAuthMethod(signer: unknown): Promise<AuthMethod> {
-  try {
-    const details = await (signer as { getAuthDetails?(): Promise<{ type?: string }> }).getAuthDetails?.()
-    if (details?.type === 'passkey') return 'PASSKEY'
-    if (details?.type === 'oauth') return 'GOOGLE'
-  } catch {
-    // ignore — fallback to EMAIL
-  }
-  return 'EMAIL'
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, msg: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(msg)), ms)),
-  ])
-}
+export type SignInStage = 'idle' | 'nonce' | 'signing' | 'verifying'
 
 // Decode JWT payload without verifying the signature.
 // Backend signs all tokens — we just read the claims to restore UI state.
-// Actual token validity is enforced server-side on every API call.
 function decodeJwtPayload(token: string): AuthUser | null {
   try {
     const raw = token.split('.')[1]
@@ -71,7 +56,12 @@ function decodeJwtPayload(token: string): AuthUser | null {
   }
 }
 
-export type SignInStage = 'idle' | 'nonce' | 'signing' | 'verifying'
+function withTimeout<T>(promise: Promise<T>, ms: number, msg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(msg)), ms)),
+  ])
+}
 
 export function useAuth() {
   const { isConnected: isSignerConnected } = useSignerStatus()
@@ -135,7 +125,6 @@ export function useAuth() {
 
     try {
       const address = (await (signer as { getAddress(): Promise<string> }).getAddress()) as Address
-      const authMethod = await detectAuthMethod(signer)
 
       // 1. Get nonce
       const { nonce } = await apiFetch<{ nonce: string }>(`/auth/nonce?address=${address}`)
@@ -152,18 +141,19 @@ export function useAuth() {
         nonce,
       })
 
-      // 3. Sign — Alchemy AlchemySigner handles EIP-191 prefix internally
+      // 3. Sign — AlchemySigner handles EIP-191 prefix internally
       const signature = await withTimeout(
         (signer as { signMessage(msg: string): Promise<string> }).signMessage(message),
         30_000,
-        'Signing timed out — try reloading the page',
+        'Signing timed out — try reloading',
       )
 
       setSignInStage('verifying')
+
       // 4. Verify with backend — receive JWT
       const result = await apiFetch<VerifyResponse>('/auth/verify', {
         method: 'POST',
-        body: JSON.stringify({ message, signature, address, chainId: PRIMARY_CHAIN_ID, authMethod }),
+        body: JSON.stringify({ message, signature, address, chainId: PRIMARY_CHAIN_ID }),
       })
 
       setToken(result.accessToken)
@@ -171,7 +161,7 @@ export function useAuth() {
       setUser(result.user)
       setIsAuthenticated(true)
 
-      // Fire-and-forget: warm the reputation cache after login
+      // Fire-and-forget: warm the reputation cache
       apiFetch('/reputation/sync', {
         method: 'POST',
         body: JSON.stringify({ chainId: PRIMARY_CHAIN_ID }),
@@ -185,29 +175,14 @@ export function useAuth() {
   }, [isSignerConnected, signer])
 
   const signOut = useCallback(async () => {
-    // 1. Backend logout (best-effort)
+    // Backend logout (best-effort)
     if (getToken()) {
-      await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
+      apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
     }
-
-    // 2. Clear JWT tokens immediately
     clearToken()
-
-    // 3. Reset React state
     setIsAuthenticated(false)
     setUser(null)
-
-    // 4. Clear Alchemy session cookies
-    if (typeof document !== 'undefined') {
-      document.cookie.split(';').forEach((c) => {
-        const name = c.split('=')[0].trim()
-        if (name.startsWith('alchemy') || name.startsWith('aa-') || name.startsWith('wagmi')) {
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-        }
-      })
-    }
-
-    // 5. Disconnect embedded signer
+    // Alchemy SDK clears its session cookies
     alchemyLogout()
   }, [alchemyLogout])
 

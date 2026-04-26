@@ -1,12 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  AuthCard,
-  useLogout,
-  useSignerStatus,
-} from '@account-kit/react';
+import { AuthCard, useSignerStatus } from '@account-kit/react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import Image from 'next/image';
@@ -14,112 +10,57 @@ import Image from 'next/image';
 export default function SignInPage() {
   const router = useRouter();
   const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, error, clearError, signIn, user } = useAuth();
-  const { isConnected: isSignerConnected, isInitializing: isSignerInitializing } = useSignerStatus();
+  const { isInitializing: isSignerInitializing } = useSignerStatus();
   const { onboardingStep } = useNavigation();
-  const { logout } = useLogout();
 
-  // ── Refs ─────────────────────────────────────────────────────────
-  const hasAutoSigned = useRef(false);
-  // null = first render, not yet observed. Prevents auto-SIWE triggering
-  // on a stale wallet connection left over from a previous logout.
-  // Auto-SIWE only fires on a false→true transition observed AFTER mount.
-  const prevConnected = useRef<boolean | null>(null);
+  // Prevents double-firing sign-in when dependencies re-evaluate
+  const signInAttempted = useRef(false);
 
-  // ── Page ready ──────────────────────────────────────────────────
-  // Wait for both useAuth (JWT check) and Alchemy SDK to finish init.
-  // Safety timeout ensures we never stay on the spinner forever.
-  const [pageReady, setPageReady] = useState(false);
+  // ── Auto-SIWE ───────────────────────────────────────────────────
+  // Fires as soon as the Alchemy signer connects (email OTP / Google OAuth / passkey).
+  // Resets on disconnect so the next connect attempt triggers a fresh sign-in.
   useEffect(() => {
-    if (!isInitializing && !isSignerInitializing) {
-      setPageReady(true);
-      return;
-    }
-    const t = setTimeout(() => setPageReady(true), 2_000);
-    return () => clearTimeout(t);
-  }, [isInitializing, isSignerInitializing]);
+    if (isInitializing || isSignerInitializing) return;
+    if (isAuthenticated) { signInAttempted.current = false; return; }
+    if (!isConnected) { signInAttempted.current = false; return; }
+    if (isSigningIn || error) return;
+    if (signInAttempted.current) return;
 
-  // ── Auto-SIWE after fresh AuthCard connect ──────────────────────
+    signInAttempted.current = true;
+    signIn();
+  }, [isInitializing, isSignerInitializing, isAuthenticated, isConnected, isSigningIn, error, signIn]);
+
+  // ── Redirect after auth ──────────────────────────────────────────
   useEffect(() => {
-    if (!pageReady) return;
-    if (hasAutoSigned.current) return;
-    if (isAuthenticated) return;
-    if (error) return;
-
-    // First observation: record baseline.
-    // If the wallet is already connected on mount (e.g. Google OAuth popup
-    // just completed and Alchemy restored the session from cookie), we check
-    // whether a JWT exists. No JWT = fresh OAuth return → trigger SIWE now.
-    // If a JWT exists, useAuth already restored the session → isAuthenticated
-    // will be true and this effect short-circuits at the top.
-    // After logout: signOut() clears the JWT AND calls alchemyLogout() which
-    // disconnects the signer, so isConnected will be false on next mount.
-    if (prevConnected.current === null) {
-      prevConnected.current = isConnected;
-      if (isConnected) {
-        const hasJwt = typeof window !== 'undefined' &&
-          !!sessionStorage.getItem('convexo_jwt');
-        if (!hasJwt) {
-          hasAutoSigned.current = true;
-          signIn();
-        }
-      }
-      return;
-    }
-
-    if (!prevConnected.current && isConnected) {
-      hasAutoSigned.current = true;
-      signIn();
-    }
-    prevConnected.current = isConnected;
-  }, [pageReady, isConnected, isAuthenticated, error, signIn]);
-
-  // ── Redirect on auth ────────────────────────────────────────────
-  // Uses replace() so sign-in is removed from browser history.
-  // Fast path: user.onboardingStep from the JWT payload is available
-  // immediately (no network fetch). NavigationContext's onboardingStep
-  // requires a GET /onboarding/status call which can take 1-2 seconds.
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-    const step = user.onboardingStep ?? onboardingStep;
+    if (!isAuthenticated) return;
+    const step = user?.onboardingStep ?? onboardingStep;
     if (step === 'NOT_STARTED' || step === 'TYPE_SELECTED') {
       router.replace('/onboarding');
     } else if (step !== null) {
       router.replace('/profile');
     }
-    // step === null: both sources still loading — handled by timeout below
   }, [isAuthenticated, user, onboardingStep, router]);
 
-  // ── Timeout escape hatch ─────────────────────────────────────────
-  // If authenticated but step hasn't resolved in 4 s (slow /onboarding/status
-  // or backend omits onboardingStep from verify response), go to /profile.
+  // ── Timeout: if still authenticated with no step after 4 s → /profile ──
   useEffect(() => {
     if (!isAuthenticated) return;
     const t = setTimeout(() => router.replace('/profile'), 4_000);
     return () => clearTimeout(t);
   }, [isAuthenticated, router]);
 
-  // ── Auto-reset on error: show message, then clear and go back to AuthCard ──
+  // ── Error auto-reset ─────────────────────────────────────────────
+  // Shows the error for 3 s then clears it. signInAttempted stays true
+  // to prevent auto-retry loops — the Retry button resets it explicitly.
   useEffect(() => {
     if (!error) return;
-    // Show the error card for 3 s so the user can read it, then clean up.
-    const t = setTimeout(() => {
-      clearError();
-      hasAutoSigned.current = false;
-      // Set baseline to false so the NEXT connection attempt triggers SIWE
-      prevConnected.current = false;
-      // Disconnect any stale wallet so the user sees a fresh AuthCard
-      if (isSignerConnected) logout();
-    }, 3_000);
+    const t = setTimeout(clearError, 3_000);
     return () => clearTimeout(t);
-  }, [error, clearError, isSignerConnected, logout]);
-
-
+  }, [error, clearError]);
 
   // ── Loading / redirecting ────────────────────────────────────────
-  // Show spinner while initializing OR while authenticated user waits
-  // for the redirect to /profile or /onboarding. Never show the AuthCard
-  // to an authenticated user — it would flash before the redirect fires.
-  if (!pageReady || isAuthenticated) {
+  const isReady = !isInitializing && !isSignerInitializing;
+
+  if (!isReady || isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center gap-4">
         <Image src="/convexoblanco.png" alt="Convexo" width={200} height={80} className="object-contain opacity-80" />
@@ -128,12 +69,11 @@ export default function SignInPage() {
     );
   }
 
-  // ── Sign-in UI — only shown when NOT authenticated ───────────────
+  // ── Sign-in UI ───────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0a0d14] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
 
-        {/* Branding */}
         <div className="text-center">
           <div className="flex justify-center mb-5">
             <Image src="/convexoblanco.png" alt="Convexo" width={200} height={80} className="object-contain" priority />
@@ -141,14 +81,14 @@ export default function SignInPage() {
           <p className="text-gray-400 text-sm">Reducing the funding gap for SMEs in Latin America</p>
         </div>
 
-        {/* AuthCard — Alchemy's connect UI. Shown when wallet not yet connected. */}
-        {!isConnected && (
+        {/* AuthCard — email OTP / Google OAuth / passkey */}
+        {!isConnected && !error && (
           <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
             <AuthCard />
           </div>
         )}
 
-        {/* Sign-in progress — staged labels */}
+        {/* Signing in progress */}
         {isConnected && isSigningIn && (
           <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-6 shadow-2xl shadow-black/40">
             <div className="flex flex-col items-center gap-4">
@@ -156,21 +96,20 @@ export default function SignInPage() {
               <div className="text-center space-y-1">
                 <p className="text-white font-medium text-sm">
                   {signInStage === 'nonce' && 'Preparing sign-in…'}
-                  {signInStage === 'signing' && 'Sign the message in your wallet'}
-                  {signInStage === 'verifying' && 'Verifying with server…'}
+                  {signInStage === 'signing' && 'Authenticating…'}
+                  {signInStage === 'verifying' && 'Almost done…'}
                 </p>
                 <p className="text-gray-500 text-xs">
-                  {signInStage === 'nonce' && 'Fetching a one-time code from the server'}
-                  {signInStage === 'signing' && 'Alchemy will sign automatically — this takes a moment'}
-                  {signInStage === 'verifying' && 'Almost done — confirming your identity'}
+                  {signInStage === 'nonce' && 'Fetching a one-time code'}
+                  {signInStage === 'signing' && 'Signing with your embedded wallet'}
+                  {signInStage === 'verifying' && 'Confirming with server'}
                 </p>
               </div>
-              {/* Progress dots */}
               <div className="flex gap-2">
                 {(['nonce', 'signing', 'verifying'] as const).map((s) => (
                   <div
                     key={s}
-                    className={`h-1.5 w-8 rounded-full transition-colors ${signInStage === s ? 'bg-purple-500' : 'bg-gray-700'}`}
+                    className={`h-1 w-8 rounded-full transition-colors ${signInStage === s ? 'bg-purple-500' : 'bg-gray-700'}`}
                   />
                 ))}
               </div>
@@ -178,30 +117,26 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* SIWE error — visible for 3 s then auto-resets to AuthCard */}
-        {error && (
-          <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
-              <p className="text-gray-500 text-xs">{error}</p>
-              <p className="text-gray-600 text-xs">Resetting in a moment…</p>
-            </div>
+        {/* Connected, waiting for SIWE to auto-fire */}
+        {isConnected && !isSigningIn && !error && (
+          <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-5 shadow-2xl shadow-black/40 text-center">
+            <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin mx-auto mb-3" />
+            <p className="text-gray-400 text-xs">Wallet connected — signing in…</p>
+            <button
+              onClick={() => { signInAttempted.current = false; signIn(); }}
+              className="mt-2 text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+            >
+              Taking too long? Retry
+            </button>
           </div>
         )}
 
-        {/* Connected, waiting for auto-SIWE to fire (brief transition) */}
-        {isConnected && !isSigningIn && !error && (
-          <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-5 shadow-2xl shadow-black/40">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin" />
-              <p className="text-gray-400 text-xs">Wallet connected — signing in…</p>
-              <button
-                onClick={() => { hasAutoSigned.current = false; signIn(); }}
-                className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
-              >
-                Taking too long? Try again
-              </button>
-            </div>
+        {/* Error (auto-clears in 3 s) */}
+        {error && (
+          <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40 text-center space-y-1">
+            <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
+            <p className="text-gray-500 text-xs">{error}</p>
+            <p className="text-gray-600 text-xs">Resetting…</p>
           </div>
         )}
 
@@ -212,3 +147,4 @@ export default function SignInPage() {
     </div>
   );
 }
+
