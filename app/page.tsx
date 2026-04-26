@@ -80,16 +80,23 @@ export default function SignInPage() {
   // requires a GET /onboarding/status call which can take 1-2 seconds.
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-    // JWT payload has onboardingStep encoded at sign-in time.
-    // Fall back to NavigationContext value while it loads.
     const step = user.onboardingStep ?? onboardingStep;
-    if (step === null) return; // both sources still loading
     if (step === 'NOT_STARTED' || step === 'TYPE_SELECTED') {
       router.replace('/onboarding');
-    } else {
+    } else if (step !== null) {
       router.replace('/profile');
     }
+    // step === null: both sources still loading — handled by timeout below
   }, [isAuthenticated, user, onboardingStep, router]);
+
+  // ── Timeout escape hatch ─────────────────────────────────────────
+  // If authenticated but step hasn't resolved in 4 s (slow /onboarding/status
+  // or backend omits onboardingStep from verify response), go to /profile.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const t = setTimeout(() => router.replace('/profile'), 4_000);
+    return () => clearTimeout(t);
+  }, [isAuthenticated, router]);
 
   // ── Auto-reset on error: show message, then clear and go back to AuthCard ──
   useEffect(() => {
