@@ -33,6 +33,7 @@ import {
   ArrowTrendingUpIcon,
   XMarkIcon,
   ArrowRightStartOnRectangleIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 // Bottom user section — shows address + sign out button
@@ -107,6 +108,7 @@ interface NavItem {
   requiredTier?: number;
   adminOnly?: boolean;
   businessOnly?: boolean;
+  external?: boolean;
   subItems?: NavSubItem[];
 }
 
@@ -177,9 +179,10 @@ const navItems: NavItem[] = [
   },
   {
     name: 'Admin Panel',
-    href: '/admin',
+    href: 'https://admin.convexo.xyz',
     icon: Cog6ToothIcon,
     adminOnly: true,
+    external: true,
   },
 ];
 
@@ -395,6 +398,17 @@ export function Sidebar({ onClose }: SidebarProps) {
                   <LockClosedIcon className="w-5 h-5" />
                   <span className="font-medium">{item.name}</span>
                 </div>
+              ) : item.external ? (
+                <a
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
+                  <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 ml-auto opacity-50" />
+                </a>
               ) : (
                 <Link
                   href={item.href}
