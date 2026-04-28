@@ -63,31 +63,30 @@ Next.js 16 App Router frontend for the Convexo Protocol — connecting internati
 ### Auth Flow
 
 ```
-User connects wallet
+User connects via AuthCard (email OTP / passkey / Google OAuth)
         │
-        ├── Email / Passkey / Google ──▶ Alchemy AlchemySigner (embedded EOA)
+        ▼ AlchemySigner connects (embedded wallet only — no MetaMask/WalletConnect)
         │
-        └── MetaMask / WalletConnect / Coinbase ──▶ External EOA
-                        │
-                        ▼
-        GET /auth/nonce?address=<signer_address>
-                        │
-                        ▼
-        Build EIP-4361 SIWE message (viem/siwe)
-                        │
-                        ▼
-        Sign with wallet (AlchemySigner or wagmi signMessage)
-                        │
-                        ▼
-        POST /auth/verify { message, signature, address, chainId, authMethod }
-                        │
-                        ▼
-        Store accessToken in localStorage('convexo_jwt')
-                        │
-                        ▼
-        All API calls ── Authorization: Bearer <accessToken>
-        Silent refresh ── POST /auth/refresh (automatic, via axios interceptor)
+        ▼ Auto-SIWE fires in page.tsx
+        │
+        GET /auth/nonce?address=<wallet>
+        │
+        ▼ Build EIP-4361 SIWE message (viem/siwe)
+        │
+        ▼ signer.signMessage(message)  ← AlchemySigner handles EIP-191 prefix
+        │
+        POST /auth/verify { message, signature, address, chainId }
+        │
+        ▼ Store JWT in sessionStorage('convexo_jwt')
+        │
+        ▼ AuthContext sets isAuthenticated = true (shared across all components)
+        │
+        ▼ NavigationContext enables useOnboarding → fetches /onboarding/status
+        │
+        ▼ router.replace('/profile') — AuthGuard handles onboarding redirect
 ```
+
+Auth state lives in `lib/contexts/AuthContext.tsx` (React Context Provider). All components share one instance — `page.tsx`, `AuthGuard`, `NavigationContext`, and every page all read from the same state.
 
 ---
 
@@ -95,12 +94,12 @@ User connects wallet
 
 | Layer           | Technology                                               |
 |-----------------|----------------------------------------------------------|
-| Framework       | Next.js 16.1.6 (App Router) + TypeScript 5.3             |
+| Framework       | Next.js 14 (App Router) + TypeScript 5.3                 |
 | Bundler         | webpack (required — Turbopack breaks thread-stream)      |
-| Wallet (social) | Alchemy Account Kit v4 (`@account-kit/react`)            |
-| Wallet (EOA)    | wagmi 2.19.3 + viem 2.46.3                               |
-| Smart Account   | Modular Account V2 — MAv2 (ERC-6900 · EIP-7702, Base)   |
-| Auth            | SIWE (EIP-4361) + JWT Bearer + silent refresh            |
+| Wallet          | Alchemy Account Kit v4 (`@account-kit/react`) — embedded only |
+| Smart Account   | Modular Account V2 — MAv2 (ERC-6900 · EIP-7702)         |
+| Auth            | AuthContext (React) + SIWE (EIP-4361) + JWT + silent refresh |
+| On-chain reads  | wagmi 2 + viem 2 (read-only; writes via MAv2 UO)         |
 | State / Cache   | TanStack React Query v5                                  |
 | Styling         | Tailwind CSS v3                                          |
 | Animations      | Framer Motion v12 (page transitions via AnimatePresence) |
@@ -160,7 +159,7 @@ import { useAccount } from 'wagmi'
 convexo_frontend/
 ├── app/
 │   ├── layout.tsx                    # Root layout — Account Kit SSR cookie init
-│   ├── providers.tsx                 # WagmiProvider + QueryClient + AlchemyAccountProvider
+│   ├── providers.tsx                 # WagmiProvider + QueryClient + AlchemyAccountProvider + AuthProvider
 │   ├── globals.css                   # Tailwind + design system utility classes
 │   ├── page.tsx                      # Home / landing
 │   ├── error.tsx                     # Root error boundary
@@ -223,13 +222,14 @@ convexo_frontend/
 │   │   ├── tokens.ts                 # Token metadata (symbol, address, decimals, logo)
 │   │   └── pinata.ts                 # Pinata IPFS gateway helpers
 │   ├── contexts/
+│   │   ├── AuthContext.tsx            # Shared auth state (AuthProvider + useAuth hook)
 │   │   └── NavigationContext.tsx     # accountType, onboardingStep, isLoading, tier
 │   ├── contracts/
 │   │   ├── addresses.ts              # Contract addresses by chainId
 │   │   ├── abis.ts                   # All ABI definitions
 │   │   └── ecopAbi.ts                # ECOP local stablecoin ABI
 │   ├── hooks/
-│   │   ├── useAuth.ts                # SIWE sign-in/out + JWT storage
+│   │   ├── useAuth.ts                # Re-exports useAuth from AuthContext (backward compat)
 │   │   ├── useOnboarding.ts          # GET /onboarding/status
 │   │   ├── useWalletAccount.ts       # Unified: AlchemySigner + external EOA
 │   │   ├── useNFTBalance.ts          # Live on-chain NFT balances for access gating
@@ -350,16 +350,23 @@ NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
 
 ## Authentication
 
+Auth state is a **shared React Context** (`lib/contexts/AuthContext.tsx`). All components — `page.tsx`, `AuthGuard`, `NavigationContext`, every page — read from one `AuthProvider` instance. Sign-in propagates globally in a single re-render.
+
 ```typescript
 import { useAuth } from '@/lib/hooks/useAuth'
 
-const { isAuthenticated, isConnected, isSigningIn, user, signIn, signOut } = useAuth()
-// isAuthenticated  → JWT is in localStorage('convexo_jwt')
-// isConnected      → wallet connected (Account Kit OR external EOA)
+const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, user, error, signIn, signOut } = useAuth()
+// isAuthenticated  → JWT is in sessionStorage('convexo_jwt')
+// isConnected      → Alchemy signer connected (embedded wallet only)
 // user             → { id, walletAddress, accountType, onboardingStep, isAdmin }
+// signInStage      → 'nonce' | 'signing' | 'verifying' | 'idle'
 ```
 
-**Silent refresh:** `lib/api/client.ts` has a request interceptor that automatically calls `POST /auth/refresh` on 401 responses before retrying the original request. No manual token management required.
+**JWT storage:** `sessionStorage` — cleared automatically on tab close (banking-grade session).
+
+**Silent refresh:** `lib/api/client.ts` automatically calls `POST /auth/refresh` on 401 before retrying. No manual token management required.
+
+**Embedded wallet only:** MetaMask, WalletConnect, and Coinbase Wallet connectors were removed (2026-04-13). Only email OTP, passkey, and Google OAuth via Alchemy Account Kit are supported.
 
 ---
 

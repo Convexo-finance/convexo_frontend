@@ -4,6 +4,19 @@ Format: version → what changed → status.
 
 ---
 
+## v3.25 — 2026-04-27 (Auth context fix — stuck spinner after sign-in)
+
+### Fixed
+- **Critical: sign-in redirect loop / stuck spinner.** `useAuth` was a plain React hook — `page.tsx`, `AuthGuard`, and `NavigationContext` each ran separate isolated instances with their own state. When `signIn()` completed in `page.tsx`, the other instances didn't know. `NavigationContext`'s instance never enabled `useOnboarding` → `onboardingStep` stayed `null` forever → `AuthGuard` showed the spinner until the user manually refreshed.
+
+### Changed
+- `lib/contexts/AuthContext.tsx` (new) — all auth logic moved into a React Context Provider (`AuthProvider`). One shared `isAuthenticated` / `user` / `signIn` / `signOut` state across the entire app.
+- `lib/hooks/useAuth.ts` — rewritten to a 4-line re-export from `AuthContext`. All existing imports (`@/lib/hooks/useAuth`) keep working with zero changes to consumers.
+- `app/providers.tsx` — `<AuthProvider>` added inside `AlchemyAccountProvider`, wrapping `NavigationProvider`. Sign-in now propagates globally: `NavigationContext` immediately enables `useOnboarding` after login, so `onboardingStep` resolves in one API round-trip instead of never.
+- `app/page.tsx` — simplified post-login redirect to `router.replace('/profile')`. Removed complex step-based redirect logic and 4-second fallback timeout (both were compensating for the broken state-sharing). `AuthGuard` handles the onboarding redirect from `/profile` as designed.
+
+---
+
 ## v3.24 — 2026-04-25 (NFT metadata fix + CLAUDE.md sync)
 
 ### Fixed

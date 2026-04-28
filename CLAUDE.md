@@ -30,8 +30,11 @@ convexo_frontend/
 │   │   ├── addresses.ts    — All chain addresses (v3.18 deterministic / v3.19 ETH Sepolia) + PERMIT2
 │   │   ├── abis.ts         — All contract ABIs
 │   │   └── ecopAbi.ts      — ECOP token ABI
+│   ├── contexts/
+│   │   ├── AuthContext.tsx — AuthProvider + useAuth() (shared auth state — single source of truth)
+│   │   └── NavigationContext.tsx — tier, onboardingStep, NFT status, access control
 │   ├── hooks/
-│   │   ├── useAuth.ts      — SIWE sign-in/out + signInStage (nonce/signing/verifying)
+│   │   ├── useAuth.ts      — re-exports useAuth from AuthContext (backward compat)
 │   │   ├── useWalletAccount.ts — Alchemy Account Kit (MAv2 / EIP-7702)
 │   │   ├── useV4Swap.ts    — Full V4 swap (Permit2 → Universal Router)
 │   │   ├── useV4Quote.ts   — Off-chain quote via V4 Quoter
@@ -163,14 +166,24 @@ The vaults page (`app/investments/vaults/page.tsx`) fetches vault list from `GET
 
 ## Auth architecture
 
+Auth state is a **shared React Context** — `lib/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth()`. `AuthProvider` sits inside `AlchemyAccountProvider` in `app/providers.tsx`, wrapping `NavigationProvider` and all children. Every component that calls `useAuth()` reads from the **same single instance**.
+
+This was the fix for the stuck-spinner bug (v3.25): `useAuth` was a plain hook, so `NavigationContext`, `AuthGuard`, and `page.tsx` each had isolated state. After sign-in in `page.tsx`, the others never knew → `useOnboarding` was never enabled → `onboardingStep` stayed `null` forever → AuthGuard spinner never resolved (until refresh).
+
 ```
 GET /auth/nonce?address=<wallet>
 → build EIP-4361 SIWE message
-→ sign with Alchemy signer (AlchemySigner handles EIP-191 prefix automatically)
-→ POST /auth/verify { message, signature, address, chainId, authMethod }
-→ store accessToken in localStorage('convexo_jwt')
+→ signer.signMessage(message)  — AlchemySigner handles EIP-191 prefix automatically
+→ POST /auth/verify { message, signature, address, chainId }
+→ store JWT in sessionStorage('convexo_jwt')   ← sessionStorage, NOT localStorage
+→ AuthContext.setIsAuthenticated(true)          ← propagates to ALL consumers instantly
+→ NavigationContext enables useOnboarding → GET /onboarding/status
+→ page.tsx: router.replace('/profile')
+→ AuthGuard at /profile: renders children (onboardingStep resolved)
 → auto-refresh via 401 interceptor in lib/api/client.ts
 ```
+
+`lib/hooks/useAuth.ts` is a 4-line re-export from `AuthContext` — all existing imports keep working unchanged.
 
 CORS is permissive (any origin) — access is controlled by JWT.
 
@@ -239,11 +252,11 @@ Key endpoints used by frontend:
 
 ---
 
-## Phase status (as of v3.24, 2026-04-25)
+## Phase status (as of v3.25, 2026-04-27)
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Auth (SIWE + JWT) | ✅ Complete | sessionStorage JWT (tab-close logout). Sign-in stages: nonce/signing/verifying with animated UI. |
+| Auth (SIWE + JWT) | ✅ Complete | **AuthContext** (shared React Context). sessionStorage JWT (tab-close logout). Sign-in stages: nonce/signing/verifying with animated UI. No stuck spinner. |
 | Onboarding | ✅ Complete | 3-step wizard wired to backend. Business form pre-fills KYB from onboarding profile data. |
 | ZKPassport (Tier 1) | ✅ Complete | Trustless onchain. Proof staleness (UTC day boundary) detected + handled. |
 | KYC — LP Individuals (Tier 2) | ✅ Complete | Inline form: gov ID + RUT + proof of address → `POST /verification/kyc/submit` (manual review) |

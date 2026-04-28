@@ -4,21 +4,16 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthCard, useSignerStatus } from '@account-kit/react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useNavigation } from '@/lib/contexts/NavigationContext';
 import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, error, clearError, signIn, user } = useAuth();
+  const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, error, clearError, signIn } = useAuth();
   const { isInitializing: isSignerInitializing } = useSignerStatus();
-  const { onboardingStep } = useNavigation();
 
-  // Prevents double-firing sign-in when dependencies re-evaluate
   const signInAttempted = useRef(false);
 
-  // ── Auto-SIWE ───────────────────────────────────────────────────
-  // Fires as soon as the Alchemy signer connects (email OTP / Google OAuth / passkey).
-  // Resets on disconnect so the next connect attempt triggers a fresh sign-in.
+  // Auto-SIWE: fires as soon as the Alchemy signer connects
   useEffect(() => {
     if (isInitializing || isSignerInitializing) return;
     if (isAuthenticated) { signInAttempted.current = false; return; }
@@ -30,36 +25,21 @@ export default function SignInPage() {
     signIn();
   }, [isInitializing, isSignerInitializing, isAuthenticated, isConnected, isSigningIn, error, signIn]);
 
-  // ── Redirect after auth ──────────────────────────────────────────
+  // Redirect to /profile once authenticated — AuthGuard handles onboarding redirect
   useEffect(() => {
-    if (!isAuthenticated) return;
-    const step = user?.onboardingStep ?? onboardingStep;
-    if (step === 'NOT_STARTED' || step === 'TYPE_SELECTED') {
-      router.replace('/onboarding');
-    } else if (step !== null) {
-      router.replace('/profile');
-    }
-  }, [isAuthenticated, user, onboardingStep, router]);
-
-  // ── Timeout: if still authenticated with no step after 4 s → /profile ──
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const t = setTimeout(() => router.replace('/profile'), 4_000);
-    return () => clearTimeout(t);
+    if (isAuthenticated) router.replace('/profile');
   }, [isAuthenticated, router]);
 
-  // ── Error auto-reset ─────────────────────────────────────────────
-  // Shows the error for 3 s then clears it. signInAttempted stays true
-  // to prevent auto-retry loops — the Retry button resets it explicitly.
+  // Error auto-reset after 3 s (shows retry option, not auto-retry to avoid loops)
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(clearError, 3_000);
     return () => clearTimeout(t);
   }, [error, clearError]);
 
-  // ── Loading / redirecting ────────────────────────────────────────
   const isReady = !isInitializing && !isSignerInitializing;
 
+  // Loading or redirecting — show spinner
   if (!isReady || isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center gap-4">
@@ -69,7 +49,6 @@ export default function SignInPage() {
     );
   }
 
-  // ── Sign-in UI ───────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#0a0d14] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -117,7 +96,7 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Connected, waiting for SIWE to auto-fire */}
+        {/* Connected, waiting for SIWE */}
         {isConnected && !isSigningIn && !error && (
           <div className="rounded-2xl bg-[#0f1219] border border-gray-800/50 p-5 shadow-2xl shadow-black/40 text-center">
             <div className="w-5 h-5 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin mx-auto mb-3" />
@@ -133,10 +112,15 @@ export default function SignInPage() {
 
         {/* Error (auto-clears in 3 s) */}
         {error && (
-          <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40 text-center space-y-1">
+          <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40 text-center space-y-2">
             <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
             <p className="text-gray-500 text-xs">{error}</p>
-            <p className="text-gray-600 text-xs">Resetting…</p>
+            <button
+              onClick={() => { clearError(); signInAttempted.current = false; signIn(); }}
+              className="text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -147,4 +131,3 @@ export default function SignInPage() {
     </div>
   );
 }
-

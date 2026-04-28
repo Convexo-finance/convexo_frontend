@@ -7,6 +7,7 @@ import { AlchemyClientState } from '@account-kit/core';
 import { config } from '@/lib/wagmi/config';
 import { alchemyConfig } from '@/lib/alchemy/config';
 import { NavigationProvider } from '@/lib/contexts/NavigationContext';
+import { AuthProvider } from '@/lib/contexts/AuthContext';
 import '@account-kit/react/styles.css';
 import { useState } from 'react';
 
@@ -32,9 +33,11 @@ export function Providers({
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <AlchemyAccountProvider config={alchemyConfig} queryClient={queryClient} initialState={initialState}>
-          <NavigationProvider>
-            {children}
-          </NavigationProvider>
+          <AuthProvider>
+            <NavigationProvider>
+              {children}
+            </NavigationProvider>
+          </AuthProvider>
         </AlchemyAccountProvider>
       </QueryClientProvider>
     </WagmiProvider>
