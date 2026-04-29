@@ -4,8 +4,8 @@ import { alchemy, base as alchemyBase, sepolia as alchemySepolia } from '@accoun
 import { base, mainnet, sepolia, baseSepolia, arbitrum, arbitrumSepolia } from 'viem/chains'
 import type { Chain } from 'viem'
 
-export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? 'cmok5banj000c0ckvotv8lgg7'
-export const PRIVY_CLIENT_ID = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID ?? 'client-WY6YftQbLZuxRdFf7bxZRNPHPT6nK917kWYuLFGyHT7sz'
+export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID!
+export const PRIVY_CLIENT_ID = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID!
 
 const CHAIN_MAP: Record<number, Chain> = {
   8453:    base,
