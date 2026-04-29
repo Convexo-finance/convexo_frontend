@@ -1,6 +1,7 @@
 # Convexo Frontend — Deployment Guide
 
-> Updated: 2026-04-29 | Stack: Next.js 14 App Router + Privy + @alchemy/wallet-apis | Hosted: Vercel
+> Updated: 2026-04-29 | Stack: Next.js 16 App Router + Privy + @alchemy/wallet-apis | Hosted: Vercel
+> Active chains: **ETH Sepolia** (primary testnet, all contracts live) · **ETH Mainnet** (production target)
 
 ---
 
@@ -28,8 +29,12 @@ Create `.env.local` (copy from `.env.example`):
 
 ```env
 # Network mode — controls primary chain
-# mainnet → BASE (8453) | testnet → ETH Sepolia (11155111)
+# mainnet → ETH Mainnet (1) | testnet → ETH Sepolia (11155111)
 NEXT_PUBLIC_NETWORK_MODE=testnet
+
+# Privy Auth (get from Privy Dashboard → app cmok5banj000c0ckvotv8lgg7)
+NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
+NEXT_PUBLIC_PRIVY_CLIENT_ID=your_privy_client_id
 
 # Backend API
 NEXT_PUBLIC_API_URL=http://localhost:3001
@@ -37,20 +42,13 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 # Alchemy — Wallet APIs + RPC + NFT/Portfolio APIs
 NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
 
-# Gas Manager policy IDs (one per gas-sponsored network)
-NEXT_PUBLIC_ALCHEMY_POLICY_ID=your_base_mainnet_policy_id
+# Gas Manager policy IDs
 NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH=your_eth_mainnet_policy_id
 NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA=your_eth_sepolia_policy_id
 
-# RPC URLs (Alchemy)
+# RPC URLs — ETH Mainnet + ETH Sepolia (active chains)
 NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/...
-NEXT_PUBLIC_BASE_MAINNET_RPC_URL=https://base-mainnet.g.alchemy.com/v2/...
-NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=https://unichain-mainnet.g.alchemy.com/v2/...
-NEXT_PUBLIC_ARBITRUM_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/...
-NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://base-sepolia.g.alchemy.com/v2/...
 NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/...
-NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL=https://unichain-sepolia.g.alchemy.com/v2/...
-NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/...
 
 # Pinata IPFS (metadata display)
 PINATA_JWT=...
@@ -61,13 +59,15 @@ NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_NETWORK_MODE` | Yes | `mainnet` (Base 8453) or `testnet` (ETH Sepolia 11155111) |
+| `NEXT_PUBLIC_NETWORK_MODE` | Yes | `mainnet` (ETH Mainnet 1) or `testnet` (ETH Sepolia 11155111) |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | Yes | Privy App ID — from Privy Dashboard |
+| `NEXT_PUBLIC_PRIVY_CLIENT_ID` | Yes | Privy Client ID — from Privy Dashboard |
 | `NEXT_PUBLIC_API_URL` | Yes | Backend base URL |
 | `NEXT_PUBLIC_ALCHEMY_API_KEY` | Yes | Alchemy API key — Wallet APIs + NFT/Portfolio APIs + RPC |
-| `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | Mainnet | Gas Manager policy ID for Base |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` | Mainnet | Gas Manager policy ID for ETH Mainnet |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` | Testnet | Gas Manager policy ID for ETH Sepolia |
-| `NEXT_PUBLIC_*_RPC_URL` | Yes | RPC URLs for all supported chains |
+| `NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL` | Yes | Alchemy RPC for ETH Mainnet |
+| `NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL` | Yes | Alchemy RPC for ETH Sepolia |
 | `PINATA_JWT` | Yes | Pinata JWT for server-side uploads |
 | `NEXT_PUBLIC_PINATA_GATEWAY` | Yes | Pinata gateway for IPFS metadata display |
 
@@ -138,17 +138,14 @@ Deterministic via `CREATE2` salt `convexo.v3.18` — same address on all chains 
 | USDC | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
 | ECOP | `0x19ac2612e560b2bbedf88660a2566ef53c0a15a1` |
 
-### Supported Chains
+### Active Chains (wagmi + Privy)
 
 | Chain | Chain ID | Role |
 |-------|----------|------|
-| Base | 8453 | Primary mainnet (ZKPassport ✅) |
-| Unichain | 130 | Secondary mainnet |
-| Arbitrum One | 42161 | ECOP only |
-| ETH Sepolia | 11155111 | **Primary testnet** (ZKPassport ✅, pool live) |
-| Base Sepolia | 84532 | Secondary testnet (pool seeded, no ZKPassport) |
-| Uni Sepolia | 1301 | Testnet |
-| Arb Sepolia | 421614 | Testnet |
+| ETH Mainnet | 1 | Production (wagmi + Privy `defaultChain` when `mainnet` mode) |
+| ETH Sepolia | 11155111 | **Primary testnet** — all contracts live, ZKPassport ✅, pool live |
+
+> Contracts are also deployed on Base (8453), Unichain (130), Arbitrum (42161) via CREATE2. Those chains can be re-added to wagmi/Privy config when needed.
 
 ---
 
@@ -171,19 +168,14 @@ Deterministic via `CREATE2` salt `convexo.v3.18` — same address on all chains 
 
 ```
 NEXT_PUBLIC_NETWORK_MODE=mainnet
+NEXT_PUBLIC_PRIVY_APP_ID=...
+NEXT_PUBLIC_PRIVY_CLIENT_ID=...
 NEXT_PUBLIC_API_URL=https://convexo-api-production.up.railway.app
 NEXT_PUBLIC_ALCHEMY_API_KEY=...
-NEXT_PUBLIC_ALCHEMY_POLICY_ID=...           (Base mainnet Gas Manager)
-NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH=...       (ETH mainnet Gas Manager)
+NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH=...       (ETH Mainnet Gas Manager)
 NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA=...   (ETH Sepolia Gas Manager)
 NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=...
-NEXT_PUBLIC_BASE_MAINNET_RPC_URL=...
-NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=...
-NEXT_PUBLIC_ARBITRUM_RPC_URL=...
-NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=...
 NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL=...
-NEXT_PUBLIC_UNICHAIN_SEPOLIA_RPC_URL=...
-NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL=...
 PINATA_JWT=...
 PINATA_API_KEY=...
 PINATA_SECRET_KEY=...
@@ -196,10 +188,10 @@ NEXT_PUBLIC_PINATA_GATEWAY=...
 
 ### Auth & Privy
 - [ ] **Privy Dashboard** → App → **Allowed Domains** includes `protocol.convexo.xyz`
-- [ ] Privy App ID and Client ID in `lib/privy/config.ts` match the Privy Dashboard app
-- [ ] Gas Manager policy for Base mainnet allows `protocol.convexo.xyz` as origin
-- [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID` is the UUID with no trailing comments or spaces
-- [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` set if testnet is used
+- [ ] `NEXT_PUBLIC_PRIVY_APP_ID` and `NEXT_PUBLIC_PRIVY_CLIENT_ID` set in Vercel (no hardcoded values in code)
+- [ ] Gas Manager policy for ETH Mainnet allows `protocol.convexo.xyz` as origin
+- [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` set for mainnet (no trailing comments or spaces)
+- [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` set for testnet
 
 ### Network
 - [ ] `NEXT_PUBLIC_NETWORK_MODE=mainnet` for production

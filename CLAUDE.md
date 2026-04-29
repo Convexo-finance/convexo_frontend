@@ -48,7 +48,7 @@ convexo_frontend/
 │   │   └── ...
 │   ├── stubs/thread-stream.js — Empty stub for turbopack alias
 │   └── wagmi/
-│       ├── config.ts       — createConfig (read-only, all 8 chains)
+│       ├── config.ts       — createConfig (read-only, ETH Mainnet + ETH Sepolia)
 │       └── compat.ts       — Overrides useAccount + useChainId
 ├── abis/                   — JSON ABIs (synced from convexo_contracts/out/)
 ├── next.config.js          — thread-stream alias for webpack + turbopack
@@ -89,6 +89,8 @@ npm run build      # ✅ aliases to next build --webpack
 ```
 
 Turbopack can't handle non-JS files inside `node_modules/thread-stream`. The webpack config aliases `thread-stream → false`.
+
+`@privy-io/react-auth` bundles Solana peer deps unconditionally. `@solana/kit`, `@solana-program/{token,system,memo}`, and `@farcaster/mini-app-solana` are all aliased to `lib/stubs/empty.js` in `next.config.js`. Do not remove these aliases — the build will fail without them.
 
 ### 3. Signing — always use the Privy embedded wallet
 
