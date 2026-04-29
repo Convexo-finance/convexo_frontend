@@ -1,10 +1,10 @@
 ---
 id: references/wallets-overview.md
 name: wallets
-description: Integration guide for Alchemy Wallets and smart wallet tooling including Account Kit, account abstraction, bundler, gas manager, and paymaster. Use when building wallet onboarding flows, sponsoring gas, or integrating smart wallets into your application.
+description: Integration guide for Alchemy Wallet APIs (formerly Smart Wallets) including Account Kit, account abstraction, bundler, gas manager, and paymaster. Use when building wallet onboarding flows, sponsoring gas, or integrating smart accounts into your application.
 tags: []
 related: []
-updated: 2026-04-15
+updated: 2026-04-22
 metadata:
   author: alchemyplatform
   version: "1.0"
@@ -12,7 +12,7 @@ metadata:
 # Wallets
 
 ## Summary
-High-level integration notes for Alchemy Wallets and smart wallet tooling. This section is intentionally light: enough to integrate without diving into deep wallet infrastructure.
+High-level integration notes for Alchemy **Wallet APIs** (the product formerly branded as "Smart Wallets") and the smart-account tooling around them. This section is intentionally light: enough to integrate without diving into deep wallet infrastructure.
 
 ## References (Recommended Order)
 1. [wallets-details.md](wallets-details.md) - When to use Alchemy wallet tooling.
@@ -39,5 +39,6 @@ High-level integration notes for Alchemy Wallets and smart wallet tooling. This 
 - `agentic-gateway` skill for app code without an API key (x402 or MPP).
 
 ## Official Docs
-- [Smart Wallets](https://www.alchemy.com/docs/wallets)
-- [Wallet APIs Overview](https://www.alchemy.com/docs/get-started)
+- [Wallet APIs](https://www.alchemy.com/docs/wallets)
+- [Wallet APIs Get Started](https://www.alchemy.com/docs/get-started)
+- [Legacy session keys with Wallet APIs](https://www.alchemy.com/docs/wallets/smart-wallets/session-keys/legacy-session-keys) — migration guide for existing session-key setups.

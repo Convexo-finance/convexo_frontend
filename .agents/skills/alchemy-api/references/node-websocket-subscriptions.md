@@ -10,13 +10,23 @@ tags:
 related:
   - node-json-rpc.md
   - webhooks-details.md
-updated: 2026-02-23
+updated: 2026-04-22
 ---
 # WebSocket Subscriptions
 
 Real-time blockchain events via WebSocket. No polling required.
 
 **Base URL**: `wss://<network>.g.alchemy.com/v2/$ALCHEMY_API_KEY`
+
+## Billing & Scope Guidance
+Alchemy bills WebSocket subscriptions on the bandwidth they deliver, so broad streams can scale compute unit usage quickly. Keep subscriptions narrow by default:
+
+- Prefer filtered subscriptions (address, topic, or `alchemy_minedTransactions` filters) over network-wide streams.
+- Prefer hash-only payloads when full transaction objects are not required (e.g., `hashesOnly: true` for `alchemy_pendingTransactions` / `alchemy_minedTransactions`).
+- Set [usage limits](https://www.alchemy.com/docs/how-to-set-usage-limits-and-alerts-for-your-account) and alerts before deploying high-volume streams.
+- Broad subscription streams can generate far more ongoing traffic than equivalent HTTP polling, because the server keeps pushing every matching event until you unsubscribe.
+
+See [Compute Unit Costs — Webhooks and Subscription APIs](https://www.alchemy.com/docs/reference/compute-unit-costs#webhooks-and-subscription-apis) for pricing details.
 
 ---
 
@@ -192,7 +202,7 @@ ws.on("message", (data) => {
 
 - Subscriptions are stateful. Handle reconnects and resubscribe after reconnect.
 - You may receive duplicate events on reconnect. De-duplicate by block hash or log index.
-- `newPendingTransactions` is very high volume. Use tight filters if available.
+- `newPendingTransactions` is very high volume. Use tight filters if available, or switch to `alchemy_pendingTransactions` with `addresses` and `hashesOnly: true` to keep bandwidth (and billing) predictable.
 - If WebSockets are unavailable, fall back to HTTP polling with coarse intervals and backoff.
 
 ## Official Docs

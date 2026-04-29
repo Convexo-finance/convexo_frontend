@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { createSmartWalletClient, alchemyWalletTransport } from '@alchemy/wallet-apis';
 import { useAccount, useChainId, usePublicClient } from '@/lib/wagmi/compat';
-import { useSmartAccountClient, useSendUserOperation } from '@account-kit/react';
+import { usePrivySigner } from '@/lib/privy/usePrivySigner';
+import { getViemChain, getPolicyId } from '@/lib/privy/config';
 import { encodeAbiParameters, encodeFunctionData, encodePacked, erc20Abi, maxUint160, type Abi } from 'viem';
 import { getContractsForChain, PERMIT2 } from '@/lib/contracts/addresses';
 
@@ -57,38 +59,20 @@ const UNIVERSAL_ROUTER_ABI = [
 const SWAP_EXACT_IN_SINGLE = 0x06;
 const SETTLE_ALL           = 0x0c;
 const TAKE_ALL             = 0x0f;
-
-// Universal Router top-level command for V4 swaps
-const V4_SWAP_COMMAND = '0x10' as `0x${string}`;
+const V4_SWAP_COMMAND      = '0x10' as `0x${string}`;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Permit2 expiration: 30 days from now
 const permit2Expiration = () => Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
-
-// Swap deadline: 5 minutes from now
-const swapDeadline = () => BigInt(Math.floor(Date.now() / 1000) + 300);
+const swapDeadline      = () => BigInt(Math.floor(Date.now() / 1000) + 300);
 
 function encodeV4SwapInput({
-  currency0,
-  currency1,
-  fee,
-  tickSpacing,
-  hooks,
-  zeroForOne,
-  amountIn,
-  amountOutMinimum,
-  hookData,
+  currency0, currency1, fee, tickSpacing, hooks,
+  zeroForOne, amountIn, amountOutMinimum, hookData,
 }: {
-  currency0: `0x${string}`;
-  currency1: `0x${string}`;
-  fee: number;
-  tickSpacing: number;
-  hooks: `0x${string}`;
-  zeroForOne: boolean;
-  amountIn: bigint;
-  amountOutMinimum: bigint;
-  hookData: `0x${string}`;
+  currency0: `0x${string}`; currency1: `0x${string}`; fee: number;
+  tickSpacing: number; hooks: `0x${string}`; zeroForOne: boolean;
+  amountIn: bigint; amountOutMinimum: bigint; hookData: `0x${string}`;
 }): `0x${string}` {
   const poolKeyComponents = [
     { name: 'currency0', type: 'address' as const },
@@ -98,7 +82,6 @@ function encodeV4SwapInput({
     { name: 'hooks', type: 'address' as const },
   ];
 
-  // Encode SWAP_EXACT_IN_SINGLE params
   const swapParams = encodeAbiParameters(
     [{ type: 'tuple', components: [
       { name: 'poolKey', type: 'tuple', components: poolKeyComponents },
@@ -107,36 +90,21 @@ function encodeV4SwapInput({
       { name: 'amountOutMinimum', type: 'uint128' },
       { name: 'hookData', type: 'bytes' },
     ]}],
-    [{
-      poolKey: { currency0, currency1, fee, tickSpacing, hooks },
-      zeroForOne,
-      amountIn,
-      amountOutMinimum,
-      hookData,
-    }]
+    [{ poolKey: { currency0, currency1, fee, tickSpacing, hooks }, zeroForOne, amountIn, amountOutMinimum, hookData }]
   );
 
-  // Encode SETTLE_ALL: (inputCurrency, maxAmount)
-  const inputCurrency = zeroForOne ? currency0 : currency1;
-  const settleParams = encodeAbiParameters(
-    [{ type: 'address' }, { type: 'uint256' }],
-    [inputCurrency, amountIn]
-  );
-
-  // Encode TAKE_ALL: (outputCurrency, minAmountOut)
+  const inputCurrency  = zeroForOne ? currency0 : currency1;
   const outputCurrency = zeroForOne ? currency1 : currency0;
+
+  const settleParams = encodeAbiParameters(
+    [{ type: 'address' }, { type: 'uint256' }], [inputCurrency, amountIn]
+  );
   const takeParams = encodeAbiParameters(
-    [{ type: 'address' }, { type: 'uint256' }],
-    [outputCurrency, amountOutMinimum]
+    [{ type: 'address' }, { type: 'uint256' }], [outputCurrency, amountOutMinimum]
   );
 
-  // Pack action IDs into a bytes sequence
-  const actions = encodePacked(
-    ['uint8', 'uint8', 'uint8'],
-    [SWAP_EXACT_IN_SINGLE, SETTLE_ALL, TAKE_ALL]
-  );
+  const actions = encodePacked(['uint8', 'uint8', 'uint8'], [SWAP_EXACT_IN_SINGLE, SETTLE_ALL, TAKE_ALL]);
 
-  // Wrap into the V4 swap input format: (bytes actions, bytes[] params)
   return encodeAbiParameters(
     [{ type: 'bytes' }, { type: 'bytes[]' }],
     [actions, [swapParams, settleParams, takeParams]]
@@ -145,20 +113,14 @@ function encodeV4SwapInput({
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export type SwapStep =
-  | 'idle'
-  | 'swapping'  // Checking allowances + sending batched UO (approve(s) + swap)
-  | 'success'
-  | 'error';
+export type SwapStep = 'idle' | 'swapping' | 'success' | 'error';
 
 export function useV4Swap() {
   const { address: userAddress } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const contracts = getContractsForChain(chainId);
-
-  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
-  const { sendUserOperationAsync } = useSendUserOperation({ client, waitForTxn: true });
+  const signer = usePrivySigner();
 
   const [step, setStep] = useState<SwapStep>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -173,8 +135,8 @@ export function useV4Swap() {
     amountIn: bigint;
     amountOutMinimum?: bigint;
   }) => {
-    if (!client) {
-      setErrorMsg('Smart account not ready — sign in with email, passkey, or Google to swap');
+    if (!signer) {
+      setErrorMsg('Smart account not ready — sign in to swap');
       setStep('error');
       return;
     }
@@ -192,11 +154,18 @@ export function useV4Swap() {
       return;
     }
 
-    // Determine canonical pool key ordering: currency0 < currency1 by address
-    const ecopIsC0 = contracts.ECOP.toLowerCase() < contracts.USDC.toLowerCase();
-    const currency0 = (ecopIsC0 ? contracts.ECOP : contracts.USDC) as `0x${string}`;
-    const currency1 = (ecopIsC0 ? contracts.USDC : contracts.ECOP) as `0x${string}`;
-    // zeroForOne = true means selling currency0; false means selling currency1
+    const chain = getViemChain(chainId);
+    const client = createSmartWalletClient({
+      signer,
+      transport: alchemyWalletTransport({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY! }),
+      chain,
+      paymaster: { policyId: getPolicyId(chainId) },
+    });
+
+    // Determine pool key ordering: currency0 < currency1 by address
+    const ecopIsC0   = contracts.ECOP.toLowerCase() < contracts.USDC.toLowerCase();
+    const currency0  = (ecopIsC0 ? contracts.ECOP : contracts.USDC) as `0x${string}`;
+    const currency1  = (ecopIsC0 ? contracts.USDC : contracts.ECOP) as `0x${string}`;
     const zeroForOne = ecopIsC0 ? fromSymbol === 'ECOP' : fromSymbol === 'USDC';
     const inputToken = fromSymbol === 'USDC' ? contracts.USDC : contracts.ECOP;
 
@@ -204,7 +173,7 @@ export function useV4Swap() {
       setErrorMsg('');
       setStep('swapping');
 
-      // ── Read current allowances (no UO needed, just reads) ────────────────
+      // Read current allowances
       const erc20Allowance = await publicClient.readContract({
         address: inputToken,
         abi: erc20Abi,
@@ -212,22 +181,21 @@ export function useV4Swap() {
         args: [userAddress, PERMIT2],
       }) as bigint;
 
-      const permit2Allowance = await publicClient.readContract({
+      const [p2Amount, p2Expiration] = await publicClient.readContract({
         address: PERMIT2,
         abi: PERMIT2_ABI,
         functionName: 'allowance',
         args: [userAddress, inputToken, universalRouter as `0x${string}`],
       }) as [bigint, number, number];
 
-      const [p2Amount, p2Expiration] = permit2Allowance;
       const nowSeconds = Math.floor(Date.now() / 1000);
 
-      // ── Build batched call list ────────────────────────────────────────────
-      const calls: { target: `0x${string}`; data: `0x${string}`; value: bigint }[] = [];
+      // Build batched call list
+      const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] = [];
 
       if (erc20Allowance < amountIn) {
         calls.push({
-          target: inputToken,
+          to: inputToken,
           data: encodeFunctionData({
             abi: erc20Abi as Abi,
             functionName: 'approve',
@@ -239,7 +207,7 @@ export function useV4Swap() {
 
       if (p2Amount < amountIn || p2Expiration < nowSeconds) {
         calls.push({
-          target: PERMIT2,
+          to: PERMIT2,
           data: encodeFunctionData({
             abi: PERMIT2_ABI as Abi,
             functionName: 'approve',
@@ -249,23 +217,15 @@ export function useV4Swap() {
         });
       }
 
-      // ── Build swap call ────────────────────────────────────────────────────
       const hookData = encodeAbiParameters([{ type: 'address' }], [userAddress]);
-
       const v4Input = encodeV4SwapInput({
-        currency0,
-        currency1,
-        fee: 500,
-        tickSpacing: 10,
+        currency0, currency1, fee: 500, tickSpacing: 10,
         hooks: contracts.PASSPORT_GATED_HOOK as `0x${string}`,
-        zeroForOne,
-        amountIn,
-        amountOutMinimum,
-        hookData,
+        zeroForOne, amountIn, amountOutMinimum, hookData,
       });
 
       calls.push({
-        target: universalRouter as `0x${string}`,
+        to: universalRouter as `0x${string}`,
         data: encodeFunctionData({
           abi: UNIVERSAL_ROUTER_ABI as Abi,
           functionName: 'execute',
@@ -274,21 +234,17 @@ export function useV4Swap() {
         value: 0n,
       });
 
-      // ── Send as single batched UserOperation ──────────────────────────────
-      const result = await sendUserOperationAsync({
-        uo: calls.length === 1 ? calls[0] : calls,
-      });
-
-      setTxHash(result.hash);
+      const { id } = await client.sendCalls({ calls });
+      const result = await client.waitForCallsStatus({ id });
+      setTxHash(result.receipts?.[0]?.transactionHash as `0x${string}` | undefined);
       setStep('success');
 
     } catch (err: unknown) {
       const e = err as { shortMessage?: string; message?: string };
-      const msg = e?.shortMessage ?? e?.message ?? 'Swap failed';
-      setErrorMsg(msg);
+      setErrorMsg(e?.shortMessage ?? e?.message ?? 'Swap failed');
       setStep('error');
     }
-  }, [userAddress, contracts, publicClient, sendUserOperationAsync, client]);
+  }, [userAddress, contracts, publicClient, signer, chainId]);
 
   const reset = useCallback(() => {
     setStep('idle');

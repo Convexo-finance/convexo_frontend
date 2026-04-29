@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useAuthModal } from '@account-kit/react';
+import { usePrivy } from '@privy-io/react-auth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from '@/lib/wagmi/compat';
@@ -38,7 +38,7 @@ import {
 
 // Bottom user section — shows address + sign out button
 function UserFooter() {
-  const { openAuthModal } = useAuthModal();
+  const { login } = usePrivy();
   const { address } = useAccount();
   const { isAuthenticated, signOut, user } = useAuth();
   const router = useRouter();
@@ -60,7 +60,7 @@ function UserFooter() {
     return (
       <div className="p-4 border-t border-gray-800/50">
         <button
-          onClick={openAuthModal}
+          onClick={login}
           className="w-full px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm transition-colors"
         >
           Sign In

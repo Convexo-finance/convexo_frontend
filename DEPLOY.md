@@ -1,6 +1,6 @@
 # Convexo Frontend — Deployment Guide
 
-> Updated: 2026-04-25 | Stack: Next.js 14 App Router + Alchemy Account Kit v4 | Hosted: Vercel
+> Updated: 2026-04-29 | Stack: Next.js 14 App Router + Privy + @alchemy/wallet-apis | Hosted: Vercel
 
 ---
 
@@ -34,7 +34,7 @@ NEXT_PUBLIC_NETWORK_MODE=testnet
 # Backend API
 NEXT_PUBLIC_API_URL=http://localhost:3001
 
-# Alchemy — Account Kit + RPC
+# Alchemy — Wallet APIs + RPC + NFT/Portfolio APIs
 NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
 
 # Gas Manager policy IDs (one per gas-sponsored network)
@@ -63,7 +63,7 @@ NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
 |----------|----------|-------------|
 | `NEXT_PUBLIC_NETWORK_MODE` | Yes | `mainnet` (Base 8453) or `testnet` (ETH Sepolia 11155111) |
 | `NEXT_PUBLIC_API_URL` | Yes | Backend base URL |
-| `NEXT_PUBLIC_ALCHEMY_API_KEY` | Yes | Alchemy API key — Account Kit + RPC |
+| `NEXT_PUBLIC_ALCHEMY_API_KEY` | Yes | Alchemy API key — Wallet APIs + NFT/Portfolio APIs + RPC |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | Mainnet | Gas Manager policy ID for Base |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` | Mainnet | Gas Manager policy ID for ETH Mainnet |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` | Testnet | Gas Manager policy ID for ETH Sepolia |
@@ -88,7 +88,7 @@ npm run dev        # ← always use this, NOT npx next dev
 
 After both services are running:
 
-1. Sign in with email/passkey/Google OAuth → Alchemy embedded wallet created
+1. Sign in with email/passkey/Google OAuth → Privy embedded wallet connected (existing Alchemy users auto-migrated via MigrationProvider)
 2. New wallet → redirects to `/onboarding`
 3. Step 1: Pick INDIVIDUAL or BUSINESS → `POST /onboarding/type`
 4. Step 2: Fill profile form → `POST /onboarding/profile`
@@ -194,8 +194,9 @@ NEXT_PUBLIC_PINATA_GATEWAY=...
 
 ## Checklist Before Production
 
-### Auth & Alchemy
-- [ ] Alchemy dashboard → App → **Allowed Domains** includes `protocol.convexo.xyz`
+### Auth & Privy
+- [ ] **Privy Dashboard** → App → **Allowed Domains** includes `protocol.convexo.xyz`
+- [ ] Privy App ID and Client ID in `lib/privy/config.ts` match the Privy Dashboard app
 - [ ] Gas Manager policy for Base mainnet allows `protocol.convexo.xyz` as origin
 - [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID` is the UUID with no trailing comments or spaces
 - [ ] `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` set if testnet is used
@@ -210,7 +211,8 @@ NEXT_PUBLIC_PINATA_GATEWAY=...
 
 ### Wallet
 - [ ] No `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` — WalletConnect is fully removed (embedded wallets only)
-- [ ] No EOA connectors — only Alchemy Account Kit (email / passkey / Google OAuth)
+- [ ] No EOA connectors — only Privy embedded wallet (email / passkey / Google OAuth)
+- [ ] `@account-kit/react` hooks NOT imported in any app component (`AlchemyAccountProvider` is gone)
 
 ### Pool & Swaps
 - [ ] `useV4Quote` uses `extsload` path (Quoter is broken on ETH Sepolia — do not re-enable)

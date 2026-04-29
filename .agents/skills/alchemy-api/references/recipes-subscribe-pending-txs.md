@@ -8,7 +8,7 @@ tags:
   - recipe
 related:
   - node-websocket-subscriptions.md
-updated: 2026-02-05
+updated: 2026-04-22
 ---
 # Recipe: Subscribe to Pending Transactions
 
@@ -21,8 +21,10 @@ Stream pending transactions in real time and optionally enrich them with transac
 
 ## Steps
 1. Connect to WebSocket endpoint.
-2. Subscribe to `newPendingTransactions`.
+2. Subscribe to `newPendingTransactions` (or `alchemy_pendingTransactions` with address filters for narrower scope).
 3. Optionally call `eth_getTransactionByHash` to enrich data.
+
+> **Billing note:** WebSocket subscriptions are billed on delivered bandwidth. `newPendingTransactions` is extremely high volume on mainnets — prefer `alchemy_pendingTransactions` with `addresses` and `hashesOnly: true`, and set [usage limits](https://www.alchemy.com/docs/how-to-set-usage-limits-and-alerts-for-your-account) before deploying. See `node-websocket-subscriptions.md` for details.
 
 ## Example (TypeScript)
 ```ts

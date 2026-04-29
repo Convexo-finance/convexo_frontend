@@ -1,19 +1,19 @@
 ---
 id: references/wallets-bundler.md
 name: 'Bundler'
-description: 'A bundler aggregates and submits account abstraction user operations. Use this when integrating smart wallets. Supports EntryPoint v0.6, v0.7, and v0.8.'
+description: 'A bundler aggregates and submits account abstraction user operations. Use this when integrating smart accounts (Wallet APIs). Supports EntryPoint v0.6, v0.7, and v0.8.'
 tags:
   - alchemy
   - wallets
 related:
   - wallets-smart-wallets.md
   - wallets-gas-manager.md
-updated: 2026-04-08
+updated: 2026-04-22
 ---
 # Bundler
 
 ## Summary
-A bundler aggregates and submits account abstraction user operations. Use this when integrating smart wallets. Powered by Rundler, Alchemy's production-grade ERC-4337 bundler.
+A bundler aggregates and submits account abstraction user operations. Use this when integrating smart accounts via Alchemy Wallet APIs. Powered by Rundler, Alchemy's production-grade ERC-4337 bundler.
 
 ## Supported EntryPoint Versions
 - **v0.6** — original ERC-4337 EntryPoint

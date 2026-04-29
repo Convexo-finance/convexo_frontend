@@ -9,10 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@account-kit/infra": "4.84.1",
+    "@account-kit/infra": "^4.84.1",
     "@account-kit/react": "4.84.1",
     "@account-kit/smart-contracts": "^4.84.1",
+    "@alchemy/wallet-apis": "^5.0.0-beta.25",
     "@heroicons/react": "^2.2.0",
+    "@privy-io/alchemy-migration": "^0.0.5",
+    "@privy-io/react-auth": "^3.22.2",
     "@tanstack/react-query": "^5.17.0",
     "@zkpassport/sdk": "^0.12.4",
     "framer-motion": "^12.35.0",

@@ -11,7 +11,7 @@ Read this before touching any file. Update it when you change architecture.
 convexo_frontend/
 ├── app/
 │   ├── page.tsx            — Landing / sign-in (public, no auth)
-│   ├── layout.tsx          — Root layout (providers)
+│   ├── layout.tsx          — Root layout (WagmiProvider → QueryClient → PrivyProvider → MigrationProvider → AuthProvider → NavigationProvider)
 │   ├── onboarding/         — 3-step account setup wizard (standalone, no DashboardLayout)
 │   └── (dashboard)/        — Route group: ALL authenticated pages share DashboardLayout
 │       ├── layout.tsx      — Provides DashboardLayout + AuthGuard for every child
@@ -24,7 +24,7 @@ convexo_frontend/
 ├── components/             — Shared UI (DashboardLayout, wallet/, ui/)
 ├── lib/
 │   ├── api/client.ts       — apiFetch + JWT + silent refresh
-│   ├── alchemy/config.ts   — Account Kit (MAv2, Gas Manager — embedded wallet only)
+│   ├── alchemy/config.ts   — DEAD CODE (alchemyConfig export unused — kept for reference only)
 │   ├── config/             — network.ts, tokens.ts, pinata.ts
 │   ├── contracts/
 │   │   ├── addresses.ts    — All chain addresses (v3.18 deterministic / v3.19 ETH Sepolia) + PERMIT2
@@ -33,15 +33,18 @@ convexo_frontend/
 │   ├── contexts/
 │   │   ├── AuthContext.tsx — AuthProvider + useAuth() (shared auth state — single source of truth)
 │   │   └── NavigationContext.tsx — tier, onboardingStep, NFT status, access control
+│   ├── privy/
+│   │   ├── config.ts       — Privy app IDs, migrationAlchemyConfig, getViemChain(), getPolicyId()
+│   │   └── usePrivySigner.ts — bridges Privy wallet → viem LocalAccount via toViemAccount()
 │   ├── hooks/
 │   │   ├── useAuth.ts      — re-exports useAuth from AuthContext (backward compat)
-│   │   ├── useWalletAccount.ts — Alchemy Account Kit (MAv2 / EIP-7702)
+│   │   ├── useWalletAccount.ts — Privy usePrivy() + useWallets() bridge to wagmi-compatible shape
 │   │   ├── useV4Swap.ts    — Full V4 swap (Permit2 → Universal Router)
 │   │   ├── useV4Quote.ts   — Off-chain quote via V4 Quoter
 │   │   ├── useContracts.ts — getContractsForChain(useChainId())
 │   │   ├── useNFTBalance.ts — on-chain balanceOf reads for all 4 NFT contracts
 │   │   ├── useNFTMetadata.ts — Alchemy getNFTsForOwner (correct chain + addresses)
-│   │   ├── useConvexoWrite.ts — UserOperation via Account Kit (MAv2)
+│   │   ├── useConvexoWrite.ts — Gas-sponsored write via Privy signer + @alchemy/wallet-apis
 │   │   └── ...
 │   ├── stubs/thread-stream.js — Empty stub for turbopack alias
 │   └── wagmi/
@@ -75,7 +78,7 @@ import { useWriteContract } from 'wagmi'
 import { useWriteContract } from '@/lib/wagmi/compat'
 ```
 
-`lib/wagmi/compat.ts` re-exports wagmi AND overrides `useAccount` → `useWalletAccount` and `useChainId` → `PRIMARY_CHAIN_ID`. For writes, always use `useConvexoWrite` — it sends a UserOperation via Account Kit's Gas Manager. For batched writes (approve + action in one tx), use `useSendUserOperation` from `@account-kit/react` directly with an array of UO calls.
+`lib/wagmi/compat.ts` re-exports wagmi AND overrides `useAccount` → `useWalletAccount` and `useChainId` → `PRIMARY_CHAIN_ID`. For writes, always use `useConvexoWrite` — it calls `createSmartWalletClient(...).sendCalls(...)` via `@alchemy/wallet-apis` using the Privy signer. For batched writes (approve + action in one tx), use `createSmartWalletClient` directly with an array of calls.
 
 ### 2. Always use webpack — never bare `next dev`
 
@@ -87,11 +90,13 @@ npm run build      # ✅ aliases to next build --webpack
 
 Turbopack can't handle non-JS files inside `node_modules/thread-stream`. The webpack config aliases `thread-stream → false`.
 
-### 3. Signing — always use Alchemy signer
+### 3. Signing — always use the Privy embedded wallet
 
-Convexo uses embedded wallets only (email / passkey / Google OAuth). Never use wagmi's `signMessage`, `getConnectorClient`, or raw `personal_sign` via EIP-1193.
+Convexo uses embedded wallets only (email / passkey / Google OAuth via Privy). Never use wagmi's `signMessage`, `getConnectorClient`, or a raw `personal_sign` through the wagmi EIP-1193 path.
 
-**Correct:** `signer.signMessage(message)` — `AlchemySigner` handles EIP-191 prefix automatically.
+**Correct (SIWE):** `wallet.getEthereumProvider()` → `provider.request({ method: 'personal_sign', ... })` — Privy's embedded wallet handles EIP-191 prefix automatically. See `AuthContext.tsx`.
+
+**Correct (contract writes):** `usePrivySigner()` → `createSmartWalletClient({ signer, ... })` → `client.sendCalls(...)` via `@alchemy/wallet-apis`. Gas stays sponsored by Alchemy Gas Manager. See `useConvexoWrite.ts`.
 
 Backend verifies with viem `verifyMessage()`.
 
@@ -160,20 +165,22 @@ Hook: `PassportGatedHook` — requires `hookData = abi.encode(userAddress)`
 - Share economics: `getBaseSharePrice()` = principal / totalShares. `getExpectedFinalSharePrice()` includes interest.
 - `getRedeemState(address)` → `{ originalLocked, remainingLocked, claimed, claimableNow }`
 
-The vaults page (`app/investments/vaults/page.tsx`) fetches vault list from `GET /vaults` (backend), then reads on-chain state per vault via `useReadContract`. Deposit modal batches `USDC.approve` + `vault.deposit` into a single UserOperation via `useSendUserOperation` (not `useTokenizedBondVault` hook).
+The vaults page (`app/investments/vaults/page.tsx`) fetches vault list from `GET /vaults` (backend), then reads on-chain state per vault via `useReadContract`. Deposit modal batches `USDC.approve` + `vault.deposit` into a single `client.sendCalls([...])` call via `createSmartWalletClient` from `@alchemy/wallet-apis`.
 
 ---
 
 ## Auth architecture
 
-Auth state is a **shared React Context** — `lib/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth()`. `AuthProvider` sits inside `AlchemyAccountProvider` in `app/providers.tsx`, wrapping `NavigationProvider` and all children. Every component that calls `useAuth()` reads from the **same single instance**.
+Auth state is a **shared React Context** — `lib/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth()`. `AuthProvider` sits inside `MigrationProvider` (inside `PrivyProvider`) in `app/providers.tsx`, wrapping `NavigationProvider` and all children. Every component that calls `useAuth()` reads from the **same single instance**.
 
 This was the fix for the stuck-spinner bug (v3.25): `useAuth` was a plain hook, so `NavigationContext`, `AuthGuard`, and `page.tsx` each had isolated state. After sign-in in `page.tsx`, the others never knew → `useOnboarding` was never enabled → `onboardingStep` stayed `null` forever → AuthGuard spinner never resolved (until refresh).
 
 ```
-GET /auth/nonce?address=<wallet>
-→ build EIP-4361 SIWE message
-→ signer.signMessage(message)  — AlchemySigner handles EIP-191 prefix automatically
+Privy login (email OTP / passkey / Google OAuth) → PrivyProvider sets authenticated=true, wallets[0] ready
+→ AuthContext auto-fires signIn() via useEffect
+→ GET /auth/nonce?address=<wallet>
+→ build EIP-4361 SIWE message (viem/siwe)
+→ wallet.getEthereumProvider().request({ method: 'personal_sign' })  ← Privy handles EIP-191
 → POST /auth/verify { message, signature, address, chainId }
 → store JWT in sessionStorage('convexo_jwt')   ← sessionStorage, NOT localStorage
 → AuthContext.setIsAuthenticated(true)          ← propagates to ALL consumers instantly
@@ -256,7 +263,8 @@ Key endpoints used by frontend:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Auth (SIWE + JWT) | ✅ Complete | **AuthContext** (shared React Context). sessionStorage JWT (tab-close logout). Sign-in stages: nonce/signing/verifying with animated UI. No stuck spinner. |
+| Auth (SIWE + JWT) | ✅ Complete | **AuthContext** (shared React Context). sessionStorage JWT (tab-close logout). Sign-in stages: nonce/signing/verifying with animated UI. No stuck spinner. Privy as signer (v3.26). |
+| Privy migration | ✅ Complete | `@account-kit/react` auth layer replaced with `@privy-io/react-auth` + `MigrationProvider`. Alchemy stays as transaction layer (`@alchemy/wallet-apis`). Existing users migrated via `@privy-io/alchemy-migration`. |
 | Onboarding | ✅ Complete | 3-step wizard wired to backend. Business form pre-fills KYB from onboarding profile data. |
 | ZKPassport (Tier 1) | ✅ Complete | Trustless onchain. Proof staleness (UTC day boundary) detected + handled. |
 | KYC — LP Individuals (Tier 2) | ✅ Complete | Inline form: gov ID + RUT + proof of address → `POST /verification/kyc/submit` (manual review) |
@@ -294,7 +302,7 @@ const zeroForOne = ecopIsC0 ? fromSymbol === 'ECOP' : fromSymbol === 'USDC';
 ```
 
 ### 2. Writes — always use UserOperation batching, never split approve + action
-Account Kit batches approve + swap into a single UO. No approval cooldown window, no double-click risk.
+`@alchemy/wallet-apis` batches approve + swap into a single `sendCalls` call. No approval cooldown window, no double-click risk.
 See `useV4Swap.ts` — reads allowances first, adds approve calls only if needed, then appends the swap call, sends all as one `sendUserOperationAsync`.
 
 ### 3. Token decimal handling

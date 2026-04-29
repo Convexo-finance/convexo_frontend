@@ -239,7 +239,7 @@ Quick category overview:
 - **Webhooks**: Address Activity, Custom (GraphQL), NFT Activity, Payloads, Signatures
 - **Solana**: JSON-RPC, DAS, Yellowstone gRPC (streaming), Wallets
 - **Sui gRPC**: Objects, Transactions, Balances, Move Packages, Name Service, Subscriptions, Signature Verification
-- **Wallets**: Account Kit, Bundler, Gas Manager, Smart Wallets
+- **Wallets**: Account Kit, Bundler, Gas Manager, Wallet APIs (formerly "Smart Wallets")
 - **Rollups**: L2/L3 deployment overview
 - **Recipes**: 10 end-to-end integration workflows
 - **Operational**: Auth, Rate Limits, Monitoring, Best Practices

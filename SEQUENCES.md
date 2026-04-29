@@ -13,15 +13,16 @@ sequenceDiagram
     participant FE as Frontend (Next.js)
     participant BE as Backend API
 
-    User->>FE: Connect wallet (MetaMask / Account Kit)
+    User->>FE: Click "Sign In" → Privy modal (email / passkey / Google OAuth)
+    FE->>FE: Privy authenticated=true, wallets[0] ready (embedded wallet)
     FE->>BE: GET /auth/nonce?address=0x...
     BE-->>FE: { nonce }
     FE->>FE: Build SIWE message (EIP-4361)
-    FE->>User: Prompt wallet signature
-    User-->>FE: Signed message
+    FE->>User: wallet.getEthereumProvider().personal_sign
+    User-->>FE: Signed message (EIP-191)
     FE->>BE: POST /auth/verify { message, signature }
     BE-->>FE: { accessToken, refreshToken }
-    FE->>FE: Store accessToken in localStorage
+    FE->>FE: Store accessToken in sessionStorage (cleared on tab close)
     FE->>BE: POST /reputation/sync (fire-and-forget)
     FE->>FE: AuthGuard mounts → GET /onboarding/status
     Note over FE: NOT_STARTED → router.push('/onboarding')

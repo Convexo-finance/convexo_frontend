@@ -9,7 +9,7 @@ tags:
 related:
   - node-json-rpc.md
   - solana-rpc.md
-updated: 2026-04-08
+updated: 2026-04-22
 ---
 # Supported Networks
 
@@ -20,6 +20,9 @@ Alchemy supports multiple EVM and Solana networks. Always verify network availab
 - Use chain-specific base URLs (e.g., `eth-mainnet`, `polygon-mainnet`).
 - Use testnets for QA.
 - Not all products are available on every chain.
+
+## Recently Deprecated / Removed
+- **Arbitrum Nova** — deprecated. Nova endpoints (`arbnova-mainnet`, `ARBNOVA_MAINNET`) are no longer supported across Node, Wallets (Bundler, Gas Manager), and related products. See the [Arbitrum Nova deprecation notice](https://www.alchemy.com/docs/reference/arbitrum-nova/arbitrum-nova-deprecation-notice) for migration guidance.
 
 
 ## Spec-Derived Network Enums (Partial)
@@ -32,7 +35,6 @@ ETH_SEPOLIA
 ETH_HOLESKY
 ARB_MAINNET
 ARB_SEPOLIA
-ARBNOVA_MAINNET
 MATIC_MAINNET
 MATIC_MUMBAI
 OPT_MAINNET
@@ -100,7 +102,6 @@ aptos-mainnet
 aptos-testnet
 arb-mainnet
 arb-sepolia
-arbnova-mainnet
 arc-testnet
 astar-mainnet
 avax-fuji

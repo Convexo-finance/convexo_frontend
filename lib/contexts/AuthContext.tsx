@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { useSignerStatus, useSigner, useLogout } from '@account-kit/react'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { createSiweMessage } from 'viem/siwe'
 import type { Address } from 'viem'
 import {
@@ -77,9 +77,9 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isConnected: isSignerConnected } = useSignerStatus()
-  const signer = useSigner()
-  const { logout: alchemyLogout } = useLogout()
+  const { authenticated, logout } = usePrivy()
+  const { wallets } = useWallets()
+  const wallet = wallets[0]
 
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
@@ -88,13 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Restore session from JWT on mount — no network request
+  // Restore session from JWT on mount
   useEffect(() => {
     const token = getToken()
-    if (!token) {
-      setIsInitializing(false)
-      return
-    }
+    if (!token) { setIsInitializing(false); return }
 
     const restored = decodeJwtPayload(token)
     if (restored) {
@@ -104,7 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Access token expired — try silent refresh
     if (getRefreshToken()) {
       attemptTokenRefresh()
         .then((ok) => {
@@ -127,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = useCallback(async () => {
-    if (!isSignerConnected || !signer) {
+    if (!authenticated || !wallet) {
       setError('No wallet connected')
       return
     }
@@ -137,8 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
 
     try {
-      const address = (await (signer as { getAddress(): Promise<string> }).getAddress()) as Address
-
+      const address = wallet.address as Address
       const { nonce } = await apiFetch<{ nonce: string }>(`/auth/nonce?address=${address}`)
       setSignInStage('signing')
 
@@ -152,8 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nonce,
       })
 
+      const provider = await wallet.getEthereumProvider()
       const signature = await withTimeout(
-        (signer as { signMessage(msg: string): Promise<string> }).signMessage(message),
+        provider.request({ method: 'personal_sign', params: [message, address] }) as Promise<string>,
         30_000,
         'Signing timed out — try reloading',
       )
@@ -170,7 +166,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user)
       setIsAuthenticated(true)
 
-      // Fire-and-forget: warm reputation cache
       apiFetch('/reputation/sync', {
         method: 'POST',
         body: JSON.stringify({ chainId: PRIMARY_CHAIN_ID }),
@@ -181,23 +176,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSigningIn(false)
       setSignInStage('idle')
     }
-  }, [isSignerConnected, signer])
+  }, [authenticated, wallet])
 
   const signOut = useCallback(async () => {
-    if (getToken()) {
-      apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
-    }
+    if (getToken()) apiFetch('/auth/logout', { method: 'POST' }).catch(() => {})
     clearToken()
     setIsAuthenticated(false)
     setUser(null)
-    alchemyLogout()
-  }, [alchemyLogout])
+    await logout()
+  }, [logout])
+
+  const isConnected = authenticated && !!wallet
 
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
       isInitializing,
-      isConnected: isSignerConnected,
+      isConnected,
       isSigningIn,
       signInStage,
       user,

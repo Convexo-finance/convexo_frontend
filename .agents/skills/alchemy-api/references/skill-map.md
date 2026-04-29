@@ -73,12 +73,12 @@ Complete index of all reference files organized by product area. Use the Endpoin
 ## Wallets
 | File | Name | Short Description |
 | --- | --- | --- |
-| `references/wallets-overview.md` | wallets | Integration guide for Alchemy Wallets and smart wallet tooling including Account Kit, account abstraction, bundler, gas manager, and paymaster. Use when building wallet onboarding flows, sponsoring gas, or integrating smart wallets into your application |
+| `references/wallets-overview.md` | wallets | Integration guide for Alchemy Wallet APIs (formerly "Smart Wallets") including Account Kit, account abstraction, bundler, gas manager, and paymaster. Use when building wallet onboarding flows, sponsoring gas, or integrating smart accounts into your application |
 | `references/wallets-account-kit.md` | Account Kit | Account Kit is Alchemy's wallet SDK for onboarding users and managing wallet UX. Use it for embedded wallet flows or seamless authentication |
-| `references/wallets-bundler.md` | Bundler | A bundler aggregates and submits account abstraction user operations. Use this when integrating smart wallets |
+| `references/wallets-bundler.md` | Bundler | A bundler aggregates and submits account abstraction user operations. Use this when integrating smart accounts (Wallet APIs) |
 | `references/wallets-details.md` | Wallets Overview | Alchemy Wallets tooling helps developers embed or integrate wallets with minimal infrastructure. This section is intentionally basic and focuses on integration touchpoints |
 | `references/wallets-gas-manager.md` | Gas Manager | Gas Manager (paymaster) enables gas sponsorship and cost control for smart wallet flows |
-| `references/wallets-smart-wallets.md` | Smart Wallets | Smart wallets (account abstraction) enable programmable accounts with features like session keys, batched transactions, and gas sponsorship |
+| `references/wallets-smart-wallets.md` | Smart Wallets (concept) | Smart wallets (account abstraction) are programmable accounts with features like session keys, batched transactions, and gas sponsorship. Alchemy exposes these via the Wallet APIs product |
 | `references/wallets-solana-notes.md` | Solana Wallet Notes | Solana wallet integration differs from EVM. Use Solana-specific tooling and RPC semantics |
 | `references/wallets-supported-chains.md` | Wallet Supported Chains | Wallet tooling may support a subset of chains compared to raw RPC. Always confirm chain support before launch |
 | `references/wallets-wallet-apis.md` | Wallet APIs | High-level wallet APIs enable programmatic wallet operations such as signing, transaction preparation, or account management. This guide stays minimal and focuses on integration awareness |

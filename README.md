@@ -4,7 +4,7 @@ Next.js 16 App Router frontend for the Convexo Protocol — connecting internati
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org)
-[![Account Kit](https://img.shields.io/badge/Alchemy%20Account%20Kit-4.84.1-purple)](https://accountkit.alchemy.com)
+[![Privy](https://img.shields.io/badge/Privy-3.22.2-purple)](https://privy.io)
 [![Build](https://img.shields.io/badge/Build-passing-brightgreen)](#quick-start)
 [![Network](https://img.shields.io/badge/Testnet-ETH%20Sepolia-blue)](#environment-variables)
 
@@ -45,12 +45,12 @@ Next.js 16 App Router frontend for the Convexo Protocol — connecting internati
 │  └──────────┬──────────────────┬──────────────────┬────────┘    │
 │             │                  │                  │              │
 │  ┌──────────▼──────┐  ┌────────▼──────┐  ┌───────▼──────────┐  │
-│  │  Account Kit v4 │  │   wagmi v2    │  │   REST API       │  │
-│  │   (Alchemy)     │  │  (EOA wallets)│  │  (convexo-backend│  │
-│  │                 │  │               │  │   + JWT auth)    │  │
-│  │ Email / Passkey │  │ MetaMask      │  │                  │  │
-│  │ Google OAuth    │  │ WalletConnect │  │  apiFetch() +    │  │
-│  │ Smart Account   │  │ Coinbase      │  │  useAuth() SIWE  │  │
+│  │  Privy          │  │ @alchemy/     │  │   REST API       │  │
+│  │  (auth/signer)  │  │ wallet-apis   │  │  (convexo-backend│  │
+│  │                 │  │ (tx layer)    │  │   + JWT auth)    │  │
+│  │ Email / Passkey │  │               │  │                  │  │
+│  │ Google OAuth    │  │ sendCalls()   │  │  apiFetch() +    │  │
+│  │ Embedded wallet │  │ Gas Manager   │  │  useAuth() SIWE  │  │
 │  └─────────────────┘  └───────────────┘  └──────────────────┘  │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -63,17 +63,17 @@ Next.js 16 App Router frontend for the Convexo Protocol — connecting internati
 ### Auth Flow
 
 ```
-User connects via AuthCard (email OTP / passkey / Google OAuth)
+User clicks "Sign In" → Privy modal (email OTP / passkey / Google OAuth)
         │
-        ▼ AlchemySigner connects (embedded wallet only — no MetaMask/WalletConnect)
+        ▼ Privy sets authenticated=true, wallets[0] ready (embedded wallet)
         │
-        ▼ Auto-SIWE fires in page.tsx
+        ▼ Auto-SIWE fires in page.tsx (useEffect watches isConnected)
         │
         GET /auth/nonce?address=<wallet>
         │
         ▼ Build EIP-4361 SIWE message (viem/siwe)
         │
-        ▼ signer.signMessage(message)  ← AlchemySigner handles EIP-191 prefix
+        ▼ wallet.getEthereumProvider().request({ method: 'personal_sign' })
         │
         POST /auth/verify { message, signature, address, chainId }
         │
@@ -96,8 +96,8 @@ Auth state lives in `lib/contexts/AuthContext.tsx` (React Context Provider). All
 |-----------------|----------------------------------------------------------|
 | Framework       | Next.js 14 (App Router) + TypeScript 5.3                 |
 | Bundler         | webpack (required — Turbopack breaks thread-stream)      |
-| Wallet          | Alchemy Account Kit v4 (`@account-kit/react`) — embedded only |
-| Smart Account   | Modular Account V2 — MAv2 (ERC-6900 · EIP-7702)         |
+| Auth / Signer   | Privy (`@privy-io/react-auth`) — email / passkey / Google OAuth |
+| Smart Account   | `@alchemy/wallet-apis` — MAv2 · EIP-7702 · Gas Manager   |
 | Auth            | AuthContext (React) + SIWE (EIP-4361) + JWT + silent refresh |
 | On-chain reads  | wagmi 2 + viem 2 (read-only; writes via MAv2 UO)         |
 | State / Cache   | TanStack React Query v5                                  |
@@ -109,47 +109,52 @@ Auth state lives in `lib/contexts/AuthContext.tsx` (React Context Provider). All
 
 ---
 
-## Smart Wallet (MAv2 / EIP-7702)
+## Smart Wallet (Privy + Alchemy Wallet APIs)
 
-Convexo uses **Alchemy Modular Account V2 (MAv2)** as its smart wallet layer. MAv2 is an ERC-6900 account with EIP-7702 support, audited by ChainLight and Quantstamp, and ~40% cheaper to deploy than alternatives like Safe.
+Convexo uses **Privy** for auth/signing and **`@alchemy/wallet-apis`** for smart contract transactions. Privy manages the embedded wallet (email / passkey / Google). Alchemy Wallet APIs wrap that signer in a `SmartWalletClient` that sends EIP-7702-delegated UserOperations through the Gas Manager.
 
-### Two wallet modes
+### Architecture
 
-| User type | Wallet mode | Smart account? | Gas sponsorship? |
-|-----------|-------------|----------------|------------------|
-| Email / Passkey / Google | Alchemy embedded signer → MAv2 via EIP-7702 | ✅ EOA address = smart wallet address | ✅ Gas Manager |
-| MetaMask / WalletConnect / Coinbase | External EOA (raw wagmi) | ❌ No UserOperations | ❌ Not supported |
+```
+Privy embedded wallet  →  usePrivySigner()  →  createSmartWalletClient()
+    (auth + keys)              (viem LocalAccount)   (@alchemy/wallet-apis)
+                                                          │
+                                                   client.sendCalls([...])
+                                                   Gas Manager sponsored ✅
+```
+
+### Embedded wallet only
+
+MetaMask, WalletConnect, and Coinbase Wallet connectors were removed (2026-04-13). Only email OTP, passkey, and Google OAuth via Privy are supported.
 
 ### EIP-7702 delegation is automatic
 
-No manual "activation" step is required. When an embedded-signer user sends their **first transaction**, Account Kit automatically:
-
-1. Detects that EIP-7702 delegation is needed
-2. Bundles the EIP-7702 authorization signature + the UserOperation into a **single on-chain submission**
-3. Delegates the signer's EOA to the MAv2 implementation contract at the same address
-
-```
-Delegation target: 0x69007702764179f14F51cdce752f4f775d74E139 (MAv2 on Base)
-```
+On the user's first transaction `createSmartWalletClient` bundles the EIP-7702 authorization + the call into a single on-chain submission. The EOA address **is** the smart account address.
 
 ### Gas Manager (sponsorship)
 
-| Chain | Env var | Policy ID |
-|-------|---------|-----------|
-| Base mainnet | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | `f09c26c8-7567-478d-861a-ace75dec3f28` |
-| Ethereum mainnet | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` | `063c2de8-1e92-4e84-b1ee-0444523e27c1` |
+| Chain | Env var |
+|-------|---------|
+| Base mainnet | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` |
+| ETH Sepolia | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` |
+| Ethereum mainnet | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` |
 
 ### Import rules (enforced)
 
 ```typescript
 // ✅ Always import wagmi hooks through the compat layer
-import { useReadContract, useWriteContract, useAccount } from '@/lib/wagmi/compat'
+import { useReadContract, useAccount, useChainId } from '@/lib/wagmi/compat'
 
-// ❌ Never import directly
+// ✅ For writes — use useConvexoWrite (single call) or createSmartWalletClient directly (batched)
+import { useConvexoWrite } from '@/lib/hooks/useConvexoWrite'
+
+// ❌ Never import directly from wagmi
 import { useAccount } from 'wagmi'
+
+// ❌ Never use useWriteContract — it calls connector.getChainId() which crashes (no connectors)
 ```
 
-`lib/wagmi/compat.ts` re-exports everything from `wagmi` and overrides `useAccount` with `useWalletAccount` so all components transparently handle both wallet modes.
+`lib/wagmi/compat.ts` re-exports everything from `wagmi` and overrides `useAccount` → `useWalletAccount` (Privy bridge) and `useChainId` → `PRIMARY_CHAIN_ID`.
 
 ---
 
@@ -158,8 +163,8 @@ import { useAccount } from 'wagmi'
 ```
 convexo_frontend/
 ├── app/
-│   ├── layout.tsx                    # Root layout — Account Kit SSR cookie init
-│   ├── providers.tsx                 # WagmiProvider + QueryClient + AlchemyAccountProvider + AuthProvider
+│   ├── layout.tsx                    # Root layout
+│   ├── providers.tsx                 # WagmiProvider → QueryClient → PrivyProvider → MigrationProvider → AuthProvider → NavigationProvider
 │   ├── globals.css                   # Tailwind + design system utility classes
 │   ├── page.tsx                      # Home / landing
 │   ├── error.tsx                     # Root error boundary
@@ -216,8 +221,9 @@ convexo_frontend/
 ├── lib/
 │   ├── api/
 │   │   └── client.ts                 # apiFetch(), JWT token helpers, ApiError, silent refresh
-│   ├── alchemy/
-│   │   └── config.ts                 # Account Kit config (chains, connectors, OAuth, Gas Manager)
+│   ├── privy/
+│   │   ├── config.ts                 # Privy app IDs, migrationAlchemyConfig, getViemChain(), getPolicyId()
+│   │   └── usePrivySigner.ts         # Privy wallet → viem LocalAccount bridge
 │   ├── config/
 │   │   ├── tokens.ts                 # Token metadata (symbol, address, decimals, logo)
 │   │   └── pinata.ts                 # Pinata IPFS gateway helpers
@@ -231,7 +237,7 @@ convexo_frontend/
 │   ├── hooks/
 │   │   ├── useAuth.ts                # Re-exports useAuth from AuthContext (backward compat)
 │   │   ├── useOnboarding.ts          # GET /onboarding/status
-│   │   ├── useWalletAccount.ts       # Unified: AlchemySigner + external EOA
+│   │   ├── useWalletAccount.ts       # Privy wallet → wagmi-compatible useAccount shape
 │   │   ├── useNFTBalance.ts          # Live on-chain NFT balances for access gating
 │   │   ├── useNFTMetadata.ts         # Alchemy NFT API — real IPFS metadata for NFT cards
 │   │   ├── usePortfolioBalances.ts   # Alchemy Portfolio API — replaces 7 calls with 1
@@ -316,19 +322,11 @@ NEXT_PUBLIC_NETWORK_MODE=testnet
 # Backend API
 NEXT_PUBLIC_API_URL=http://localhost:3001
 
-# Alchemy (Account Kit + NFT API + Portfolio API)
+# Alchemy (Wallet APIs + NFT API + Portfolio API + Gas Manager)
 NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key
 NEXT_PUBLIC_ALCHEMY_POLICY_ID=your_base_gas_manager_policy_id
+NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA=your_sepolia_gas_manager_policy_id
 NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH=your_eth_gas_manager_policy_id
-
-# WalletConnect
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
-
-# RPC endpoints (optional — public fallbacks exist)
-NEXT_PUBLIC_BASE_MAINNET_RPC_URL=https://mainnet.base.org
-NEXT_PUBLIC_ETHEREUM_MAINNET_RPC_URL=https://eth.llamarpc.com
-NEXT_PUBLIC_UNICHAIN_MAINNET_RPC_URL=https://mainnet.unichain.org
-NEXT_PUBLIC_ETHEREUM_SEPOLIA_RPC_URL=https://rpc.sepolia.org
 
 # Pinata IPFS
 PINATA_JWT=your_pinata_jwt
@@ -339,9 +337,9 @@ NEXT_PUBLIC_PINATA_GATEWAY=your-gateway.mypinata.cloud
 |---|---|---|
 | `NEXT_PUBLIC_NETWORK_MODE` | | `mainnet` or `testnet` (default: testnet = ETH Sepolia) |
 | `NEXT_PUBLIC_API_URL` | ✅ | Backend API base URL |
-| `NEXT_PUBLIC_ALCHEMY_API_KEY` | ✅ | Alchemy key — Account Kit + NFT + Portfolio APIs |
+| `NEXT_PUBLIC_ALCHEMY_API_KEY` | ✅ | Alchemy key — Wallet APIs + NFT + Portfolio APIs |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID` | ✅ | Gas Manager policy for Base mainnet |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | ✅ | WalletConnect v2 project ID |
+| `NEXT_PUBLIC_ALCHEMY_POLICY_ID_SEPOLIA` | ✅ | Gas Manager policy for ETH Sepolia |
 | `NEXT_PUBLIC_ALCHEMY_POLICY_ID_ETH` | | Gas Manager policy for Ethereum mainnet |
 | `PINATA_JWT` | | Pinata JWT for server-side IPFS uploads |
 | `NEXT_PUBLIC_PINATA_GATEWAY` | | Pinata gateway subdomain |
@@ -357,7 +355,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 
 const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, user, error, signIn, signOut } = useAuth()
 // isAuthenticated  → JWT is in sessionStorage('convexo_jwt')
-// isConnected      → Alchemy signer connected (embedded wallet only)
+// isConnected      → Privy authenticated + wallet ready (embedded wallet only)
 // user             → { id, walletAddress, accountType, onboardingStep, isAdmin }
 // signInStage      → 'nonce' | 'signing' | 'verifying' | 'idle'
 ```
@@ -366,7 +364,7 @@ const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, 
 
 **Silent refresh:** `lib/api/client.ts` automatically calls `POST /auth/refresh` on 401 before retrying. No manual token management required.
 
-**Embedded wallet only:** MetaMask, WalletConnect, and Coinbase Wallet connectors were removed (2026-04-13). Only email OTP, passkey, and Google OAuth via Alchemy Account Kit are supported.
+**Embedded wallet only:** MetaMask, WalletConnect, and Coinbase Wallet connectors were removed (2026-04-13). Only email OTP, passkey, and Google OAuth via Privy are supported.
 
 ---
 
@@ -414,12 +412,12 @@ const { hasPassportNFT, hasAnyLPNFT, hasEcreditscoringNFT, tier } = useNFTBalanc
 | Hook | Purpose |
 |---|---|
 | `useAuth` | SIWE sign-in/out, JWT storage, user object |
-| `useWalletAccount` | Unified address for Account Kit + EOA wallets |
+| `useWalletAccount` | Unified address from Privy embedded wallet |
 | `useOnboarding` | Onboarding step + account type from backend |
 | `useNFTBalance` | Live on-chain `balanceOf` for all 4 NFT contracts |
 | `useNFTMetadata` | Alchemy NFT API — real IPFS image + name per NFT |
 | `usePortfolioBalances` | Alchemy Portfolio API — all token balances in 1 request |
-| `useConvexoWrite` | Drop-in `useWriteContract` — UO for smart accounts, raw tx for EOA |
+| `useConvexoWrite` | Gas-sponsored contract write via Privy signer + `@alchemy/wallet-apis` |
 | `useSendToken` | Unified ETH/ERC-20 transfer with chain switching |
 | `useUserReputation` | Cached tier from backend + manual sync trigger |
 | `useVaults` | Tokenized bond vault reads |
@@ -552,10 +550,10 @@ See [DEPLOY.md](./DEPLOY.md) for the full production checklist.
 | Vault investments | ✅ | `GET /vaults` backend + on-chain `useReadContract` for live state |
 | ZKPassport flow | ✅ | Age ≥18, sanctions (20 ISO alpha-3), nationality, expiry — `devMode` OFF for prod |
 | Auth (JWT decode) | ✅ | Instant session restore from JWT payload — no network call on mount |
-| Account type | ✅ `MultiOwnerModularAccount` everywhere | `useWalletAccount`, `useConvexoWrite`, `useSendToken` |
-| EIP-7702 delegation | ✅ Automatic | Account Kit bundles auth + UO on first tx — no activation step |
+| Privy migration | ✅ Complete | `PrivyProvider` + `MigrationProvider` — `@account-kit/react` auth hooks fully removed |
+| EIP-7702 delegation | ✅ Automatic | `@alchemy/wallet-apis` bundles auth + sendCalls on first tx — no activation step |
 | Raw `from 'wagmi'` imports | ✅ Removed | All use `from '@/lib/wagmi/compat'` |
-| Auth race condition | ✅ Fixed | `AuthGuard` waits for JWT init + Account Kit signer reconnection |
+| Auth race condition | ✅ Fixed | `AuthGuard` waits for JWT init + `usePrivy().ready` |
 | Silent refresh | ✅ Active | `POST /auth/refresh` on 401 in `lib/api/client.ts` |
 | Error boundaries | ✅ Added | Root `error.tsx` + `loading.tsx` files throughout |
 | Page transitions | ✅ Active | Framer Motion `AnimatePresence` in `DashboardLayout` |
@@ -571,13 +569,12 @@ See [DEPLOY.md](./DEPLOY.md) for the full production checklist.
 | `ChunkLoadError` in browser | Stale webpack cache — `rm -rf .next && npm run dev` |
 | Dev server starts but 500 errors | Not using webpack — use `npm run dev`, not `npx next dev` |
 | `401 Session expired` on all API calls | Sign in again via `useAuth().signIn()` |
-| Wallet not connecting | Verify `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` |
-| Account Kit modal not showing | Verify `NEXT_PUBLIC_ALCHEMY_API_KEY` is valid |
+| Privy modal not showing | Verify Privy App ID in `lib/privy/config.ts` + Privy Dashboard allowed domains |
 | Rate shows "unavailable" | Admin must set rate via `POST /admin/rates` |
 | Credit score form won't submit | All 3 PDFs + all 9 numeric fields are required |
 | UserOperation fails "Add ETH on Base" | Gas Manager not applied — check `NEXT_PUBLIC_ALCHEMY_POLICY_ID` |
-| First tx doesn't delegate to MAv2 | Delegation is automatic — Account Kit bundles EIP-7702 on first tx |
+| First tx doesn't delegate to MAv2 | Delegation is automatic — `@alchemy/wallet-apis` bundles EIP-7702 on first tx |
 | `useAccount` returns wrong address | Import `from '@/lib/wagmi/compat'`, not `from 'wagmi'` |
 | Digital-id cards all visible | `accountType` is null — user hasn't finished onboarding type step |
 | Onboarding redirect loop | `/onboarding` must NOT use `DashboardLayout` (which wraps `AuthGuard`) |
-| TypeScript error `MultiOwnerModularAccount` | `npm install @account-kit/smart-contracts@4.84.1` |
+| Existing Alchemy users not migrating | Ensure `MigrationProvider` wraps the app and `migrationAlchemyConfig` uses correct chain |

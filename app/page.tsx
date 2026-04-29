@@ -2,20 +2,20 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthCard, useSignerStatus } from '@account-kit/react';
+import { usePrivy } from '@privy-io/react-auth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
+  const { ready, authenticated, login } = usePrivy();
   const { isAuthenticated, isInitializing, isConnected, isSigningIn, signInStage, error, clearError, signIn } = useAuth();
-  const { isInitializing: isSignerInitializing } = useSignerStatus();
 
   const signInAttempted = useRef(false);
 
-  // Auto-SIWE: fires as soon as the Alchemy signer connects
+  // Auto-SIWE: fires as soon as Privy wallet is connected
   useEffect(() => {
-    if (isInitializing || isSignerInitializing) return;
+    if (!ready || isInitializing) return;
     if (isAuthenticated) { signInAttempted.current = false; return; }
     if (!isConnected) { signInAttempted.current = false; return; }
     if (isSigningIn || error) return;
@@ -23,23 +23,20 @@ export default function SignInPage() {
 
     signInAttempted.current = true;
     signIn();
-  }, [isInitializing, isSignerInitializing, isAuthenticated, isConnected, isSigningIn, error, signIn]);
+  }, [ready, isInitializing, isAuthenticated, isConnected, isSigningIn, error, signIn]);
 
-  // Redirect to /profile once authenticated — AuthGuard handles onboarding redirect
   useEffect(() => {
     if (isAuthenticated) router.replace('/profile');
   }, [isAuthenticated, router]);
 
-  // Error auto-reset after 3 s (shows retry option, not auto-retry to avoid loops)
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(clearError, 3_000);
     return () => clearTimeout(t);
   }, [error, clearError]);
 
-  const isReady = !isInitializing && !isSignerInitializing;
+  const isReady = ready && !isInitializing;
 
-  // Loading or redirecting — show spinner
   if (!isReady || isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0a0d14] flex flex-col items-center justify-center gap-4">
@@ -60,10 +57,15 @@ export default function SignInPage() {
           <p className="text-gray-400 text-sm">Reducing the funding gap for SMEs in Latin America</p>
         </div>
 
-        {/* AuthCard — email OTP / Google OAuth / passkey */}
-        {!isConnected && !error && (
+        {/* Login button — shown until Privy authenticated */}
+        {!authenticated && !error && (
           <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
-            <AuthCard />
+            <button
+              onClick={login}
+              className="w-full bg-purple-600 hover:bg-purple-500 transition-colors text-white font-semibold py-4 px-6 rounded-2xl text-base"
+            >
+              Sign In
+            </button>
           </div>
         )}
 
@@ -74,13 +76,13 @@ export default function SignInPage() {
               <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
               <div className="text-center space-y-1">
                 <p className="text-white font-medium text-sm">
-                  {signInStage === 'nonce' && 'Preparing sign-in…'}
-                  {signInStage === 'signing' && 'Authenticating…'}
+                  {signInStage === 'nonce'     && 'Preparing sign-in…'}
+                  {signInStage === 'signing'   && 'Authenticating…'}
                   {signInStage === 'verifying' && 'Almost done…'}
                 </p>
                 <p className="text-gray-500 text-xs">
-                  {signInStage === 'nonce' && 'Fetching a one-time code'}
-                  {signInStage === 'signing' && 'Signing with your embedded wallet'}
+                  {signInStage === 'nonce'     && 'Fetching a one-time code'}
+                  {signInStage === 'signing'   && 'Signing with your embedded wallet'}
                   {signInStage === 'verifying' && 'Confirming with server'}
                 </p>
               </div>
@@ -110,7 +112,7 @@ export default function SignInPage() {
           </div>
         )}
 
-        {/* Error (auto-clears in 3 s) */}
+        {/* Error */}
         {error && (
           <div className="rounded-2xl bg-[#0f1219] border border-red-800/40 p-5 shadow-2xl shadow-black/40 text-center space-y-2">
             <p className="text-red-400 font-medium text-sm">Sign-in failed</p>
@@ -125,7 +127,7 @@ export default function SignInPage() {
         )}
 
         <p className="text-center text-xs text-gray-600">
-          Protocol v2.1 · Powered by Alchemy Account Kit
+          Protocol v2.1 · Powered by Privy
         </p>
       </div>
     </div>

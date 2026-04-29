@@ -4,7 +4,7 @@ name: node-apis
 description: Core JSON-RPC and WebSocket APIs for EVM chains via Alchemy node endpoints, plus Debug/Trace and utility methods. Use when building EVM integrations that need standard RPC calls, real-time subscriptions, enhanced Alchemy methods, or execution-level tracing.
 tags: []
 related: []
-updated: 2026-04-08
+updated: 2026-04-22
 metadata:
   author: alchemyplatform
   version: "1.0"
@@ -22,8 +22,13 @@ Core JSON-RPC and WebSocket APIs for EVM chains via Alchemy node endpoints, plus
 5. [node-debug-api.md](node-debug-api.md) - Debug tracing for transaction simulation and execution insight.
 6. [node-trace-api.md](node-trace-api.md) - Trace-level details for internal calls and state diffs.
 
-## Recently Added Chains
-- **Injective** — Cosmos SDK-based L1 with full EVM compatibility. Supports standard `eth_*` JSON-RPC methods. Use endpoint pattern `injective-mainnet`. See [Injective API Overview](https://www.alchemy.com/docs/chains/injective/injective-api-overview).
+## Recently Added / Updated Chains
+- **Injective** — Cosmos SDK-based L1 with full EVM compatibility. Supports standard `eth_*` JSON-RPC methods. Use endpoint pattern `injective-mainnet`. A few methods (`eth_getBlockReceipts`, `eth_syncing`, `net_listening`) are testnet-only today. Debug namespace (`debug_*`) methods are served by the standalone **Debug API product**, not the chain spec — see [Debug API Quickstart](https://www.alchemy.com/docs/reference/debug-api-quickstart). Overview: [Injective API Overview](https://www.alchemy.com/docs/chains/injective/injective-api-overview).
+- **Gensyn** — mainnet is live. Endpoint `gensyn-mainnet` (chain ID `685689`); `gensyn-testnet` remains available. See the [Gensyn quickstart](https://www.alchemy.com/docs/chains/gensyn/gensyn-api-quickstart).
+- **MegaETH** — supports `eth_getWithdrawalProof` (20 CU). See [Compute Unit Costs](https://www.alchemy.com/docs/reference/compute-unit-costs#megaeth-specific-methods).
+
+## Recently Deprecated Chains
+- **Arbitrum Nova** — deprecated. Nova endpoints are no longer supported; see the [Arbitrum Nova deprecation notice](https://www.alchemy.com/docs/reference/arbitrum-nova/arbitrum-nova-deprecation-notice).
 
 ## How to Use This Skill
 - Start with `node-json-rpc.md` for base connectivity and request patterns.

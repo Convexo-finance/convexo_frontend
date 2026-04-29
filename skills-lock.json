@@ -9,7 +9,7 @@
     "alchemy-api": {
       "source": "alchemyplatform/skills",
       "sourceType": "github",
-      "computedHash": "ad828c22da1cd3fba26cfbd7ef508050da28c0dabb4730fd0ede1632c2ab792c"
+      "computedHash": "8cada437db0f83190073c91d33c82d694ead0d020f3473805d74d4d88a0bfa2c"
     },
     "alchemy-cli": {
       "source": "alchemyplatform/skills",

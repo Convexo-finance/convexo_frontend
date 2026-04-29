@@ -4,6 +4,34 @@ Format: version → what changed → status.
 
 ---
 
+## v3.26 — 2026-04-29 (Privy signer migration — replaces Alchemy Account Kit auth layer)
+
+### Changed
+- **Auth provider:** `AlchemyAccountProvider` replaced with `PrivyProvider` + `MigrationProvider` (`@privy-io/alchemy-migration`). Alchemy remains as the **transaction layer** (`@alchemy/wallet-apis`), only the **signer/auth layer** moved to Privy.
+- **Sign-in:** `AlchemySigner.signMessage()` → `wallet.getEthereumProvider().request({ method: 'personal_sign' })` via Privy's embedded wallet. SIWE flow unchanged.
+- **Smart wallet writes:** `sendUserOperation` / `useSendUserOperation` from `@account-kit/react` → `createSmartWalletClient` + `client.sendCalls()` from `@alchemy/wallet-apis` with `usePrivySigner()` as the signer.
+- **AuthContext:** Replaced `useSigner()` from Account Kit with `useWallets()[0].getEthereumProvider()` from `@privy-io/react-auth`.
+- **useWalletAccount:** Now reads from `usePrivy()` + `useWallets()` instead of `useAccount()` from Account Kit.
+- **useConvexoWrite / useV4Swap / useSendToken:** Internals switched to `usePrivySigner` + `@alchemy/wallet-apis`, public API unchanged.
+- **AuthGuard:** `useSignerStatus` from `@account-kit/react` → `usePrivy().ready`.
+- **Sidebar:** `useAuthModal` from `@account-kit/react` → `usePrivy().login`.
+- **Profile page — Sign-in Methods card:** `useAddPasskey` + `useAuthenticate` from `@account-kit/react` → `useLinkAccount` from `@privy-io/react-auth`. Email linking simplified to modal-guided flow (no custom OTP input form).
+
+### Added
+- `lib/privy/config.ts` — Privy app IDs, `migrationAlchemyConfig`, `getViemChain()`, `getPolicyId()`.
+- `lib/privy/usePrivySigner.ts` — Bridges Privy embedded wallet to viem `LocalAccount` via `toViemAccount()`.
+- `@privy-io/react-auth ^3.22.2`, `@privy-io/alchemy-migration ^0.0.5` added to `package.json`.
+
+### Removed
+- `AlchemyAccountProvider` from `app/providers.tsx`.
+- `lib/alchemy/config.ts` — dead code; `alchemyConfig` no longer imported anywhere.
+- `@account-kit/react` hooks from all app-level components (only `@account-kit/infra` + `@account-kit/smart-contracts` remain as peer deps for `@alchemy/wallet-apis`).
+
+### Migration note
+Existing users import seamlessly — `MigrationProvider` detects Alchemy wallets on first Privy login and transfers keys via end-to-end encryption. Wallet addresses are preserved.
+
+---
+
 ## v3.25 — 2026-04-27 (Auth context fix — stuck spinner after sign-in)
 
 ### Fixed

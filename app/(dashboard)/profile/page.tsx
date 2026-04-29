@@ -18,8 +18,8 @@ import {
   KeyIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
-import { useState, useEffect, useCallback } from 'react';
-import { useAddPasskey, useAuthenticate, useSignerStatus } from '@account-kit/react';
+import { useState, useEffect } from 'react';
+import { usePrivy, useLinkAccount } from '@privy-io/react-auth';
 
 interface ContactInfo {
   displayName: string;
@@ -59,58 +59,21 @@ function LinkedInIcon({ className }: { className?: string }) {
 /* Sign-in Methods card                                                 */
 /* ------------------------------------------------------------------ */
 function SignInMethodsCard() {
-  const { status } = useSignerStatus();
-  const { addPasskey, isAddingPasskey } = useAddPasskey();
-  const { authenticate, isPending: isAuthPending } = useAuthenticate();
-
-  // Email-link flow state
-  const [showEmailInput, setShowEmailInput] = useState(false);
-  const [emailValue, setEmailValue] = useState('');
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailError, setEmailError] = useState('');
-
-  // Passkey state
-  const [passkeySuccess, setPasskeySuccess] = useState(false);
+  const { authenticated } = usePrivy();
+  const [passkeyAdded, setPasskeyAdded] = useState(false);
+  const [emailLinked, setEmailLinked] = useState(false);
   const [passkeyError, setPasskeyError] = useState('');
-  const prevAddingRef = useState<boolean>(false);
 
-  // Detect when addPasskey finishes (isAddingPasskey: true → false)
-  useEffect(() => {
-    if (prevAddingRef[0] && !isAddingPasskey && !passkeyError) {
-      setPasskeySuccess(true);
-    }
-    prevAddingRef[0] = isAddingPasskey;
-  }, [isAddingPasskey, passkeyError]);
-
-  const handleAddPasskey = useCallback(() => {
-    setPasskeyError('');
-    setPasskeySuccess(false);
-    (async () => {
-      try {
-        await (addPasskey() as unknown as Promise<void>);
-      } catch (e) {
-        setPasskeyError((e as Error)?.message ?? 'Could not add passkey');
-      }
-    })();
-  }, [addPasskey]);
-
-  const handleLinkEmail = useCallback(() => {
-    const trimmed = emailValue.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError('Enter a valid email address');
-      return;
-    }
-    setEmailError('');
-    authenticate(
-      { type: 'email', email: trimmed },
-      {
-        onSuccess: () => { setEmailSent(true); setShowEmailInput(false); },
-        onError: (e) => setEmailError(e.message ?? 'Could not send code'),
-      },
-    );
-  }, [emailValue, authenticate]);
-
-  const isConnected = status === 'CONNECTED';
+  const { linkPasskey, linkEmail, linkGoogle } = useLinkAccount({
+    onSuccess: ({ linkMethod }) => {
+      if (linkMethod === 'passkey') setPasskeyAdded(true);
+      if (linkMethod === 'email') setEmailLinked(true);
+      setPasskeyError('');
+    },
+    onError: (error) => {
+      setPasskeyError(typeof error === 'string' ? error : 'Link failed');
+    },
+  });
 
   return (
     <div className="card">
@@ -132,81 +95,47 @@ function SignInMethodsCard() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            {passkeySuccess ? (
+            {passkeyAdded ? (
               <span className="text-xs text-emerald-400 flex items-center gap-1">
                 <CheckIcon className="w-3.5 h-3.5" /> Added!
               </span>
             ) : (
               <button
-                onClick={handleAddPasskey}
-                disabled={isAddingPasskey || !isConnected}
+                onClick={() => { setPasskeyError(''); setPasskeyAdded(false); linkPasskey(); }}
+                disabled={!authenticated}
                 className="text-xs px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
               >
-                {isAddingPasskey ? 'Adding…' : 'Add Passkey'}
+                Add Passkey
               </button>
             )}
             {passkeyError && <p className="text-xs text-red-400 max-w-[180px] text-right">{passkeyError}</p>}
           </div>
         </div>
 
-        {/* ── Email OTP ── */}
-        <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gray-700 flex items-center justify-center">
-                <EnvelopeIcon className="w-5 h-5 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-white">Email</p>
-                <p className="text-xs text-gray-500">Sign in with a one-time code</p>
-              </div>
+        {/* ── Email ── */}
+        <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-700 flex items-center justify-center">
+              <EnvelopeIcon className="w-5 h-5 text-blue-400" />
             </div>
-            {!showEmailInput && !emailSent && (
-              <button
-                onClick={() => setShowEmailInput(true)}
-                disabled={!isConnected}
-                className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
-              >
-                Link Email
-              </button>
-            )}
-            {emailSent && (
-              <span className="text-xs text-emerald-400 flex items-center gap-1">
-                <CheckIcon className="w-3.5 h-3.5" /> Linked!
-              </span>
-            )}
+            <div>
+              <p className="text-sm font-medium text-white">Email</p>
+              <p className="text-xs text-gray-500">Sign in with a one-time code</p>
+            </div>
           </div>
-
-          {showEmailInput && (
-            <div className="mt-3 flex gap-2">
-              <div className="relative flex-1">
-                <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  type="email"
-                  value={emailValue}
-                  onChange={(e) => setEmailValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLinkEmail()}
-                  placeholder="your@email.com"
-                  className="w-full pl-9 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:border-blue-500 focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <button
-                onClick={handleLinkEmail}
-                disabled={isAuthPending}
-                className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
-              >
-                {isAuthPending ? '…' : 'Send'}
-              </button>
-              <button
-                onClick={() => { setShowEmailInput(false); setEmailError(''); }}
-                className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+          {emailLinked ? (
+            <span className="text-xs text-emerald-400 flex items-center gap-1">
+              <CheckIcon className="w-3.5 h-3.5" /> Linked!
+            </span>
+          ) : (
+            <button
+              onClick={() => linkEmail()}
+              disabled={!authenticated}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+            >
+              Link Email
+            </button>
           )}
-          {emailError && <p className="mt-2 text-xs text-red-400">{emailError}</p>}
         </div>
 
         {/* ── Google ── */}
@@ -226,13 +155,11 @@ function SignInMethodsCard() {
             </div>
           </div>
           <button
-            onClick={() =>
-              authenticate({ type: 'oauth', authProviderId: 'google', mode: 'popup' })
-            }
-            disabled={isAuthPending || !isConnected}
+            onClick={() => linkGoogle()}
+            disabled={!authenticated}
             className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors border border-gray-600"
           >
-            {isAuthPending ? 'Connecting…' : 'Link Google'}
+            Link Google
           </button>
         </div>
       </div>

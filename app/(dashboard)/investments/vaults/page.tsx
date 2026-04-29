@@ -5,7 +5,9 @@ import { useAccount, useReadContract } from '@/lib/wagmi/compat';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNFTBalance } from '@/lib/hooks/useNFTBalance';
 import { apiFetch, ApiError } from '@/lib/api/client';
-import { useSmartAccountClient, useSendUserOperation } from '@account-kit/react';
+import { createSmartWalletClient, alchemyWalletTransport } from '@alchemy/wallet-apis';
+import { usePrivySigner } from '@/lib/privy/usePrivySigner';
+import { getViemChain, getPolicyId } from '@/lib/privy/config';
 import { useContracts } from '@/lib/hooks/useContracts';
 import TokenizedBondVaultABI from '@/abis/TokenizedBondVault.json';
 import ERC20ABI from '@/ERC20.json';
@@ -193,58 +195,59 @@ function DepositModal({
   const minInvest = formatUSDC(vault.minInvestment);
   const amountWei = amount ? parseUnits(amount, 6) : 0n;
 
-  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
-  const { sendUserOperation, sendUserOperationResult, error: uoError } = useSendUserOperation({ client, waitForTxn: true });
+  const signer = usePrivySigner();
 
-  // Watch for UO completion
-  useEffect(() => {
-    if (sendUserOperationResult?.hash && step === 'processing') {
-      setStep('done');
-    }
-  }, [sendUserOperationResult, step]);
-
-  // Watch for UO error
-  useEffect(() => {
-    if (uoError && step === 'processing') {
-      const msg = (uoError as { shortMessage?: string; message?: string })?.shortMessage ?? uoError.message ?? 'Transaction failed';
-      setErrorMsg(msg);
-      setStep('error');
-    }
-  }, [uoError, step]);
-
-  const handleDeposit = () => {
-    if (!amount || Number(amount) <= 0 || !address) return;
+  const handleDeposit = async () => {
+    if (!amount || Number(amount) <= 0 || !address || !signer) return;
     const minWei = BigInt(vault.minInvestment);
     if (amountWei < minWei) {
       setErrorMsg(`Minimum investment is ${minInvest} USDC`);
       return;
     }
+
     setStep('processing');
     setErrorMsg('');
 
-    // Batch approve + deposit into a single UserOperation
-    sendUserOperation({
-      uo: [
-        {
-          target: contracts.USDC,
-          data: encodeFunctionData({
-            abi: ERC20ABI as Abi,
-            functionName: 'approve',
-            args: [vault.vaultAddress as `0x${string}`, amountWei],
-          }),
-          value: 0n,
-        },
-        {
-          target: vault.vaultAddress as `0x${string}`,
-          data: encodeFunctionData({
-            abi: TokenizedBondVaultABI as Abi,
-            functionName: 'deposit',
-            args: [amountWei, address],
-          }),
-          value: 0n,
-        },
-      ],
-    });
+    try {
+      const chain = getViemChain(vault.chainId);
+      const client = createSmartWalletClient({
+        signer,
+        transport: alchemyWalletTransport({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY! }),
+        chain,
+        paymaster: { policyId: getPolicyId(vault.chainId) },
+      });
+
+      // Batch approve + deposit into a single call
+      const { id } = await client.sendCalls({
+        calls: [
+          {
+            to: contracts.USDC,
+            data: encodeFunctionData({
+              abi: ERC20ABI as Abi,
+              functionName: 'approve',
+              args: [vault.vaultAddress as `0x${string}`, amountWei],
+            }),
+            value: 0n,
+          },
+          {
+            to: vault.vaultAddress as `0x${string}`,
+            data: encodeFunctionData({
+              abi: TokenizedBondVaultABI as Abi,
+              functionName: 'deposit',
+              args: [amountWei, address],
+            }),
+            value: 0n,
+          },
+        ],
+      });
+
+      await client.waitForCallsStatus({ id });
+      setStep('done');
+    } catch (err) {
+      const e = err as { shortMessage?: string; message?: string };
+      setErrorMsg(e.shortMessage ?? e.message ?? 'Transaction failed');
+      setStep('error');
+    }
   };
 
   return (

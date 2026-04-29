@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
-import { useSignerStatus } from '@account-kit/react';
+import { usePrivy } from '@privy-io/react-auth';
 import Image from 'next/image';
 
 /**
@@ -25,11 +25,11 @@ import Image from 'next/image';
  */
 export default function AuthGuard({ children }: { children: ReactNode }) {
   const { isAuthenticated, isInitializing } = useAuth();
-  const { isInitializing: isSignerInit } = useSignerStatus();
+  const { ready } = usePrivy();
   const { onboardingStep } = useNavigation();
   const router = useRouter();
 
-  const loading = isInitializing || isSignerInit;
+  const loading = isInitializing || !ready;
 
   // Redirect unauthenticated users to sign-in
   useEffect(() => {

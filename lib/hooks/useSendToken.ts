@@ -1,15 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
-import {
-  useSignerStatus,
-  useSmartAccountClient,
-  useSendUserOperation,
-  useChain,
-} from '@account-kit/react';
+import { useCallback, useState } from 'react';
+import { createSmartWalletClient, alchemyWalletTransport } from '@alchemy/wallet-apis';
+import { usePrivySigner } from '@/lib/privy/usePrivySigner';
+import { getPolicyId } from '@/lib/privy/config';
 import { encodeFunctionData, parseUnits } from 'viem';
 import { erc20Abi } from 'viem';
-import { base, mainnet } from 'wagmi/chains';
+import { base, mainnet } from 'viem/chains';
+import type { Chain } from 'viem';
 import { TOKEN_ADDRESSES, TOKEN_METADATA, type TokenSymbol } from '@/lib/config/tokens';
 
 export type SendStatus = 'idle' | 'pending' | 'success' | 'error';
@@ -18,10 +16,10 @@ export interface SendParams {
   token: TokenSymbol;
   chainId: number;
   to: `0x${string}`;
-  amount: string; // human-readable decimal string
+  amount: string;
 }
 
-const SEND_CHAINS: Record<number, typeof base | typeof mainnet> = {
+const SEND_CHAINS: Record<number, Chain> = {
   [base.id]: base,
   [mainnet.id]: mainnet,
 };
@@ -32,83 +30,65 @@ function getErc20Address(token: Exclude<TokenSymbol, 'ETH'>, chainId: number): `
     : TOKEN_ADDRESSES.ethereum[token];
 }
 
-/**
- * Unified token-send hook for embedded smart accounts (email / passkey / OAuth).
- * Sends via useSendUserOperation using MultiOwnerModularAccount (MAv2 / EIP-7702).
- * Handles chain switching via useChain() before firing the UserOperation.
- */
 export function useSendToken() {
-  const { client } = useSmartAccountClient({ type: 'MultiOwnerModularAccount' });
-  const {
-    sendUserOperation,
-    isSendingUserOperation,
-    sendUserOperationResult,
-    error: uoError,
-  } = useSendUserOperation({ client, waitForTxn: true });
+  const signer = usePrivySigner();
+  const [status, setStatus] = useState<SendStatus>('idle');
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const { isConnected: isSignerConnected } = useSignerStatus();
-  const { chain, setChain } = useChain();
-  const pendingRef = useRef<SendParams | null>(null);
+  const send = useCallback(async (params: SendParams) => {
+    if (!signer) { setError('Wallet not ready'); return; }
 
-  const executeUO = useCallback(
-    (params: SendParams) => {
-      const { token, chainId, to, amount } = params;
-      if (token === 'ETH') {
-        sendUserOperation({ uo: { target: to, data: '0x', value: parseUnits(amount, 18) } });
+    const targetChain = SEND_CHAINS[params.chainId];
+    if (!targetChain) { setError('Unsupported network'); return; }
+
+    const client = createSmartWalletClient({
+      signer,
+      transport: alchemyWalletTransport({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY! }),
+      chain: targetChain,
+      paymaster: { policyId: getPolicyId(params.chainId) },
+    });
+
+    setStatus('pending');
+    setError(null);
+    setTxHash(null);
+
+    try {
+      let call: { to: `0x${string}`; data: `0x${string}`; value: bigint };
+
+      if (params.token === 'ETH') {
+        call = { to: params.to, data: '0x', value: parseUnits(params.amount, 18) };
       } else {
-        const addr = getErc20Address(token, chainId);
-        const decimals = TOKEN_METADATA[token].decimals;
-        sendUserOperation({
-          uo: {
-            target: addr,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: 'transfer',
-              args: [to, parseUnits(amount, decimals)],
-            }),
-            value: 0n,
-          },
-        });
+        const addr = getErc20Address(params.token, params.chainId);
+        const decimals = TOKEN_METADATA[params.token].decimals;
+        call = {
+          to: addr,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'transfer',
+            args: [params.to, parseUnits(params.amount, decimals)],
+          }),
+          value: 0n,
+        };
       }
-    },
-    [sendUserOperation],
-  );
 
-  // When the active chain changes to match a pending send, fire it
-  useEffect(() => {
-    const pending = pendingRef.current;
-    if (pending && chain.id === pending.chainId) {
-      pendingRef.current = null;
-      executeUO(pending);
+      const { id } = await client.sendCalls({ calls: [call] });
+      const result = await client.waitForCallsStatus({ id });
+      setTxHash(result.receipts?.[0]?.transactionHash ?? null);
+      setStatus('success');
+    } catch (err) {
+      const e = err as { shortMessage?: string; message?: string };
+      setError(e.shortMessage ?? e.message ?? 'Send failed');
+      setStatus('error');
     }
-  }, [chain.id, executeUO]);
-
-  const send = useCallback(
-    (params: SendParams) => {
-      if (!isSignerConnected) return;
-
-      if (chain.id !== params.chainId) {
-        const targetChain = SEND_CHAINS[params.chainId];
-        if (!targetChain) return;
-        pendingRef.current = params;
-        setChain({ chain: targetChain });
-      } else {
-        executeUO(params);
-      }
-    },
-    [isSignerConnected, chain.id, setChain, executeUO],
-  );
-
-  const reset = useCallback(() => {
-    pendingRef.current = null;
-  }, []);
+  }, [signer]);
 
   return {
     send,
-    isPending: isSendingUserOperation,
-    isSuccess: !!sendUserOperationResult?.hash,
-    txHash: sendUserOperationResult?.hash ?? null,
-    error: uoError?.message ?? null,
-    reset,
+    isPending: status === 'pending',
+    isSuccess: status === 'success',
+    txHash,
+    error,
+    reset: () => { setStatus('idle'); setTxHash(null); setError(null); },
   };
 }

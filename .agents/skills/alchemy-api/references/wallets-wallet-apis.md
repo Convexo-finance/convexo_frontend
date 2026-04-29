@@ -8,7 +8,7 @@ tags:
 related:
   - wallets-account-kit.md
   - operational-auth-and-keys.md
-updated: 2026-04-08
+updated: 2026-04-22
 ---
 # Wallet APIs
 
@@ -17,7 +17,7 @@ High-level wallet APIs enable programmatic wallet operations such as signing, tr
 
 ## Primary Use Cases
 - Server-side transaction preparation.
-- Delegated signing or session-based flows.
+- Delegated signing or session-based flows (including existing session keys — see [Legacy session keys with Wallet APIs](https://www.alchemy.com/docs/wallets/smart-wallets/session-keys/legacy-session-keys) for migrating pre-existing session-key setups).
 - EIP-7702 account delegation and undelegation.
 
 ## EIP-7702 Undelegation
@@ -60,3 +60,5 @@ When users report Wallet API failures, check for these common error patterns:
 ## Official Docs
 - [Account Kit Wallet Client](https://www.alchemy.com/docs/wallets/reference/account-kit/wallet-client)
 - [Wallet API Errors](https://www.alchemy.com/docs/wallets/troubleshooting/wallet-apis-errors)
+- [Legacy session keys with Wallet APIs](https://www.alchemy.com/docs/wallets/smart-wallets/session-keys/legacy-session-keys) — use existing session keys with Wallet APIs.
+- [v5 migration guide](https://www.alchemy.com/docs/wallets/resources/migration-v5)

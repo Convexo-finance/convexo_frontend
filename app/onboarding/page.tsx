@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useOnboarding, type AccountType } from '@/lib/hooks/useOnboarding';
 import { useNavigation } from '@/lib/contexts/NavigationContext';
 import { apiFetch } from '@/lib/api/client';
-import { useSignerStatus } from '@account-kit/react';
+import { usePrivy } from '@privy-io/react-auth';
 import {
   UserIcon,
   BuildingOffice2Icon,
@@ -603,7 +603,8 @@ function StepPathGuide({ accountType }: { accountType: AccountType }) {
 export default function OnboardingPage() {
   const router = useRouter();
   const { isAuthenticated, isInitializing } = useAuth();
-  const { isInitializing: isSignerInit } = useSignerStatus();
+  const { ready } = usePrivy();
+  const isSignerInit = !ready;
   const { step: onboardingStep, accountType: existingType, refetch } = useOnboarding();
   // Sync the shared NavigationContext after each step so AuthGuard always
   // reads fresh onboardingStep when the user navigates away from /onboarding.

@@ -10,7 +10,7 @@ related:
   - sui-grpc-overview.md
   - sui-grpc-objects-and-ledger.md
   - operational-auth-and-keys.md
-updated: 2026-04-15
+updated: 2026-04-22
 ---
 # Sui gRPC Quickstart
 
@@ -53,6 +53,19 @@ Returns chain name, chain ID, current checkpoint height, and epoch.
 - **Get an object**: `LedgerService/GetObject` with `object_id` and optional `read_mask`.
 - **Get a transaction**: `LedgerService/GetTransaction` with `digest`.
 - **Check balance**: `StateService/GetBalance` with `owner` and `coin_type`.
+
+## `read_mask` format
+`read_mask` is a protobuf [FieldMask](https://protobuf.dev/reference/protobuf/google.protobuf/#field-mask). In JSON (grpcurl, gRPC-web, etc.) encode it as an **object with a `paths` array**, not a comma-separated string:
+
+```bash
+# Correct — FieldMask JSON form
+grpcurl -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -import-path proto -proto sui/rpc/v2/ledger_service.proto \
+  -d '{"object_id": "0x5", "read_mask": {"paths": ["object_id", "version", "digest", "owner"]}}' \
+  sui-mainnet.g.alchemy.com:443 sui.rpc.v2.LedgerService/GetObject
+```
+
+Passing `read_mask` as a bare string (`"object_id,version,..."`) will be rejected.
 
 ## Related Files
 - `sui-grpc-overview.md`

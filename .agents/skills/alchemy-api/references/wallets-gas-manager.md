@@ -8,7 +8,7 @@ tags:
 related:
   - wallets-smart-wallets.md
   - wallets-bundler.md
-updated: 2026-04-08
+updated: 2026-04-22
 ---
 # Gas Manager
 
@@ -20,6 +20,9 @@ Gas Manager (paymaster) enables gas sponsorship and cost control for smart walle
 - Sponsoring specific methods or contracts.
 - ERC-20 token gas payments (pay gas with any supported token).
 - BSO (Bundler Sponsorship) policies for EIP-7702 undelegation.
+
+## BSO Chain Support
+Bundler Sponsored Operations (BSOs) are a bundler feature and are supported on **every chain that has both bundler and gas sponsorship support**, with the exception of **MegaETH** (coming soon). Always confirm against the live [Wallet APIs supported chains](https://www.alchemy.com/docs/wallets/supported-chains) matrix before launch.
 
 ## Integration Notes
 - Define strict sponsorship policies.

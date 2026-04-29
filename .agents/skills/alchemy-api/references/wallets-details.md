@@ -10,12 +10,14 @@ related:
   - wallets-smart-wallets.md
   - wallets-bundler.md
   - wallets-gas-manager.md
-updated: 2026-02-05
+updated: 2026-04-22
 ---
 # Wallets Overview
 
+> **Naming note:** Alchemy rebranded "Smart Wallets" to **Wallet APIs**. Both terms may still appear in older material; prefer "Wallet APIs" going forward.
+
 ## Summary
-Alchemy Wallets tooling helps developers embed or integrate wallets with minimal infrastructure. This section is intentionally basic and focuses on integration touchpoints.
+Alchemy Wallet APIs help developers embed or integrate wallets with minimal infrastructure. This section is intentionally basic and focuses on integration touchpoints.
 
 ## Primary Use Cases
 - User onboarding with embedded wallets.
@@ -23,7 +25,7 @@ Alchemy Wallets tooling helps developers embed or integrate wallets with minimal
 - Gas sponsorship and transaction bundling.
 
 ## When To Use / Not Use
-- Use when you want a turnkey wallet stack.
+- Use when you want an end-to-end, batteries-included wallet stack (signer → smart account → bundler → paymaster).
 - Avoid if you already have a wallet provider and only need RPC/data.
 
 ## Related Files
@@ -33,4 +35,4 @@ Alchemy Wallets tooling helps developers embed or integrate wallets with minimal
 - `wallets-gas-manager.md`
 
 ## Official Docs
-- [Smart Wallets](https://www.alchemy.com/docs/wallets)
+- [Wallet APIs](https://www.alchemy.com/docs/wallets)
