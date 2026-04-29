@@ -18,7 +18,7 @@ interface WriteContractParams {
 export function useConvexoWrite() {
   const signer = usePrivySigner();
   const [isPending, setIsPending] = useState(false);
-  const [txHash, setTxHash] = useState<string | undefined>();
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const [error, setError] = useState<Error | null>(null);
 
   const writeContract = useCallback(async (params: WriteContractParams) => {
@@ -47,7 +47,7 @@ export function useConvexoWrite() {
         calls: [{ to: params.address, data, value: params.value ?? 0n }],
       });
       const result = await client.waitForCallsStatus({ id });
-      setTxHash(result.receipts?.[0]?.transactionHash);
+      setTxHash(result.receipts?.[0]?.transactionHash as `0x${string}` | undefined);
     } catch (err) {
       setError(err as Error);
     } finally {

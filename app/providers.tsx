@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { PrivyProvider, createWalletCreationOnLoginPlugin, type User } from '@privy-io/react-auth';
 import { MigrationProvider } from '@privy-io/alchemy-migration';
-import '@privy-io/alchemy-migration/styles.css';
 import { config } from '@/lib/wagmi/config';
+import { mainnet, sepolia } from 'viem/chains';
 import { PRIVY_APP_ID, PRIVY_CLIENT_ID, migrationAlchemyConfig } from '@/lib/privy/config';
 import { NavigationProvider } from '@/lib/contexts/NavigationContext';
 import { AuthProvider } from '@/lib/contexts/AuthContext';
@@ -35,6 +35,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           appId={PRIVY_APP_ID}
           config={{
             plugins: [walletCreationPlugin],
+            defaultChain: sepolia,
+            supportedChains: [mainnet, sepolia],
             embeddedWallets: {
               ethereum: { createOnLogin: 'users-without-wallets' },
             },
