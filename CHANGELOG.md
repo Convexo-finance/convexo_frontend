@@ -4,6 +4,24 @@ Format: version → what changed → status.
 
 ---
 
+## v3.27 — 2026-05-14 (Contract audit + critical infrastructure fixes)
+
+### Fixed
+- **`wagmi/config.ts`** — Added `base` (8453) and `baseSepolia` (84532) chain transports. Previously only ETH Mainnet + ETH Sepolia were registered, meaning `useReadContract` / `usePublicClient` in mainnet mode (PRIMARY_CHAIN_ID=8453) had no transport and all on-chain reads would fail silently.
+- **`addresses.ts`** — Added `MANUAL_PRICE_AGGREGATOR` to `ChainContracts` interface; defaults to zero address on all chains; ETH Sepolia override set to `0xBebDf2e6AdF4ca1e26531A778cdf669Da989EB79` (v3.21).
+- **`abis.ts`** — Imported and exported `ManualPriceAggregatorABI` from `@/abis/ManualPriceAggregator.json` (ABI was present but not imported).
+
+### Pages
+- **`treasury/fiat-to-stable`** — Rewritten to dark theme (was light/dark mode), added to sidebar navigation under Trade section, fixed TypeScript `0x${string}` cast on `balanceOf` args.
+- **`treasury/convert-fast`** — Wired to `useV4Swap` + `useV4Quote` (was a stub with empty onClick), added to sidebar navigation under Trade section. Now submits real V4 pool swaps via batched UserOperation.
+
+### Audit
+- Cross-repo contract audit completed (see `AUDIT.md` at project root)
+- Known open issue: `addresses.json` Base Sepolia hook entry is stale (`0x6aCd36...` vs correct `0xdCfF77...`) — do NOT run `scripts/sync-addresses.js` until this is fixed in the JSON
+- All hook wiring (`useV4Swap`, `useV4Quote`, `useNFTBalance`, `useNFTMetadata`) correctly derives addresses from `getContractsForChain()` — no hardcoded addresses found
+
+---
+
 ## v3.26 — 2026-04-29 (Privy signer migration — replaces Alchemy Account Kit auth layer)
 
 ### Changed

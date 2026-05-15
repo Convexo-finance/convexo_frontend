@@ -153,6 +153,8 @@ const navItems: NavItem[] = [
     subItems: [
       { name: 'OTC Orders', href: '/treasury/otc', icon: ClipboardDocumentListIcon, description: 'Large orders' },
       { name: 'Swaps', href: '/treasury/swaps', icon: ArrowsRightLeftIcon, description: 'ECOP/USDC/EUR Pools' },
+      { name: 'Fiat ↔ ECOP', href: '/treasury/fiat-to-stable', icon: BanknotesIcon, description: 'Mint or redeem ECOP' },
+      { name: 'Convert Fast', href: '/treasury/convert-fast', icon: CurrencyDollarIcon, description: 'Quick rate swap' },
     ],
   },
   {
